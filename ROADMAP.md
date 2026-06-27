@@ -68,7 +68,8 @@ Deliverables:
 - `api/flush-session.js` — POST, writes watch_sessions (sendBeacon target)
 - `api/progress.js` — GET, scholar's own hours + pace from scholar_pace view
 - `api/scholars.js` — GET, admin-only, all-scholar progress via service role
-- `api/tag-video.js` — POST, Haiku tagging (ANTHROPIC_API_KEY server-side)
+- `api/tag-channel.js` — POST, Haiku channel-level classification; all videos from channel inherit `level_source: 'channel'`
+- `api/tag-video.js` — POST, Haiku per-video tagging fallback for channelless imports
 - `api/youtube-search.js` — GET, YouTube Data API (YOUTUBE_API_KEY server-side)
 - `api/youtube-import.js` — POST, batch playlist import + tag
 - JWT verification helper; admin role check helper
@@ -217,6 +218,7 @@ Status: **NOT STARTED**
 |---|---|---|---|---|
 | Jun 2026 | Design | Grill-me + foundation files | — | All decisions locked. See ARCHITECTURE.md. |
 | Jun 2026 | Audit v2 | Foundation file audit | 1 | Fixed: API key exposure (serverless layer), missing scholar start_date (scholar_goals table), hook naming, updated_at triggers, Neon Auth isolation pattern. |
+| Jun 2026 | Design v2 | AI tagging + video discovery design | 1 | Channel-level classification as primary tagging path (api/tag-channel.js); per-video fallback only. CEFR-only prompt (no qualitative descriptions). Interest-first principle locked. Edge cases accepted — skip mechanic handles them. level_source adds 'channel' value. |
 
 ---
 

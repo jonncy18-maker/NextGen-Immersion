@@ -28,8 +28,8 @@ Admins (John) manage the video library, set program goals and per-scholar start 
 │  ┌───────────────────────▼────────────────────────────┐ │
 │  │       SERVER — Vercel serverless functions (api/)   │ │
 │  │  SECRET KEYS LIVE HERE — never reach the browser    │ │
-│  │  tag-video · youtube-search · flush-session         │ │
-│  │  progress · scholars · youtube-import               │ │
+│  │  tag-channel · tag-video · youtube-search            │ │
+│  │  flush-session · progress · scholars · youtube-import│ │
 │  └──────┬──────────────────┬──────────────────┬───────┘ │
 └─────────┼──────────────────┼──────────────────┼─────────┘
           │                  │                  │
@@ -94,7 +94,7 @@ thumbnail_url    text
 duration_seconds integer
 language         text NOT NULL DEFAULT 'english'
 level            text NOT NULL                   -- super_beginner|beginner|intermediate|advanced
-level_source     text DEFAULT 'ai'               -- 'ai' | 'admin'
+level_source     text DEFAULT 'ai'               -- 'ai' | 'channel' | 'admin'
 topic_primary    text                            -- one of 10 fixed tags
 topic_secondary  text                            -- one of 10 fixed tags or null
 source           text DEFAULT 'library'          -- 'library' | 'search'
@@ -123,6 +123,7 @@ id                 uuid PRIMARY KEY DEFAULT gen_random_uuid()
 youtube_channel_id text UNIQUE NOT NULL
 name               text
 language           text NOT NULL DEFAULT 'english'
+level              text  -- super_beginner|beginner|intermediate|advanced — set by Haiku on add
 added_by           uuid REFERENCES users(id)
 created_at         timestamptz DEFAULT now()
 ```
@@ -176,7 +177,8 @@ All secret-key operations. The browser calls these; these call the third-party A
 
 | Endpoint | Method | Purpose | Secret used |
 |---|---|---|---|
-| `api/tag-video.js` | POST | Tag one video via Haiku → return level + topics | ANTHROPIC_API_KEY |
+| `api/tag-channel.js` | POST | Classify a channel's level via Haiku → stored on channel row; all its videos inherit `level_source: 'channel'` | ANTHROPIC_API_KEY |
+| `api/tag-video.js` | POST | Tag one video via Haiku → level + topics (fallback for channelless imports only) | ANTHROPIC_API_KEY |
 | `api/youtube-search.js` | GET | Search YouTube, return results | YOUTUBE_API_KEY |
 | `api/youtube-import.js` | POST | Batch import playlist/channel + tag all | YOUTUBE_API_KEY + ANTHROPIC_API_KEY |
 | `api/flush-session.js` | POST | Write watch_session row (sendBeacon target) | NEON_DATABASE_URL |
@@ -225,15 +227,23 @@ document.addEventListener('visibilitychange', () => {
 
 ## AI Tagging
 
-One `claude-haiku-4-5` call per video in `api/tag-video.js` (server-side — key never exposed). Input: title + channel + description (first 500 chars). Output JSON: level + topic_primary + topic_secondary. Cached in `videos` forever.
+Two-tier tagging via `claude-haiku-4-5` (server-side — key never exposed). All results cached forever; never re-fetched.
 
+**Channel classification — primary path (`api/tag-channel.js`):**
+When a channel is added or imported, Haiku classifies it once using the channel name, description, and a sample of video titles. The level is stored on the `channels` row. All videos imported from that channel inherit the channel's level with `level_source: 'channel'`. This is the fast path for bulk library growth — one Haiku call covers every video from that channel.
+
+**Per-video classification — fallback (`api/tag-video.js`):**
+Used only for individual videos with no associated channel (e.g. one-off YouTube search results). Input: title + description + YouTube keyword tags. Output JSON: level + topic_primary + topic_secondary.
+
+**CEFR level mapping (used in prompt — no qualitative descriptions):**
 ```
-Level guide:
-- super_beginner: very slow, simple vocab, A1-A2
-- beginner: slow-normal, common vocab, A2-B1
-- intermediate: normal pace, varied vocab, B1-B2
-- advanced: natural pace, complex vocab, B2-C1
+super_beginner → A1–A2
+beginner       → A2–B1
+intermediate   → B1–B2
+advanced       → B2–C1
 ```
+
+**Edge cases:** Some channels span multiple levels; this is uncommon and not engineered around. Students skip videos that feel too hard — expected CI behavior. Admin can override any tag with `level_source: 'admin'`.
 
 ---
 
@@ -293,11 +303,13 @@ Level guide:
 
 ## Video Discovery UX
 
+**Interest-first principle:** Topic interest is the primary filter; level is a secondary constraint. Comprehensible input only works when the student is engaged — a video Claire finds genuinely interesting at slightly above her level beats a perfectly-leveled video she finds boring. The browse UI surfaces interest-matched content first; level filters narrow the pool. Students skip videos that feel too hard; this is expected and by design.
+
 **Scholar browse (Watch):** videos at current level first + some above · 3-row color-coded topic filters · level filters · watched/unwatched toggle (defaults unwatched) · search within library.
 
 **Scholar open search (Browse):** YouTube search via `api/youtube-search.js` · AI tags in progress · hours track regardless of source.
 
-**Admin add:** scholar context card (level + interests) · AI-assisted search generating optimized queries from scholar profile · suggested query chips · paste URL/channel/playlist · batch import ≤50 videos, rate-limited.
+**Admin add:** scholar context card (level + interests) · AI-assisted search generating optimized queries from scholar profile · suggested query chips · paste URL/channel/playlist · batch import ≤50 videos, rate-limited. Adding a channel triggers `api/tag-channel.js` to classify level once for all its videos.
 
 ---
 

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS channels (
   youtube_channel_id  text UNIQUE NOT NULL,
   name                text NOT NULL,
   language            text NOT NULL DEFAULT 'english',
+  level               text CHECK (level IN ('super_beginner','beginner','intermediate','advanced')),
   added_by            uuid REFERENCES users(id) ON DELETE SET NULL,
   created_at          timestamptz NOT NULL DEFAULT now()
 );
@@ -67,7 +68,7 @@ CREATE TABLE IF NOT EXISTS videos (
   level             text NOT NULL
                     CHECK (level IN ('super_beginner','beginner','intermediate','advanced')),
   level_source      text NOT NULL DEFAULT 'ai'
-                    CHECK (level_source IN ('ai','admin')),
+                    CHECK (level_source IN ('ai','channel','admin')),
 
   topic_primary     text
                     CHECK (topic_primary IN (

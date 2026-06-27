@@ -58,7 +58,8 @@ Formatting:   Prettier
 ```
 ngs-immersion/
 ├── api/                          # Vercel serverless functions — SECRET KEYS LIVE HERE
-│   ├── tag-video.js              # Calls Anthropic Haiku — never exposes key
+│   ├── tag-channel.js            # Classifies channel level via Haiku — primary tagging path
+│   ├── tag-video.js              # Haiku per-video tagging — fallback for channelless imports
 │   ├── youtube-search.js         # Calls YouTube Data API — never exposes key
 │   ├── youtube-import.js         # Batch playlist/channel import + tag
 │   ├── flush-session.js          # Writes watch_sessions to Neon (sendBeacon target)
@@ -152,7 +153,7 @@ In Vercel: set server-side vars as normal env vars (no prefix). Set client vars 
 
 **Offline flushing:** Use `navigator.sendBeacon('/api/flush-session', payload)` for the `beforeunload` flush — regular `fetch` is killed on tab close. The localStorage buffer in `utils/offlineBuffer.js` accumulates seconds and flushes on reconnect.
 
-**AI tagging model:** ALWAYS use `claude-haiku-4-5` in `api/tag-video.js`. Never substitute Sonnet or Opus — tagging is lightweight classification and Haiku is the correct tool. One call per video, result cached in Neon forever.
+**AI tagging model:** ALWAYS use `claude-haiku-4-5` for all tagging. Two endpoints: `api/tag-channel.js` classifies a channel once when it is added — all videos from that channel inherit `level_source: 'channel'` (primary path, fast). `api/tag-video.js` is the fallback for individual channelless imports only. Use CEFR mappings only in the prompt (super_beginner=A1–A2, beginner=A2–B1, intermediate=B1–B2, advanced=B2–C1) — no qualitative descriptions. Results cached in Neon forever; admin overrides with `level_source: 'admin'`.
 
 **Goal clock:** Each scholar's goal clock starts on an admin-set `start_date` in the `scholar_goals` table — NOT on account creation and NOT on first session. A scholar with no start_date set has status PENDING and no pace calculation runs.
 
