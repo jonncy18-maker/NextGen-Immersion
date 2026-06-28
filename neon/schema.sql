@@ -19,6 +19,12 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ─── Users ───────────────────────────────────────────────────────────────────
+-- PROVISIONING: Scholars and admins are ADMIN-PROVISIONED — there is no public
+-- self-signup. id is the Neon Auth subject (the JWT `sub`), NOT a random uuid:
+-- on account creation, insert the row with the Neon Auth user id as `id` so the
+-- API layer can scope every query by the verified JWT `sub`. The gen_random_uuid()
+-- default is a fallback only; production inserts supply the auth id explicitly.
+-- One login screen for everyone; `role` (scholar|admin) drives what the app shows.
 
 CREATE TABLE IF NOT EXISTS users (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -109,10 +115,21 @@ CREATE TRIGGER videos_set_updated_at
 
 -- ─── Watch Sessions ───────────────────────────────────────────────────────────
 
+-- completed = true ONLY when a SINGLE session reaches >=95% of duration_seconds.
+-- It is per-session and NOT cumulative: watching 50% of a video twice does NOT
+-- mark it complete (two sub-95% sessions). Hours/minutes from EVERY session are
+-- always counted toward cumulative input regardless of completion.
+--
+-- client_flush_id is a client-generated UUID per flush. flush-session.js upserts
+-- ON CONFLICT (client_flush_id) DO NOTHING so the same buffered seconds flushed
+-- twice (e.g. reconnect flush + app-load flush, or sendBeacon + pause flush)
+-- are written once. This is the core guard against inflated cumulative hours.
+
 CREATE TABLE IF NOT EXISTS watch_sessions (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id           uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   video_id          uuid NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  client_flush_id   uuid UNIQUE,                   -- idempotency key; dedupes double flushes
   seconds_watched   integer NOT NULL DEFAULT 0 CHECK (seconds_watched >= 0),
   completed         boolean NOT NULL DEFAULT false,
   language          text NOT NULL DEFAULT 'english',
@@ -167,6 +184,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS one_goal_per_scholar_language
 CREATE INDEX IF NOT EXISTS scholar_goals_user_idx ON scholar_goals (user_id);
 
 -- ─── Helper Views ─────────────────────────────────────────────────────────────
+--
+-- TIMEZONE: All "this week" / "today" boundaries use Asia/Manila (the program
+-- timezone — Claire and launch scholars are in the Philippines, UTC+8). Neon
+-- runs UTC, so week/day math is anchored to Manila local time explicitly.
+-- Add a future timezone column to users/scholar_goals if scholars span zones.
 
 -- Total hours per user per language
 CREATE OR REPLACE VIEW user_total_hours AS
@@ -177,13 +199,18 @@ CREATE OR REPLACE VIEW user_total_hours AS
     COUNT(*) AS total_sessions,
     MAX(started_at) AS last_session_at,
     ROUND(
-      SUM(CASE WHEN started_at >= date_trunc('week', now())
-               THEN seconds_watched ELSE 0 END)::numeric / 3600, 1
+      SUM(CASE
+            WHEN (started_at AT TIME ZONE 'Asia/Manila')
+                 >= date_trunc('week', now() AT TIME ZONE 'Asia/Manila')
+            THEN seconds_watched ELSE 0 END)::numeric / 3600, 1
     ) AS hours_this_week
   FROM watch_sessions
   GROUP BY user_id, language;
 
--- Watched/unwatched status per user per video
+-- Watched/unwatched status per user per video.
+-- completed = a scholar finished the video in a single session (>=95%). It is
+-- intentionally NOT cumulative — bool_or over per-session completion. total_seconds
+-- is the cumulative input from all sessions (always counted, completion aside).
 CREATE OR REPLACE VIEW user_video_status AS
   SELECT
     user_id,
@@ -194,7 +221,11 @@ CREATE OR REPLACE VIEW user_video_status AS
   FROM watch_sessions
   GROUP BY user_id, video_id;
 
--- Scholar pace summary (admin dashboard) — joins goal + start_date + hours
+-- Scholar pace summary (admin dashboard) — joins goal + start_date + hours.
+-- "Today" is Manila-local. The elapsed/total ratio is capped at 1.0 via LEAST,
+-- so expected_hours never exceeds target_hours. PAST THE TARGET DATE this means:
+-- expected = target_hours, so status is ON_TRACK only if the scholar reached the
+-- full target, otherwise AT_RISK — no negative or runaway pace after the deadline.
 CREATE OR REPLACE VIEW scholar_pace AS
   SELECT
     u.id            AS user_id,
@@ -208,21 +239,25 @@ CREATE OR REPLACE VIEW scholar_pace AS
     COALESCE(h.hours_this_week, 0) AS hours_this_week,
     h.last_session_at,
     CASE
-      WHEN sg.start_date IS NULL OR sg.start_date > current_date THEN 'PENDING'
+      WHEN sg.start_date IS NULL
+        OR sg.start_date > (now() AT TIME ZONE 'Asia/Manila')::date THEN 'PENDING'
       WHEN COALESCE(h.total_hours,0) >=
            pg.target_hours *
-           (GREATEST(current_date - sg.start_date, 0)::numeric /
-            NULLIF(pg.target_date - sg.start_date, 0))
+           LEAST(1.0,
+             GREATEST((now() AT TIME ZONE 'Asia/Manila')::date - sg.start_date, 0)::numeric /
+             NULLIF(pg.target_date - sg.start_date, 0))
         THEN 'ON_TRACK'
       ELSE 'AT_RISK'
     END AS status,
-    -- expected hours by now
+    -- expected hours by now (capped at target_hours)
     CASE
-      WHEN sg.start_date IS NULL OR sg.start_date > current_date THEN 0
+      WHEN sg.start_date IS NULL
+        OR sg.start_date > (now() AT TIME ZONE 'Asia/Manila')::date THEN 0
       ELSE ROUND(
         pg.target_hours *
-        (GREATEST(current_date - sg.start_date, 0)::numeric /
-         NULLIF(pg.target_date - sg.start_date, 0)), 1)
+        LEAST(1.0,
+          GREATEST((now() AT TIME ZONE 'Asia/Manila')::date - sg.start_date, 0)::numeric /
+          NULLIF(pg.target_date - sg.start_date, 0)), 1)
     END AS expected_hours
   FROM users u
   LEFT JOIN scholar_goals sg

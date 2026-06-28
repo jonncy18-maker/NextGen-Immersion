@@ -47,8 +47,9 @@ Admins (John) manage the video library, set program goals and per-scholar start 
 ## Database Schema
 
 ### users
+Admin-provisioned (no self-signup). `id` is the **Neon Auth subject** (`sub`), supplied on insert — the gen_random_uuid() default is a fallback. One login screen; `role` drives the UI.
 ```sql
-id              uuid PRIMARY KEY DEFAULT gen_random_uuid()
+id              uuid PRIMARY KEY DEFAULT gen_random_uuid()  -- = Neon Auth sub
 email           text UNIQUE NOT NULL
 role            text NOT NULL DEFAULT 'scholar'  -- 'scholar' | 'admin'
 display_name    text
@@ -74,8 +75,9 @@ created_at      timestamptz DEFAULT now()
 id              uuid PRIMARY KEY DEFAULT gen_random_uuid()
 user_id         uuid REFERENCES users(id) ON DELETE CASCADE
 video_id        uuid REFERENCES videos(id) ON DELETE CASCADE
+client_flush_id uuid UNIQUE                      -- idempotency key — dedupes double flushes
 seconds_watched integer NOT NULL DEFAULT 0
-completed       boolean DEFAULT false            -- true if ≥95% watched
+completed       boolean DEFAULT false            -- per-session ≥95% (NOT cumulative)
 language        text NOT NULL DEFAULT 'english'
 started_at      timestamptz DEFAULT now()
 ended_at        timestamptz
@@ -153,19 +155,21 @@ Resolved in v2 — uses the per-scholar `scholar_goals.start_date`.
 start_date       = scholar_goals.start_date           (admin-set)
 target_date      = program_goals.target_date
 target_hours     = program_goals.target_hours
-today            = current_date
+today            = current date in Asia/Manila         (program timezone)
 
-total_weeks      = (target_date - start_date) / 7
-weeks_elapsed    = (today - start_date) / 7            (floored at 0)
-weeks_remaining  = (target_date - today) / 7
-
-expected_hours   = target_hours × (weeks_elapsed / total_weeks)
+elapsed_ratio    = clamp((today - start_date) / (target_date - start_date), 0, 1)
+expected_hours   = target_hours × elapsed_ratio        (capped at target_hours)
 current_hours    = SUM(seconds_watched) / 3600 FROM watch_sessions WHERE user_id = $1
 delta            = current_hours - expected_hours
-required_weekly  = (target_hours - current_hours) / weeks_remaining
 
-status           = delta >= 0 ? 'ON_TRACK' : 'AT_RISK'
+status           = current_hours >= expected_hours ? 'ON_TRACK' : 'AT_RISK'
 ```
+
+**Timezone:** "today" and "this week" are computed in **Asia/Manila** (UTC+8), the program timezone — Claire and launch scholars are in the Philippines while Neon runs UTC. Anchoring the math to Manila local time keeps daily/weekly boundaries correct.
+
+**Past the target date:** `elapsed_ratio` is clamped to 1.0, so `expected_hours` never exceeds `target_hours`. After the deadline a scholar is ON_TRACK only if they reached the full target, otherwise AT_RISK — there is no negative `required_weekly` or runaway expected value.
+
+**"Reach level X" convention:** `program_goals.target_hours` is the hour count at which the target level *begins* (e.g. Intermediate = 300h, the Super Beginner→Beginner→Intermediate thresholds from the Level System). Goals are entered against the entry threshold, not the level's upper bound.
 
 Implemented in `src/utils/pace.js`, fed by `api/scholars.js` (admin) and `api/progress.js` (scholar). A scholar whose `start_date` is in the future is PENDING until that date arrives.
 
@@ -221,7 +225,9 @@ document.addEventListener('visibilitychange', () => {
 **Doesn't count:** paused, buffering, ended, background tab, closed tab
 **Offline:** localStorage buffer flushes on reconnect + app load
 **Min flush:** 10 seconds (filters accidental clicks)
-**Completion:** `completed = true` when `secondsWatched / duration_seconds >= 0.95`
+**Completion:** `completed = true` when `secondsWatched / duration_seconds >= 0.95` **within a single session**. Completion is NOT cumulative — watching 50% of a video twice does not mark it complete. Hours from every session always count toward cumulative input regardless of completion.
+
+**Idempotency (no double-counting):** Hours are *the* metric, and three triggers can flush overlapping data — pause/end, `beforeunload` sendBeacon, and reconnect/app-load. Each flush carries a client-generated `client_flush_id` (UUID). `flush-session.js` writes with `ON CONFLICT (client_flush_id) DO NOTHING`, so the same buffered seconds flushed twice are written once. The localStorage buffer is cleared only after a flush is confirmed written, and a buffered segment keeps its id across retries. This is the primary guard against inflated cumulative hours.
 
 ---
 
@@ -230,10 +236,14 @@ document.addEventListener('visibilitychange', () => {
 Two-tier tagging via `claude-haiku-4-5` (server-side — key never exposed). All results cached forever; never re-fetched.
 
 **Channel classification — primary path (`api/tag-channel.js`):**
-When a channel is added or imported, Haiku classifies it once using the channel name, description, and a sample of video titles. The level is stored on the `channels` row. All videos imported from that channel inherit the channel's level with `level_source: 'channel'`. This is the fast path for bulk library growth — one Haiku call covers every video from that channel.
+When a channel is added or imported, Haiku classifies it once using the channel name, description, and a sample of video titles. The level is stored on the `channels` row. All videos imported from that channel inherit the channel's **level** with `level_source: 'channel'`. This is the fast path for bulk library growth — one Haiku call sets the level for every video from that channel.
+
+**Topics are still per-video, even for channel imports.** Channel classification covers *level* only. Topic varies video-to-video within one channel (a general channel spans Daily Life, News, Culture…), so each imported video still gets a lightweight Haiku topic pass for `topic_primary` / `topic_secondary`. Channel import = one level call + one cheap topic call per video.
 
 **Per-video classification — fallback (`api/tag-video.js`):**
-Used only for individual videos with no associated channel (e.g. one-off YouTube search results). Input: title + description + YouTube keyword tags. Output JSON: level + topic_primary + topic_secondary.
+Used for individual videos with no associated channel (e.g. one-off YouTube search results) — assigns both level and topics. Input: title + description + YouTube keyword tags. Output JSON: level + topic_primary + topic_secondary.
+
+**Shared tagging logic:** The CEFR prompt and topic taxonomy live in one server-side module imported by both endpoints (single source of truth — no drift). The scholar Browse search path requires server-side tagging, so this logic stays in `api/`; any future admin bulk-seed script in Claude Code imports the same module rather than re-implementing the prompt.
 
 **CEFR level mapping (used in prompt — no qualitative descriptions):**
 ```
@@ -244,6 +254,8 @@ advanced       → B2–C1
 ```
 
 **Edge cases:** Some channels span multiple levels; this is uncommon and not engineered around. Students skip videos that feel too hard — expected CI behavior. Admin can override any tag with `level_source: 'admin'`.
+
+**Re-classification propagates:** If an admin re-classifies a channel later, the new level re-stamps existing videos from that channel that are still `level_source: 'channel'`. Videos an admin has manually overridden (`level_source: 'admin'`) are preserved and not touched.
 
 ---
 
@@ -314,6 +326,8 @@ advanced       → B2–C1
 ---
 
 ## Data Isolation (server-enforced, not RLS-only)
+
+**Provisioning & login:** Accounts are **admin-provisioned** — there is no public self-signup. `users.id` is the **Neon Auth subject** (`sub`) assigned at account creation, not a random uuid; the API layer scopes every query by the verified JWT `sub`, which only works if the row id equals that subject. There is **one login screen** for everyone; the `role` field (`scholar` | `admin`) determines what the app renders and which routes are reachable — admins see the Admin nav and `#/admin/*`, scholars do not.
 
 Neon Auth's RLS integration differs from Supabase — do NOT rely on `auth.uid()` in database policies. Enforce isolation in the API layer:
 
