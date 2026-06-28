@@ -1,13 +1,14 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authClient } from '../lib/auth.js';
 
-const AuthContext = createContext({ user: null, role: null, loading: true, signOut: async () => {} });
+const AuthContext = createContext({ user: null, role: null, token: null, loading: true, signOut: async () => {} });
 
 export function AuthProvider({ children }) {
   const { data: sessionData, isPending } = authClient.useSession();
   const [role, setRole] = useState(null);
   const [roleLoading, setRoleLoading] = useState(false);
   const [user, setUser] = useState(null);
+  const token = sessionData?.session?.token ?? null;
 
   useEffect(() => {
     if (isPending) return;
@@ -21,8 +22,6 @@ export function AuthProvider({ children }) {
 
     // Session available — fetch role from our API
     setRoleLoading(true);
-    const token = sessionData?.session?.token;
-
     fetch('/api/me', {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -61,7 +60,7 @@ export function AuthProvider({ children }) {
   const loading = isPending || roleLoading;
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, signOut }}>
+    <AuthContext.Provider value={{ user, role, token, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

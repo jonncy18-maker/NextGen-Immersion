@@ -6,14 +6,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const authUser = await verifySession(req.headers.authorization)
-  if (!authUser) return res.status(401).json({ error: 'Unauthorized' })
-
-  // Parse body — sendBeacon sends text/plain, fetch sends application/json
+  // Parse body first — sendBeacon sends text/plain, fetch sends application/json
   let body = req.body
   if (typeof body === 'string') {
     try { body = JSON.parse(body) } catch { return res.status(400).json({ error: 'Invalid body' }) }
   }
+
+  // sendBeacon cannot set Authorization headers — fall back to _token in body
+  const authHeader = req.headers.authorization || (body?._token ? `Bearer ${body._token}` : null)
+  const authUser = await verifySession(authHeader)
+  if (!authUser) return res.status(401).json({ error: 'Unauthorized' })
 
   const { videoId, clientFlushId, secondsWatched, completed, startedAt, endedAt, language = 'english' } = body || {}
 
