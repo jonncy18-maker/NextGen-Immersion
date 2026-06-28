@@ -18,7 +18,6 @@ export default function Login() {
       const result = await authClient.signIn.email({
         email,
         password,
-        callbackURL: '/#/watch',
       });
 
       if (result?.error) {
