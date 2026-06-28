@@ -7,7 +7,11 @@
   },
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/neon-auth/:path*",
+      "destination": "https://ep-wandering-math-aj1k636g.neonauth.c-3.us-east-2.aws.neon.tech/neondb/auth/:path*"
+    },
+    {
+      "source": "/((?!api/|neon-auth/).*)",
       "destination": "/index.html"
     }
   ]
