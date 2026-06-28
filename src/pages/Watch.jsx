@@ -84,6 +84,29 @@ export default function Watch() {
     )
   }, [])
 
+  // Manual "Mark as watched / unwatched" — optimistic local update, then
+  // persist via /api/mark-video. Revert on failure.
+  const handleMark = useCallback(async (video, watched) => {
+    const previous = video.watched
+    setVideos(vs => vs.map(v => (v.id === video.id ? { ...v, watched } : v)))
+    try {
+      const token = await getAuthToken()
+      const res = await fetch('/api/mark-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ videoId: video.id, watched }),
+      })
+      if (!res.ok) throw new Error('Failed to mark video')
+    } catch (e) {
+      setVideos(vs =>
+        vs.map(v => (v.id === video.id ? { ...v, watched: previous } : v)),
+      )
+    }
+  }, [])
+
   const { onPlayerStateChange, secondsThisSession, flushStatus } = useWatchSession(
     selected?.id ?? null,
     selected?.duration_seconds ?? 0,
@@ -122,6 +145,7 @@ export default function Watch() {
               videos={visibleVideos}
               onSelect={setSelected}
               selectedId={selected?.id}
+              onMark={handleMark}
             />
           </div>
         )}

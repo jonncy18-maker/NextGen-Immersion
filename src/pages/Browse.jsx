@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAuthToken } from '../lib/authToken.js'
 import FilterBar from '../components/video/FilterBar.jsx'
@@ -31,6 +31,29 @@ export default function Browse() {
   })
 
   const navigate = useNavigate()
+
+  // Manual "Mark as watched / unwatched" — optimistic local update, then
+  // persist via /api/mark-video. Revert on failure.
+  const handleMark = useCallback(async (video, watched) => {
+    const previous = video.watched
+    setVideos(vs => vs.map(v => (v.id === video.id ? { ...v, watched } : v)))
+    try {
+      const token = await getAuthToken()
+      const res = await fetch('/api/mark-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ videoId: video.id, watched }),
+      })
+      if (!res.ok) throw new Error('Failed to mark video')
+    } catch (e) {
+      setVideos(vs =>
+        vs.map(v => (v.id === video.id ? { ...v, watched: previous } : v)),
+      )
+    }
+  }, [])
 
   useEffect(() => {
     fetchVideos()
@@ -73,7 +96,11 @@ export default function Browse() {
         {!loading && !error && (
           <>
             <FilterBar filters={filters} onChange={setFilters} />
-            <VideoGrid videos={visibleVideos} onSelect={() => navigate('/watch')} />
+            <VideoGrid
+              videos={visibleVideos}
+              onSelect={() => navigate('/watch')}
+              onMark={handleMark}
+            />
           </>
         )}
       </div>

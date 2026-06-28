@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { getTopicColor } from '../../utils/topics.js'
 
 const LEVEL_LABELS = {
@@ -7,8 +8,15 @@ const LEVEL_LABELS = {
   advanced: 'Advanced',
 }
 
-export default function VideoCard({ video, onSelect, active }) {
+export default function VideoCard({ video, onSelect, active, onMark }) {
   const topics = [video.topic_primary, video.topic_secondary].filter(Boolean)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const handleMark = (e, watched) => {
+    e.stopPropagation()
+    setMenuOpen(false)
+    onMark(video, watched)
+  }
 
   return (
     <div
@@ -33,6 +41,49 @@ export default function VideoCard({ video, onSelect, active }) {
           <div style={styles.thumbFallback} />
         )}
         {video.watched && <span style={styles.watchedBadge}>✓ Watched</span>}
+
+        {onMark && (
+          <>
+            <button
+              type="button"
+              aria-label="Video options"
+              onClick={e => {
+                e.stopPropagation()
+                setMenuOpen(o => !o)
+              }}
+              style={styles.menuButton}
+            >
+              ⋯
+            </button>
+            {menuOpen && (
+              <>
+                <div
+                  onClick={e => {
+                    e.stopPropagation()
+                    setMenuOpen(false)
+                  }}
+                  style={styles.backdrop}
+                />
+                <div style={styles.menu}>
+                  <div
+                    role="button"
+                    onClick={e => handleMark(e, true)}
+                    style={styles.menuItem}
+                  >
+                    Mark as watched
+                  </div>
+                  <div
+                    role="button"
+                    onClick={e => handleMark(e, false)}
+                    style={styles.menuItem}
+                  >
+                    Mark as unwatched
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
 
       <div style={styles.body}>
@@ -102,6 +153,51 @@ const styles = {
     fontWeight: 600,
     padding: '3px 7px',
     borderRadius: 6,
+  },
+  menuButton: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 26,
+    height: 26,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(22, 32, 64, 0.75)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    cursor: 'pointer',
+    fontSize: 16,
+    lineHeight: 1,
+    padding: 0,
+    zIndex: 3,
+  },
+  backdrop: {
+    position: 'fixed',
+    inset: 0,
+    background: 'transparent',
+    zIndex: 4,
+  },
+  menu: {
+    position: 'absolute',
+    top: 36,
+    left: 6,
+    background: '#fff',
+    borderRadius: 8,
+    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)',
+    border: '1px solid var(--ngsi-cream-dark)',
+    overflow: 'hidden',
+    zIndex: 5,
+    minWidth: 150,
+  },
+  menuItem: {
+    padding: '8px 12px',
+    fontSize: 13,
+    fontWeight: 500,
+    color: 'var(--ngsi-navy)',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   body: {
     padding: 10,
