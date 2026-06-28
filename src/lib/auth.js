@@ -1,11 +1,16 @@
 import { createAuthClient } from "@neondatabase/neon-js/auth"
 import { BetterAuthReactAdapter } from "@neondatabase/neon-js/auth/react/adapters"
 
-// Neon's official SDK (Better Auth under the hood) with the React adapter.
-// Unlike the raw better-auth/react client, it caches the session in
-// localStorage and syncs across tabs — so the session survives a page refresh
-// without relying on the cross-domain (third-party) session cookie, which
-// browsers block. The adapter enables React hooks like useSession().
-export const authClient = createAuthClient(import.meta.env.VITE_NEON_AUTH_URL, {
+// Auth runs through the app's OWN origin (/neon-auth/* is proxied to the Neon
+// Auth server by a vercel.json rewrite). This makes the session cookie
+// first-party on the app domain, so the browser keeps it across refreshes.
+// Talking to the Neon Auth domain directly gets the cookie blocked as a
+// third-party cookie — the session is then lost on every reload.
+const authBaseUrl =
+  typeof window !== "undefined"
+    ? `${window.location.origin}/neon-auth`
+    : "/neon-auth"
+
+export const authClient = createAuthClient(authBaseUrl, {
   adapter: BetterAuthReactAdapter(),
 })
