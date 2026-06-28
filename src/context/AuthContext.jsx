@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { authClient, clearStoredSessionToken } from '../lib/auth.js';
+import { authClient } from '../lib/auth.js';
 import { getAuthToken } from '../lib/authToken.js';
 
 const AuthContext = createContext({ user: null, role: null, loading: true, signOut: async () => {} });
@@ -69,7 +69,6 @@ export function AuthProvider({ children }) {
 
   async function signOut() {
     await authClient.signOut();
-    clearStoredSessionToken();
     setUser(null);
     setRole(null);
   }
