@@ -1,6 +1,6 @@
-import { getDb } from "./_db.js"
-import { verifyAdmin } from "./_auth.js"
-import { classifyChannelLevel, classifyVideoTopics, classifyVideo } from "./_tag.js"
+import { getDb } from '../../lib/api/_db.js'
+import { verifyAdmin } from '../../lib/api/_auth.js'
+import { classifyChannelLevel, classifyVideoTopics, classifyVideo } from '../../lib/api/_tag.js'
 
 const YT_API = 'https://www.googleapis.com/youtube/v3'
 
