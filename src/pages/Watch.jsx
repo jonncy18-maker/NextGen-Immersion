@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { authClient } from '../lib/auth.js'
+import { getAuthToken } from '../lib/authToken.js'
 import VideoPlayer from '../components/player/VideoPlayer.jsx'
 import WatchTimer from '../components/player/WatchTimer.jsx'
 import { useWatchSession } from '../hooks/useWatchSession.js'
@@ -12,8 +12,7 @@ const LEVEL_LABELS = {
 }
 
 async function fetchVideos() {
-  const s = await authClient.getSession()
-  const token = s?.data?.session?.token
+  const token = await getAuthToken()
   const res = await fetch('/api/videos', {
     headers: { Authorization: `Bearer ${token}` },
   })

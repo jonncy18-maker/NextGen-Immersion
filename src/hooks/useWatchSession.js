@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
-import { authClient } from '../lib/auth.js'
+import { getAuthToken } from '../lib/authToken.js'
 import { bufferFlush, getBuffered, removeBuffered } from '../utils/offlineBuffer.js'
 
 // useWatchSession manages the full play/pause/end/close state machine.
@@ -13,11 +13,12 @@ export function useWatchSession(videoId, durationSeconds) {
   const [secondsThisSession, setSecondsThisSession] = useState(0)
   const [flushStatus, setFlushStatus] = useState('idle') // idle | flushing | saved | buffered
 
-  // Keep auth token fresh so beforeunload handler can use it synchronously
+  // Keep a fresh JWT cached so the beforeunload handler can use it synchronously.
+  // Neon Auth JWTs expire in ~15 min; refreshing every 5 min keeps the cached
+  // token valid between refreshes.
   useEffect(() => {
     async function refresh() {
-      const s = await authClient.getSession()
-      tokenRef.current = s?.data?.session?.token ?? null
+      tokenRef.current = await getAuthToken()
     }
     refresh()
     const id = setInterval(refresh, 5 * 60 * 1000)
