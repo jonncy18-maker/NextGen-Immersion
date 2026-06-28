@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function Navbar() {
@@ -30,19 +30,51 @@ export default function Navbar() {
         boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
       }}
     >
-      {/* Left: Wordmark */}
-      <span
-        style={{
-          fontFamily: 'Georgia, serif',
-          fontSize: '18px',
-          fontWeight: 'bold',
-          color: 'var(--ngsi-gold)',
-          letterSpacing: '0.01em',
-          userSelect: 'none',
-        }}
-      >
-        NGS Immersion
-      </span>
+      {/* Left: Wordmark + nav links */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <span
+          style={{
+            fontFamily: 'Georgia, serif',
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: 'var(--ngsi-gold)',
+            letterSpacing: '0.01em',
+            userSelect: 'none',
+          }}
+        >
+          NGS Immersion
+        </span>
+        <nav style={{ display: 'flex', gap: 4 }}>
+          {[
+            { to: '/watch', label: 'Watch' },
+            { to: '/browse', label: 'Browse' },
+            { to: '/progress', label: 'Progress' },
+            ...(role === 'admin'
+              ? [
+                  { to: '/admin/videos', label: 'Videos' },
+                  { to: '/admin/progress', label: 'Dashboard' },
+                ]
+              : []),
+          ].map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              style={({ isActive }) => ({
+                fontSize: 13,
+                fontWeight: isActive ? 700 : 400,
+                color: isActive ? 'var(--ngsi-gold)' : 'var(--ngsi-cream)',
+                textDecoration: 'none',
+                padding: '4px 10px',
+                borderRadius: 6,
+                background: isActive ? 'rgba(201,168,76,0.12)' : 'transparent',
+                transition: 'background 0.15s',
+              })}
+            >
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+      </div>
 
       {/* Right: role badge + avatar + name + sign out */}
       <div
