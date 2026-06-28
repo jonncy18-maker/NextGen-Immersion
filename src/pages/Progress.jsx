@@ -1,5 +1,179 @@
-import Placeholder from './Placeholder.jsx';
+import { useProgress } from '../hooks/useProgress.js'
+import HoursCounter from '../components/progress/HoursCounter.jsx'
+import MilestoneBar from '../components/progress/MilestoneBar.jsx'
+import WeekStats from '../components/progress/WeekStats.jsx'
+import { getLevelForHours, getNextLevel } from '../utils/levels.js'
+import { getPaceColor, getPaceLabel } from '../utils/pace.js'
 
 export default function Progress() {
-  return <Placeholder label="Progress" />;
+  const { data, loading, error, refetch } = useProgress()
+
+  const pageStyle = {
+    backgroundColor: '#F5F0E8',
+    minHeight: '100vh',
+    padding: '1.5rem 1rem',
+  }
+
+  const innerStyle = {
+    maxWidth: '640px',
+    margin: '0 auto',
+  }
+
+  const titleStyle = {
+    fontFamily: 'Georgia, serif',
+    fontSize: '1.75rem',
+    fontWeight: '700',
+    color: '#162040',
+    marginBottom: '1.25rem',
+    marginTop: 0,
+  }
+
+  const cardStyle = {
+    backgroundColor: '#fff',
+    borderRadius: '12px',
+    boxShadow: '0 1px 4px rgba(22,32,64,0.08)',
+    marginBottom: '1rem',
+    overflow: 'hidden',
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div style={pageStyle}>
+        <div style={innerStyle}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '40vh',
+              gap: '1rem',
+            }}
+          >
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                border: '4px solid #ede7d9',
+                borderTop: '4px solid #162040',
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite',
+              }}
+            />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <p style={{ color: '#162040', fontSize: '0.95rem', margin: 0 }}>
+              Loading your progress...
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div style={pageStyle}>
+        <div style={innerStyle}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '40vh',
+              gap: '1rem',
+              textAlign: 'center',
+            }}
+          >
+            <p style={{ color: '#162040', fontSize: '1rem', margin: 0 }}>
+              Couldn&apos;t load your progress.
+            </p>
+            <button
+              onClick={refetch}
+              style={{
+                backgroundColor: '#162040',
+                color: '#F5F0E8',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0.6rem 1.25rem',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // PENDING state
+  if (!data || data.status === 'PENDING' || !data.target_hours) {
+    const currentLevel = data ? getLevelForHours(data.current_hours ?? 0) : getLevelForHours(0)
+    return (
+      <div style={pageStyle}>
+        <div style={innerStyle}>
+          <h1 style={titleStyle}>My Progress</h1>
+          <div style={cardStyle}>
+            <HoursCounter
+              currentHours={data?.current_hours ?? 0}
+              currentLevel={currentLevel}
+              nextLevel={getNextLevel(currentLevel.id)}
+              targetHours={null}
+              targetLevel={null}
+              status="PENDING"
+            />
+          </div>
+          <p
+            style={{
+              textAlign: 'center',
+              color: '#8a8f99',
+              fontSize: '0.9rem',
+              marginTop: '0.5rem',
+            }}
+          >
+            Your progress clock starts once your goal is assigned.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Normal state
+  const currentLevel = getLevelForHours(data.current_hours)
+  const nextLevel = getNextLevel(currentLevel.id)
+
+  return (
+    <div style={pageStyle}>
+      <div style={innerStyle}>
+        <h1 style={titleStyle}>My Progress</h1>
+
+        <div style={cardStyle}>
+          <HoursCounter
+            currentHours={data.current_hours}
+            currentLevel={currentLevel}
+            nextLevel={nextLevel}
+            targetHours={data.target_hours}
+            targetLevel={data.target_level}
+            status={data.status}
+          />
+          <MilestoneBar currentHours={data.current_hours} />
+        </div>
+
+        <div style={cardStyle}>
+          <WeekStats
+            hoursThisWeek={data.hours_this_week}
+            targetHours={data.target_hours}
+            startDate={data.start_date}
+            targetDate={data.target_date}
+            lastSessionAt={data.last_session_at}
+          />
+        </div>
+      </div>
+    </div>
+  )
 }
