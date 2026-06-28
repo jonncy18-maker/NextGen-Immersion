@@ -136,14 +136,16 @@ Status: **NOT STARTED**
 
 ---
 
-## Phase 9 — Admin Progress Dashboard
+## Phase 9 — Admin Progress Dashboard + Scholar Provisioning
 
-**Loop goal:** "Build admin progress page. Scholar cards (AT RISK / ON TRACK / PENDING), current vs expected hours, delta, pace. Click-through to individual view. Program goal + per-scholar start date editor."
+**Loop goal:** "Build admin progress page. Scholar cards (AT RISK / ON TRACK / PENDING), current vs expected hours, delta, pace. Click-through to individual view. Program goal + per-scholar start date editor. Inline scholar provisioning: create Better Auth account + public.users row + goal assignment in one flow."
 
 Deliverables:
 - `src/pages/AdminProgress.jsx`
 - `src/components/admin/ScholarCard.jsx`
 - `src/components/admin/GoalEditor.jsx` — program goal + per-scholar start_date assignment
+- `src/components/admin/AddScholarPanel.jsx` — create scholar: email + display name → Better Auth account creation via `api/provision-scholar.js` → insert `public.users` row (id = Better Auth sub) → assign active program goal
+- `api/provision-scholar.js` — admin-only; calls Better Auth admin API to create account, inserts `public.users`, inserts `scholar_goals`; returns temporary password or triggers email invite depending on Better Auth capability
 - Individual drill-down = scholar Progress layout, filtered
 - Overview stats: total scholars, total hours, at-risk count
 - Data from /api/scholars (admin service role)
