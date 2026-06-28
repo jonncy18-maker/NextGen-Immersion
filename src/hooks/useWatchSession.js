@@ -5,10 +5,18 @@ import { bufferFlush, getBuffered, removeBuffered } from '../utils/offlineBuffer
 // useWatchSession manages the full play/pause/end/close state machine.
 // videoId: DB UUID (videos.id) — required for flushing
 // durationSeconds: video length — used to determine ≥95% completion
-export function useWatchSession(videoId, durationSeconds) {
+// onComplete: optional callback(videoId) fired when a single session reaches
+//   ≥95% (the completion semantic) so the UI can update watched state live.
+export function useWatchSession(videoId, durationSeconds, onComplete) {
   const tokenRef = useRef(null)
   const intervalRef = useRef(null)
   const sessionRef = useRef(null)
+
+  // Held in a ref so the latest callback is used without re-creating handlers
+  const onCompleteRef = useRef(onComplete)
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
 
   const [secondsThisSession, setSecondsThisSession] = useState(0)
   const [flushStatus, setFlushStatus] = useState('idle') // idle | flushing | saved | buffered
@@ -217,6 +225,7 @@ export function useWatchSession(videoId, durationSeconds) {
           const isCompleted =
             durationSeconds > 0 && s.secondsWatched / durationSeconds >= 0.95
           flush(isCompleted)
+          if (isCompleted) onCompleteRef.current?.(videoId)
           sessionRef.current = {
             clientFlushId: crypto.randomUUID(),
             startedAt: null,
@@ -238,7 +247,7 @@ export function useWatchSession(videoId, durationSeconds) {
         }
       }
     },
-    [flush, durationSeconds],
+    [flush, durationSeconds, videoId],
   )
 
   return { onPlayerStateChange, secondsThisSession, flushStatus }

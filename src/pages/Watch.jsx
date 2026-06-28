@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { getAuthToken } from '../lib/authToken.js'
 import VideoPlayer from '../components/player/VideoPlayer.jsx'
 import WatchTimer from '../components/player/WatchTimer.jsx'
@@ -76,9 +76,18 @@ export default function Watch() {
     }
   }, [selected, visibleVideos])
 
+  // When a video completes (single session ≥95%), mark it watched in local
+  // state so it moves into the Watched filter immediately — no page refresh.
+  const handleComplete = useCallback(completedId => {
+    setVideos(vs =>
+      vs.map(v => (v.id === completedId ? { ...v, watched: true } : v)),
+    )
+  }, [])
+
   const { onPlayerStateChange, secondsThisSession, flushStatus } = useWatchSession(
     selected?.id ?? null,
     selected?.duration_seconds ?? 0,
+    handleComplete,
   )
 
   return (
