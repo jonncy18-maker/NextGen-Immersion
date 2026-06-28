@@ -1,8 +1,8 @@
 # NGS Immersion — Claude Code Instructions
 
 ## Agentic Loop
-Protocol: https://raw.githubusercontent.com/jonncy18-maker/agentic-loop/main/AGENTIC%20LOOP.md
-Orchestrator: https://raw.githubusercontent.com/jonncy18-maker/agentic-loop/main/orchestrator.js
+Protocol: https://raw.githubusercontent.com/jonncy18-maker/Agentic-Loop/main/AGENTIC%20LOOP.md
+Orchestrator: https://raw.githubusercontent.com/jonncy18-maker/Agentic-Loop/main/orchestrator.js
 At the start of every session, read the full protocol from the URL above before doing anything else.
 Every change that touches 3+ files, creates a new component, touches the data layer, or has user-visible behavior MUST go through the agentic loop. One-liners and typo fixes can run direct.
 
