@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authClient } from '../lib/auth.js';
+import { authClient, clearStoredSessionToken } from '../lib/auth.js';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,6 +15,10 @@ export default function Login() {
     setSubmitting(true);
 
     try {
+      // Drop any stale token so the sign-in request isn't sent with an old
+      // Bearer credential; the fresh one is captured from the response.
+      clearStoredSessionToken();
+
       const result = await authClient.signIn.email({
         email,
         password,
