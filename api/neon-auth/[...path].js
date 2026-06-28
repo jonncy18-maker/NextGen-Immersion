@@ -18,6 +18,19 @@ const HOP_BY_HOP = new Set([
   'keep-alive',
 ])
 
+// Headers injected by Vercel's edge that MUST NOT reach the upstream Neon Auth
+// server. Neon's hosted Better Auth runs behind its own trusted proxy, so it
+// derives its own origin/base URL from x-forwarded-host / x-forwarded-proto.
+// If we forward Vercel's values (e.g. x-forwarded-host: <app>.vercel.app),
+// Better Auth resolves the WRONG origin and rejects the request — sign-in and
+// get-session come back 4xx. Stripping these lets the upstream see a clean
+// request and use its own configured host (the JWT issuer stays correct too).
+const STRIP_FORWARDING = (key) =>
+  key === 'forwarded' ||
+  key === 'x-real-ip' ||
+  key.startsWith('x-forwarded-') ||
+  key.startsWith('x-vercel-')
+
 export default async function handler(req, res) {
   const base = process.env.NEON_AUTH_BASE_URL
   if (!base) {
@@ -34,7 +47,9 @@ export default async function handler(req, res) {
   // Forward request headers (minus hop-by-hop + host).
   const headers = {}
   for (const [key, value] of Object.entries(req.headers)) {
-    if (HOP_BY_HOP.has(key.toLowerCase())) continue
+    const lk = key.toLowerCase()
+    if (HOP_BY_HOP.has(lk)) continue
+    if (STRIP_FORWARDING(lk)) continue
     headers[key] = Array.isArray(value) ? value.join(', ') : value
   }
 
