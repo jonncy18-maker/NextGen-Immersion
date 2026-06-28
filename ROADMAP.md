@@ -131,6 +131,7 @@ Deliverables:
 - "Tagging..." placeholder while Haiku runs
 - Tag results written to Neon, never re-fetched
 - Error handling: unavailable, quota exceeded
+- **Exclude music videos** — comprehensible input requires spoken-word content; music (sung, stylized, music-masked, non-literal) is weak CI. Filter out YouTube Music category (videoCategoryId 10) at the search/import layer in `api/youtube-search.js` (and any import path), as a safety net alongside admin curation.
 
 Status: **NOT STARTED**
 
