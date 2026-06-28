@@ -1,0 +1,14 @@
+:root {
+  /* Brand — navy / gold / cream */
+  --ngsi-navy: #162040;
+  --ngsi-navy-light: #1e2d52;
+  --ngsi-navy-deep: #0e1628;
+  --ngsi-gold: #c9a84c;
+  --ngsi-cream: #f5f0e8;
+  --ngsi-cream-dark: #ede7d9;
+
+  /* Topic category tag colors */
+  --ngsi-cat-oet: #378add; /* OET / career topics — blue */
+  --ngsi-cat-life: #1d9e75; /* daily life topics — green */
+  --ngsi-cat-compelling: #8a8f99; /* compelling interest — muted gray */
+}
