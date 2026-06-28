@@ -18,11 +18,15 @@ export default async function handler(req, res) {
   const language = userRow?.language || 'english'
 
   const videos = await sql`
-    SELECT id, youtube_id, title, channel_name, duration_seconds,
-           level, topic_primary, topic_secondary, thumbnail_url
-    FROM videos
-    WHERE is_available = true AND language = ${language}
-    ORDER BY level, created_at DESC
+    SELECT v.id, v.youtube_id, v.title, v.channel_name, v.duration_seconds,
+           v.level, v.topic_primary, v.topic_secondary, v.thumbnail_url,
+           COALESCE(uvs.completed, false) AS watched,
+           uvs.last_watched_at
+    FROM videos v
+    LEFT JOIN user_video_status uvs
+      ON uvs.video_id = v.id AND uvs.user_id = ${authUser.id}
+    WHERE v.is_available = true AND v.language = ${language}
+    ORDER BY v.level, v.created_at DESC
     LIMIT 200
   `
 

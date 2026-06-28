@@ -1,15 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { getAuthToken } from '../lib/authToken.js'
 import VideoPlayer from '../components/player/VideoPlayer.jsx'
 import WatchTimer from '../components/player/WatchTimer.jsx'
+import FilterBar from '../components/video/FilterBar.jsx'
+import VideoGrid from '../components/video/VideoGrid.jsx'
 import { useWatchSession } from '../hooks/useWatchSession.js'
-
-const LEVEL_LABELS = {
-  super_beginner: 'Super Beginner',
-  beginner: 'Beginner',
-  intermediate: 'Intermediate',
-  advanced: 'Advanced',
-}
+import { useProgress } from '../hooks/useProgress.js'
+import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 
 async function fetchVideos() {
   const token = await getAuthToken()
@@ -26,83 +23,99 @@ export default function Watch() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
+  const [filters, setFilters] = useState({
+    topics: [],
+    level: null,
+    watchedFilter: 'unwatched',
+  })
+
+  const { data: progress } = useProgress()
+  const scholarLevelId = progress ? getLevelForHours(progress.current_hours).id : null
+  const nextLevelId = scholarLevelId ? getNextLevel(scholarLevelId)?.id ?? null : null
 
   useEffect(() => {
     fetchVideos()
-      .then(vs => {
-        setVideos(vs)
-        if (vs.length) setSelected(vs[0])
-      })
+      .then(vs => setVideos(vs))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
+
+  const visibleVideos = useMemo(() => {
+    let list = videos.filter(v => {
+      if (filters.topics.length > 0) {
+        const inTopics =
+          filters.topics.includes(v.topic_primary) ||
+          filters.topics.includes(v.topic_secondary)
+        if (!inTopics) return false
+      }
+      if (filters.level && v.level !== filters.level) return false
+      if (filters.watchedFilter === 'unwatched' && v.watched) return false
+      if (filters.watchedFilter === 'watched' && !v.watched) return false
+      return true
+    })
+
+    if (scholarLevelId) {
+      const rank = v => {
+        if (v.level === scholarLevelId) return 0
+        if (v.level === nextLevelId) return 1
+        return 2
+      }
+      list = list
+        .map((v, i) => ({ v, i }))
+        .sort((a, b) => rank(a.v) - rank(b.v) || a.i - b.i)
+        .map(x => x.v)
+    }
+
+    return list
+  }, [videos, filters, scholarLevelId, nextLevelId])
+
+  // Auto-select the first sorted video once videos (and progress) are ready.
+  useEffect(() => {
+    if (!selected && visibleVideos.length > 0) {
+      setSelected(visibleVideos[0])
+    }
+  }, [selected, visibleVideos])
 
   const { onPlayerStateChange, secondsThisSession, flushStatus } = useWatchSession(
     selected?.id ?? null,
     selected?.duration_seconds ?? 0,
   )
 
-  const handleSelect = useCallback(video => {
-    setSelected(video)
-  }, [])
-
   return (
     <div style={styles.page}>
-      <div style={styles.layout}>
-        {/* ── Video list sidebar ── */}
-        <aside style={styles.sidebar}>
-          <p style={styles.sidebarTitle}>Library</p>
-          {loading && <p style={styles.hint}>Loading…</p>}
-          {error && <p style={styles.hint}>{error}</p>}
-          {!loading && !error && videos.length === 0 && (
-            <p style={styles.hint}>No videos yet. Ask your coordinator to add some.</p>
-          )}
-          {videos.map(v => (
-            <button
-              key={v.id}
-              onClick={() => handleSelect(v)}
-              style={{
-                ...styles.videoItem,
-                ...(selected?.id === v.id ? styles.videoItemActive : {}),
-              }}
-            >
-              {v.thumbnail_url && (
-                <img src={v.thumbnail_url} alt="" style={styles.thumb} />
-              )}
-              <div style={styles.videoMeta}>
-                <span style={styles.videoTitle}>{v.title}</span>
-                <span style={styles.videoLevel}>{LEVEL_LABELS[v.level] ?? v.level}</span>
-              </div>
-            </button>
-          ))}
-        </aside>
+      <div style={styles.container}>
+        {loading && <p style={styles.hint}>Loading…</p>}
+        {error && <p style={styles.hint}>{error}</p>}
 
-        {/* ── Player area ── */}
-        <main style={styles.main}>
-          {selected ? (
-            <>
-              <VideoPlayer
-                youtubeId={selected.youtube_id}
-                onStateChange={onPlayerStateChange}
-              />
-              <div style={styles.meta}>
-                <div>
-                  <p style={styles.videoTitleLarge}>{selected.title}</p>
-                  {selected.channel_name && (
-                    <p style={styles.channelName}>{selected.channel_name}</p>
-                  )}
-                </div>
-                <WatchTimer seconds={secondsThisSession} flushStatus={flushStatus} />
+        {selected && (
+          <div style={styles.playerArea}>
+            <VideoPlayer
+              youtubeId={selected.youtube_id}
+              onStateChange={onPlayerStateChange}
+            />
+            <div style={styles.meta}>
+              <div>
+                <p style={styles.videoTitleLarge}>{selected.title}</p>
+                {selected.channel_name && (
+                  <p style={styles.channelName}>{selected.channel_name}</p>
+                )}
               </div>
-            </>
-          ) : (
-            !loading && (
-              <div style={styles.empty}>
-                <p>Select a video to start watching.</p>
-              </div>
-            )
-          )}
-        </main>
+              <WatchTimer seconds={secondsThisSession} flushStatus={flushStatus} />
+            </div>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div style={styles.browse}>
+            <h2 style={styles.browseHeading}>Browse the library</h2>
+            <FilterBar filters={filters} onChange={setFilters} />
+            <VideoGrid
+              videos={visibleVideos}
+              onSelect={setSelected}
+              selectedId={selected?.id}
+            />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -113,82 +126,17 @@ const styles = {
     minHeight: 'calc(100vh - 56px)',
     background: 'var(--ngsi-cream)',
   },
-  layout: {
-    display: 'flex',
+  container: {
     maxWidth: 1280,
     margin: '0 auto',
-    padding: '16px',
-    gap: 16,
-    alignItems: 'flex-start',
-  },
-  sidebar: {
-    width: 280,
-    flexShrink: 0,
-    background: '#fff',
-    borderRadius: 8,
-    padding: 12,
-    border: '1px solid var(--ngsi-cream-dark)',
-    maxHeight: 'calc(100vh - 100px)',
-    overflowY: 'auto',
-  },
-  sidebarTitle: {
-    margin: '0 0 10px',
-    fontWeight: 700,
-    fontSize: 13,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    color: 'var(--ngsi-navy)',
+    padding: 16,
   },
   hint: {
-    fontSize: 13,
-    color: '#8a8f99',
-    margin: 0,
-  },
-  videoItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    width: '100%',
-    padding: '8px 6px',
-    marginBottom: 4,
-    background: 'none',
-    border: 'none',
-    borderRadius: 6,
-    cursor: 'pointer',
-    textAlign: 'left',
-  },
-  videoItemActive: {
-    background: 'var(--ngsi-cream)',
-  },
-  thumb: {
-    width: 72,
-    height: 40,
-    objectFit: 'cover',
-    borderRadius: 4,
-    flexShrink: 0,
-  },
-  videoMeta: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 2,
-    minWidth: 0,
-  },
-  videoTitle: {
-    fontSize: 13,
-    fontWeight: 500,
-    color: 'var(--ngsi-navy)',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
-    overflow: 'hidden',
-  },
-  videoLevel: {
-    fontSize: 11,
+    fontSize: 14,
     color: '#8a8f99',
   },
-  main: {
-    flex: 1,
-    minWidth: 0,
+  playerArea: {
+    marginBottom: 24,
   },
   meta: {
     display: 'flex',
@@ -210,12 +158,13 @@ const styles = {
     fontSize: 13,
     color: '#8a8f99',
   },
-  empty: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 300,
-    color: '#8a8f99',
-    fontSize: 14,
+  browse: {
+    marginTop: 8,
+  },
+  browseHeading: {
+    margin: '0 0 12px',
+    fontSize: 18,
+    fontWeight: 700,
+    color: 'var(--ngsi-navy)',
   },
 }
