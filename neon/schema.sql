@@ -183,6 +183,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS one_goal_per_scholar_language
 
 CREATE INDEX IF NOT EXISTS scholar_goals_user_idx ON scholar_goals (user_id);
 
+-- Manual watched/unwatched overrides (per scholar per video). Separate from
+-- watch_sessions so marking a video does NOT touch cumulative-hours data.
+-- Surfaced watched state = COALESCE(video_marks.watched, completed-from-sessions,
+-- false): a manual mark always wins over auto-detected completion.
+CREATE TABLE IF NOT EXISTS video_marks (
+  user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  video_id   uuid NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  watched    boolean NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, video_id)
+);
+
 -- ─── Helper Views ─────────────────────────────────────────────────────────────
 --
 -- TIMEZONE: All "this week" / "today" boundaries use Asia/Manila (the program
