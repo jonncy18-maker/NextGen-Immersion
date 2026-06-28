@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { authClient } from '../lib/auth.js'
+import { getAuthToken } from '../lib/authToken.js'
 
 export function useProgress() {
   const [data, setData] = useState(null)
@@ -10,8 +10,7 @@ export function useProgress() {
     setLoading(true)
     setError(null)
     try {
-      const session = await authClient.getSession()
-      const token = session?.data?.session?.token
+      const token = await getAuthToken()
       const res = await fetch('/api/progress', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })

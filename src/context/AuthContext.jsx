@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authClient } from '../lib/auth.js';
+import { getAuthToken } from '../lib/authToken.js';
 
 const AuthContext = createContext({ user: null, role: null, loading: true, signOut: async () => {} });
 
@@ -19,22 +20,31 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    // Session available — fetch role from our API
+    // Session available — fetch a JWT, then look up role from our API
     setRoleLoading(true);
-    const token = sessionData?.session?.token;
+    let cancelled = false;
 
-    fetch('/api/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (res) => {
+    (async () => {
+      try {
+        const token = await getAuthToken();
+        if (!token) {
+          if (!cancelled) {
+            setUser(null);
+            setRole(null);
+          }
+          return;
+        }
+        const res = await fetch('/api/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (cancelled) return;
         if (res.status === 404) {
-          // User exists in Better Auth but not provisioned in public.users
+          // Authenticated but not provisioned in public.users
           setUser({ ...sessionData.user, notProvisioned: true });
           setRole(null);
           return;
         }
         if (!res.ok) {
-          // Other error — treat as not signed in
           setUser(null);
           setRole(null);
           return;
@@ -42,14 +52,19 @@ export function AuthProvider({ children }) {
         const data = await res.json();
         setUser(sessionData.user);
         setRole(data.role);
-      })
-      .catch(() => {
-        setUser(null);
-        setRole(null);
-      })
-      .finally(() => {
-        setRoleLoading(false);
-      });
+      } catch {
+        if (!cancelled) {
+          setUser(null);
+          setRole(null);
+        }
+      } finally {
+        if (!cancelled) setRoleLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isPending, sessionData]);
 
   async function signOut() {
