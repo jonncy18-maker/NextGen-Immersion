@@ -1,10 +1,11 @@
-import { createAuthClient } from "better-auth/react"
-import { jwtClient } from "better-auth/client/plugins"
+import { createAuthClient } from "@neondatabase/neon-js/auth"
+import { BetterAuthReactAdapter } from "@neondatabase/neon-js/auth/react/adapters"
 
-// Neon Auth is Better Auth under the hood. The jwtClient plugin adds
-// authClient.token(), which mints a short-lived JWT for backend /api/* calls.
-// (Neon Auth sessions are cookies; backend functions verify the JWT via JWKS.)
-export const authClient = createAuthClient({
-  baseURL: import.meta.env.VITE_NEON_AUTH_URL,
-  plugins: [jwtClient()],
+// Neon's official SDK (Better Auth under the hood) with the React adapter.
+// Unlike the raw better-auth/react client, it caches the session in
+// localStorage and syncs across tabs — so the session survives a page refresh
+// without relying on the cross-domain (third-party) session cookie, which
+// browsers block. The adapter enables React hooks like useSession().
+export const authClient = createAuthClient(import.meta.env.VITE_NEON_AUTH_URL, {
+  adapter: BetterAuthReactAdapter(),
 })
