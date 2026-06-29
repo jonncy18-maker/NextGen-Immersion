@@ -2,8 +2,11 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { getAuthToken } from '../lib/authToken.js'
 import VideoPlayer from '../components/player/VideoPlayer.jsx'
 import WatchTimer from '../components/player/WatchTimer.jsx'
+import IosPlaybackNotice from '../components/player/IosPlaybackNotice.jsx'
 import FilterBar from '../components/video/FilterBar.jsx'
 import VideoGrid from '../components/video/VideoGrid.jsx'
+import VideoGridSkeleton from '../components/video/VideoGridSkeleton.jsx'
+import EmptyState from '../components/video/EmptyState.jsx'
 import { useWatchSession } from '../hooks/useWatchSession.js'
 import { useProgress } from '../hooks/useProgress.js'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
@@ -116,11 +119,9 @@ export default function Watch() {
   return (
     <div style={styles.page}>
       <div style={styles.container}>
-        {loading && <p style={styles.hint}>Loading…</p>}
-        {error && <p style={styles.hint}>{error}</p>}
-
         {selected && (
           <div style={styles.playerArea}>
+            <IosPlaybackNotice />
             <VideoPlayer
               youtubeId={selected.youtube_id}
               onStateChange={onPlayerStateChange}
@@ -137,18 +138,29 @@ export default function Watch() {
           </div>
         )}
 
-        {!loading && !error && (
-          <div style={styles.browse}>
-            <h2 style={styles.browseHeading}>Browse the library</h2>
-            <FilterBar filters={filters} onChange={setFilters} />
-            <VideoGrid
-              videos={visibleVideos}
-              onSelect={setSelected}
-              selectedId={selected?.id}
-              onMark={handleMark}
+        <div style={styles.browse}>
+          <h2 style={styles.browseHeading}>Browse the library</h2>
+          {error ? (
+            <p style={styles.hint}>{error}</p>
+          ) : loading ? (
+            <VideoGridSkeleton />
+          ) : videos.length === 0 ? (
+            <EmptyState
+              title="No videos yet"
+              message="The library is being set up — your coordinator is adding videos. Check back soon."
             />
-          </div>
-        )}
+          ) : (
+            <>
+              <FilterBar filters={filters} onChange={setFilters} />
+              <VideoGrid
+                videos={visibleVideos}
+                onSelect={setSelected}
+                selectedId={selected?.id}
+                onMark={handleMark}
+              />
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

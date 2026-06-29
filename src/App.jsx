@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import ErrorBoundary from './components/layout/ErrorBoundary.jsx';
 import Navbar from './components/layout/Navbar.jsx';
 import Sidebar from './components/layout/Sidebar.jsx';
 import BottomNav from './components/layout/BottomNav.jsx';
@@ -65,9 +66,10 @@ function AdminLayout({ children }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <HashRouter>
-        <Routes>
+    <ErrorBoundary>
+      <AuthProvider>
+        <HashRouter>
+          <Routes>
           <Route path="/login" element={<Login />} />
           <Route
             path="/"
@@ -147,8 +149,9 @@ export default function App() {
               </RequireAuth>
             }
           />
-        </Routes>
-      </HashRouter>
-    </AuthProvider>
+          </Routes>
+        </HashRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

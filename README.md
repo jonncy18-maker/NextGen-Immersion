@@ -84,3 +84,10 @@ No client-exposed variables are required (the browser uses the same-origin `/api
 - **Watch timer counts only `PLAYING`** seconds; flushes are idempotent via `client_flush_id` + `ON CONFLICT DO NOTHING`.
 - **Auth is same-origin** — do not revert to a browser-direct Neon client or a hand-rolled proxy (both reintroduce the third-party-cookie logout).
 - **Tagging uses `claude-haiku-4-5` only**, with the shared prompt/taxonomy in `lib/api/_tag.js`.
+
+---
+
+## Notes
+
+- **iOS playback:** on iPhone/iPad, tapping play on a YouTube embed may hand off to the native YouTube app. Watch time still tracks — the in-progress segment is buffered and resumes on return. Scholars see a one-time dismissible notice on the Watch page explaining this.
+- **Resilience:** a render crash anywhere shows a branded reload screen (app-wide error boundary) rather than a blank page; the video library shows shimmer skeletons while loading and a friendly empty state when no videos exist yet.
