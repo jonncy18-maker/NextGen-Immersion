@@ -1,4 +1,5 @@
 import { verifySession } from '../../lib/api/_auth.js'
+import { getDb } from '../../lib/api/_db.js'
 
 const MUSIC_CATEGORY_ID = '10'
 const YT_API = 'https://www.googleapis.com/youtube/v3'
@@ -75,7 +76,28 @@ export default async function handler(req, res) {
         publishedAt: item.snippet?.publishedAt,
       }))
 
-    return res.status(200).json({ items, totalResults: data.pageInfo?.totalResults })
+    // Check which returned IDs are already in the library
+    const returnedIds = items.map((i) => i.youtubeId)
+    let librarySet = new Set()
+    if (returnedIds.length > 0) {
+      try {
+        const db = getDb()
+        const existing = await db`
+          SELECT youtube_id FROM videos
+          WHERE youtube_id = ANY(${returnedIds}) AND is_available = true
+        `
+        for (const row of existing) librarySet.add(row.youtube_id)
+      } catch {
+        // non-fatal: if the DB check fails, items just won't be pre-marked
+      }
+    }
+
+    const annotatedItems = items.map((item) => ({
+      ...item,
+      in_library: librarySet.has(item.youtubeId),
+    }))
+
+    return res.status(200).json({ items: annotatedItems, totalResults: data.pageInfo?.totalResults })
   } catch (err) {
     return res.status(502).json({ error: 'Failed to reach YouTube API' })
   }
