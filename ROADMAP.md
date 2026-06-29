@@ -503,6 +503,30 @@ Status: **PLANNED**
 
 ---
 
+## Phase 22 — Free-Text Library Search with Level Filter
+
+**Loop goal:** "Add a free-text search input to the scholar video library so scholars (and admins browsing the library) can type a keyword and filter results by title or channel name. Pair it with a level filter dropdown. Results narrow in real-time as the user types — no new API call, purely client-side filtering of the already-loaded library."
+
+**Background:** The current library filter (FilterBar / Phase 17's dropdown redesign) only supports topic and watched-state filters. Scholars have no way to search by keyword — e.g. typing 'nursing' or 'hospital' to find relevant videos. All filtering is client-side over the library already fetched from `/api/videos`, so free-text search is a pure UI addition with no backend changes.
+
+Deliverables:
+- `src/components/video/FilterDropdowns.jsx` (Phase 17 component, or `FilterBar.jsx` if Phase 17 hasn't landed yet) — add a search input field at the left of the filter row:
+  - Placeholder: "Search videos…"
+  - Filters the video list client-side on `title` and `channel_name` fields (case-insensitive substring match).
+  - 200ms debounce so typing doesn't thrash renders on large libraries.
+  - Clear (✕) button appears when the field has a value.
+- Level filter — already exists as a dropdown (Phase 17) or chip row (current). Confirm it is a dropdown (All Levels / Super Beginner / Beginner / Intermediate / Advanced) and wired correctly. If Phase 17 hasn't landed yet, convert the level chips to a `<select>` dropdown as part of this phase.
+- Combined filtering: search text AND level AND topic AND watched state all apply together (AND logic). A video must match all active filters to appear.
+- `src/pages/Watch.jsx` (unified tab, Phase 17) or the current Watch + Browse pages — wire the search input state into the existing filter pipeline.
+- Empty state: when the search returns no results, show "No videos match '[query]'" (distinct from the library-is-empty state).
+- The admin "Manage Library" tab (Phase 18's `VideoLibraryEditor`) also benefits from this — wire the same search + level filter there so admins can find specific videos to edit/delete without scrolling.
+
+**Design note — no YouTube search here:** This is library search only (client-side over already-fetched videos). YouTube keyword search for *adding* new videos lives in the admin "Discover & Import" tab (`AddVideoPanel`) and is a separate flow. Do not mix them.
+
+Status: **PLANNED**
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
