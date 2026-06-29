@@ -411,6 +411,29 @@ Status: **PLANNED**
 
 ---
 
+## Phase 19 — Progress Analysis: Hours Behind / Ahead
+
+**Loop goal:** "Surface an explicit hours-behind (or ahead) figure on the Progress page for scholars, and on the admin per-scholar drill-down. Replace the bare ON TRACK / AT RISK pill with a quantified delta — e.g. '14.5h behind pace' or '3h ahead of pace' — so scholars and admins can see exactly how far off target they are, not just a traffic-light status."
+
+**Background:** The `scholar_pace` view already computes `expected_hours` (hours the scholar should have by today given their start date and target) and `current_hours`. The difference (`expected_hours − current_hours`) is already used to determine AT RISK vs. ON TRACK, but the raw number is never shown to the user. This phase surfaces it prominently.
+
+Deliverables:
+- `pages/api/progress.js` — confirm `delta` (or `hours_behind`) is returned in the response. It is `expected_hours − current_hours`; positive = behind, negative = ahead. Coerce to `Number()` (same rule as the other NUMERIC fields). If not already returned, add it.
+- `src/components/progress/PaceAnalysis.jsx` (new) — replaces or extends the existing status pill in `Progress.jsx` and the admin drill-down. Displays:
+  - **Hours behind / ahead:** large, prominent number with sign — e.g. "14.5h behind pace" (amber/red) or "3.2h ahead of pace" (green). Shown to one decimal place.
+  - **Status label:** ON TRACK / AT RISK derived from the delta (unchanged logic), shown as a smaller secondary label alongside or below the number.
+  - **PENDING state:** if no start_date is set, shows "Goal not started — no pace data yet."
+  - **Goal met state:** if `current_hours ≥ target_hours`, shows "Goal reached" with total hours.
+- `src/pages/Progress.jsx` — render `PaceAnalysis` below `MilestoneBar` (or replace the existing status pill in `WeekStats`/`HoursCounter` with the new component). Same data already fetched from `/api/progress` — no new API calls.
+- `src/pages/AdminProgress.jsx` drill-down — render `PaceAnalysis` in the per-scholar detail view so admins see the same quantified delta when they click into a scholar. `ScholarCard` can optionally show a compact one-liner (e.g. "−14.5h") in the card body.
+- `src/components/admin/ScholarCard.jsx` — add the numeric delta as a secondary line under the AT RISK / ON TRACK pill (compact form, same color coding).
+
+**Design note:** Use the existing `--ngsi-status-*` token colors (green saved → ahead, amber buffering → behind-but-close, red offline → significantly behind). "Significantly behind" threshold TBD by the pace logic already in `src/utils/pace.js`.
+
+Status: **PLANNED**
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
