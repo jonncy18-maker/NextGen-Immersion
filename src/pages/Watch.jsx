@@ -235,6 +235,7 @@ const styles = {
   },
   playerArea: {
     marginBottom: 24,
+    scrollMarginTop: 130, // navbar (56px) + sticky filter strip (~64px) + breathing room
   },
   meta: {
     display: 'flex',
