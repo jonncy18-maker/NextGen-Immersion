@@ -578,7 +578,26 @@ Status: **DONE** (Jun 2026 — via agentic loop, 1 iteration, audit PASS). Imple
 
 ---
 
-## Phase 23 — Duration Filter Slider in Admin Video Search
+## Phase 23 — Discover & Import Scholar Context: Topic Chips
+
+**Loop goal:** "In the admin Discover & Import tab, extend the existing scholar context panel with topic chips so the admin can browse by level AND topic without typing. Clicking a topic chip builds a pre-composed YouTube search query (CEFR prefix + topic keywords) and fires it immediately."
+
+**Background:** The scholar context panel (`ScholarContext` in `AddVideoPanel.jsx`) already showed a scholar picker and 5 generic level-appropriate search chips. The admin still had to manually type topic keywords. Adding topic chips lets the admin click e.g. "Medical & Nursing" for Claire (B1) and instantly search "B1 B2 English medical nursing listening" — no typing needed.
+
+Deliverables:
+- `src/components/admin/AddVideoPanel.jsx` — extended `ScholarContext`:
+  - Added `CEFR_PREFIX` map (`super_beginner → 'A1 A2'`, etc.)
+  - Added `TOPIC_QUERY_KEYWORDS` map (10 topic tags → YouTube-optimised keywords)
+  - Added `buildTopicQuery(topic, level)` — returns `"{CEFR} English {keywords} listening"` when scholar is selected, or `"English {keywords} listening"` without
+  - **Level queries** section (labelled) — existing level chips, shown only when a scholar is selected
+  - **Topics** section (always visible) — 10 topic chips from `TOPIC_CATEGORIES`, grouped by category (OET/Career / Daily Life / Compelling Interest) with category color borders. Label shows "· combined with B1 B2" when scholar is selected, "· click to search" otherwise
+  - Imported `TOPIC_CATEGORIES` from `../../utils/topics.js`
+
+Status: **DONE** (Jun 2026 — via agentic loop, 1 iteration, audit PASS). Pure UI addition — no backend changes. `next build` PASS.
+
+---
+
+## Phase 24 — Duration Filter Slider in Admin Video Search
 
 **Loop goal:** "Add a duration range slider to the admin 'Discover & Import' tab so the admin can filter YouTube search results by video length before adding them to the library. Range: < 5 min to > 30 min."
 
@@ -601,7 +620,7 @@ Status: **PLANNED**
 
 ---
 
-## Phase 24 — Watch Later / Library Module
+## Phase 25 — Watch Later / Library Module
 
 **Loop goal:** "Add a 'Watch Later' button below the YouTube video player on the Watch page. Saved videos appear in a new 'Library' module in the left sidebar and bottom nav, so scholars can build a personal queue and come back to it."
 
@@ -637,7 +656,7 @@ Status: **PLANNED**
 
 ---
 
-## Phase 25 — Video Resume Position ("Pick Up Where You Left Off")
+## Phase 26 — Video Resume Position ("Pick Up Where You Left Off")
 
 **Loop goal:** "When a scholar pauses or leaves a video mid-way, save their playback position. When they return to that video later, the player automatically seeks to where they stopped so they can pick up where they left off."
 
@@ -652,7 +671,7 @@ Deliverables:
 - `src/hooks/useWatchSession.js` — on PAUSED and ENDED events, read `player.getCurrentTime()` and include `position_seconds` in the flush payload alongside `duration_seconds`. On ENDED (video finished), send `position_seconds: 0` so it clears on the server (handled by the `completed = true` path).
 - `src/components/player/VideoPlayer.jsx` — accept a `resumeAt` prop (seconds). After the player is ready (`onReady` event), if `resumeAt > 0`, call `player.seekTo(resumeAt, true)` before playback begins. Show a brief dismissible "Resuming from 5:23 →" toast/chip below the player so the scholar knows the seek happened; include a "Start from beginning" link that clears the resume position and seeks to 0.
 - `src/pages/Watch.jsx` — pass `video.resume_position_seconds` as `resumeAt` to `VideoPlayer` when a video is selected.
-- `src/pages/Library.jsx` (Phase 24) — VideoCards for videos with a saved resume position show a small progress bar indicator at the bottom of the thumbnail (similar to Netflix/YouTube's red progress bar) so the scholar can see at a glance which saved videos they've partially watched.
+- `src/pages/Library.jsx` (Phase 25) — VideoCards for videos with a saved resume position show a small progress bar indicator at the bottom of the thumbnail (similar to Netflix/YouTube's red progress bar) so the scholar can see at a glance which saved videos they've partially watched.
 
 **Design note — no resume for completed videos:** Once a video is marked `completed = true` (single session ≥95%), the `video_resume_positions` row is deleted server-side. Re-watching a completed video always starts from the beginning.
 
