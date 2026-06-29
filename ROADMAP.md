@@ -484,6 +484,25 @@ Status: **PLANNED**
 
 ---
 
+## Phase 21 — Live Progress Refresh After Manual Hour Logging
+
+**Loop goal:** "After a scholar logs external hours via the Phase 16 button, the Progress page and dashboard update immediately — no page refresh required. The refetch is triggered by the successful POST to /api/log-external and updates all progress components in place."
+
+**Background:** `useProgress` fetches once on mount. After logging external hours the data is stale until the user refreshes. Since the hours are persisted server-side on POST success, the fix is straightforward: expose a `refetch` callback from `useProgress` and call it after every confirmed log-external write.
+
+Deliverables:
+- `src/hooks/useProgress.js` — confirm `refetch` is already returned (it was added in Phase 6). If not, add it: a stable callback that re-fires the `/api/progress` GET and updates the hook's state in place. No new API endpoint needed.
+- `src/components/progress/ExternalHoursButton.jsx` (Phase 16) — after `POST /api/log-external` returns `res.ok`, call the `refetch` function passed in as a prop (or obtained from a shared context — see design note). The button enters a brief "Logged ✓" state, then the progress components re-render with the updated totals automatically.
+- `src/pages/Progress.jsx` — pass `refetch` from `useProgress` down to `ExternalHoursButton` (or wire via context).
+- `src/pages/AdminProgress.jsx` drill-down — same pattern: the admin's per-scholar detail view also passes `refetch` to the logging button so the drill-down totals update live when the admin logs hours on behalf of a scholar.
+- No optimistic update needed — the server round-trip is fast (Neon write → confirmed → refetch) and the button's loading state covers the gap. Do not update local state before the POST confirms; always refetch from source of truth.
+
+**Design note — refetch propagation:** `ExternalHoursButton` needs access to the `refetch` for the *scholar's own* progress data. On `Progress.jsx` this is trivial (same hook, pass as prop). On `AdminProgress.jsx` the drill-down uses a separate per-scholar data fetch — ensure `refetch` refers to the correct scholar's data hook, not the overview list.
+
+Status: **PLANNED**
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
