@@ -431,7 +431,12 @@ Deliverables:
 
 **Design note — level_source:** Setting `level_source='admin'` on a bulk level-change marks those videos as admin-overridden, which means a future channel re-classification won't overwrite them (per the existing re-classification rule in CLAUDE.md).
 
-Status: **PLANNED**
+Status: **DONE** (Jun 2026 — via agentic loop, 1 iteration, audit PASS). Added tabbed layout to Admin Videos page and full library management:
+- `pages/api/delete-video.js` (new): admin-only POST; soft-deletes (sets `is_available=false, unavailable_since=now()`) one or many videos; preserves watch history and cumulative hours. Returns `{ deleted: N }`.
+- `pages/api/update-video.js` (new): admin-only POST; updates `level` (stamps `level_source='admin'`) and/or `topic_primary` for one or many videos. Returns `{ updated: N }`.
+- `src/components/admin/VideoLibraryEditor.jsx` (new): full-page library grid with per-card checkbox (appears on hover or when selection is active), 3-dot `CardMenu` popover (Delete / Change Level / Change Topic — each fires immediately), bulk-action bar when ≥1 video is selected (Delete selected / Set Level / Set Topic / Deselect all / select-all checkbox), filter row (search by title/channel, level dropdown, topic dropdown), and a `ConfirmModal` for delete confirmation. Optimistic UI — videos removed/updated in local state immediately; dispatches `ngsi-inventory-change` event on delete or level change.
+- `src/pages/AdminVideos.jsx`: tab bar ("Discover & Import" | "Manage Library") added below the page title; existing search + URL import + stale-check content moves to the Discover tab; Manage Library tab renders `VideoLibraryEditor`.
+- `src/components/layout/Sidebar.jsx`: inventory `useEffect` now also listens for the `ngsi-inventory-change` window event so the badge re-checks after VideoLibraryEditor deletes or re-levels a video. `next build` PASS.
 
 ---
 
@@ -454,7 +459,13 @@ Deliverables:
 
 **Design note:** Use the existing `--ngsi-status-*` token colors (green saved → ahead, amber buffering → behind-but-close, red offline → significantly behind). "Significantly behind" threshold TBD by the pace logic already in `src/utils/pace.js`.
 
-Status: **PLANNED**
+Status: **DONE** (Jun 2026 — via agentic loop, 1 iteration, audit PASS). Surfaced quantified pace delta everywhere in the progress UI:
+- `pages/api/progress.js`: added `delta: expectedHours - currentHours` (positive = behind, negative = ahead) to response; all NUMERIC fields coerced with `Number()` at API boundary.
+- `pages/api/scholars.js`: added same `delta` field to each scholar object; coerces `current_hours` and `expected_hours` with `Number()` (were previously raw Neon NUMERIC strings).
+- `src/components/progress/PaceAnalysis.jsx` (new): left-bordered panel with large Georgia serif number — "X.Xh ahead of pace" (green) or "X.Xh behind pace" (amber/red) — plus secondary line showing ON TRACK/AT RISK status and expected hours by today. PENDING state shows italic "Goal not started" message; goal-met state shows green "Goal reached" with total vs. target.
+- `src/pages/Progress.jsx`: imports and renders `PaceAnalysis` below `MilestoneBar` inside the main progress card.
+- `src/pages/AdminProgress.jsx` drill-down: same `PaceAnalysis` in the per-scholar detail view.
+- `src/components/admin/ScholarCard.jsx`: `delta` destructured from scholar; a compact delta badge (`+X.Xh` ahead / `-X.Xh` behind, colored by status) shown below the AT RISK/ON TRACK pill in the top-right corner of each card. `next build` PASS.
 
 ---
 

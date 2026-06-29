@@ -12,6 +12,7 @@ export default function ScholarCard({ scholar, onSelect }) {
     last_session_at,
     target_hours,
     status,
+    delta,
   } = scholar
 
   const isPending = status === 'PENDING' || !target_hours
@@ -31,7 +32,16 @@ export default function ScholarCard({ scholar, onSelect }) {
       <div style={styles.body}>
         <div style={styles.topRow}>
           <span style={styles.name}>{scholar_name || 'Unnamed scholar'}</span>
-          <span style={{ ...styles.pill, background: accent }}>{getPaceLabel(status)}</span>
+          <div style={styles.pillWrap}>
+            <span style={{ ...styles.pill, background: accent }}>{getPaceLabel(status)}</span>
+            {!isPending && delta !== undefined && (
+              <span style={{ ...styles.deltaBadge, color: accent }}>
+                {delta <= 0
+                  ? `+${Math.abs(delta).toFixed(1)}h`
+                  : `-${delta.toFixed(1)}h`}
+              </span>
+            )}
+          </div>
         </div>
 
         <div style={styles.hoursRow}>
@@ -91,6 +101,17 @@ const styles = {
     justifyContent: 'space-between',
     gap: 8,
     marginBottom: 10,
+  },
+  pillWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 2,
+    flexShrink: 0,
+  },
+  deltaBadge: {
+    fontSize: 11,
+    fontWeight: 700,
   },
   name: {
     fontSize: 15,
