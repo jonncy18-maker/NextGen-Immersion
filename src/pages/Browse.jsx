@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { getAuthToken } from '../lib/authToken.js'
 import FilterBar from '../components/video/FilterBar.jsx'
 import VideoGrid from '../components/video/VideoGrid.jsx'
+import VideoGridSkeleton from '../components/video/VideoGridSkeleton.jsx'
+import EmptyState from '../components/video/EmptyState.jsx'
 import { LEVELS } from '../utils/levels.js'
 
 async function fetchVideos() {
@@ -90,10 +92,16 @@ export default function Browse() {
       <div style={styles.container}>
         <h1 style={styles.title}>Library</h1>
 
-        {loading && <p style={styles.hint}>Loading…</p>}
-        {error && <p style={styles.hint}>{error}</p>}
-
-        {!loading && !error && (
+        {error ? (
+          <p style={styles.hint}>{error}</p>
+        ) : loading ? (
+          <VideoGridSkeleton />
+        ) : videos.length === 0 ? (
+          <EmptyState
+            title="No videos yet"
+            message="The library is being set up — your coordinator is adding videos. Check back soon."
+          />
+        ) : (
           <>
             <FilterBar filters={filters} onChange={setFilters} />
             <VideoGrid

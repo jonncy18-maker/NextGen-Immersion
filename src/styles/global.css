@@ -39,6 +39,30 @@ a {
   color: var(--ngsi-navy);
 }
 
+/* Loading skeleton shimmer */
+.ngsi-skeleton {
+  background-color: var(--ngsi-cream-dark);
+  background-image: linear-gradient(
+    90deg,
+    var(--ngsi-cream-dark) 0,
+    #f3eee4 40px,
+    var(--ngsi-cream-dark) 80px
+  );
+  background-size: 200px 100%;
+  background-repeat: no-repeat;
+  border-radius: 6px;
+  animation: ngsi-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes ngsi-shimmer {
+  0% { background-position: -120px 0; }
+  100% { background-position: calc(120px + 100%) 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ngsi-skeleton { animation: none; }
+}
+
 /* Responsive layout helpers */
 @media (min-width: 640px) {
   .ngsi-hide-desktop { display: none !important; }
