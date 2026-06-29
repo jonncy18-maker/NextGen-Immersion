@@ -33,11 +33,14 @@ export default function Watch() {
     watchedFilter: 'unwatched',
     search: '',
     topicSearch: '',
+    duration: 'any',
   })
   const levelInitialized = useRef(false)
 
   const { data: progress } = useProgress()
-  const scholarLevelId = progress ? getLevelForHours(progress.current_hours).id : null
+  const rawLevelId = progress ? getLevelForHours(progress.current_hours).id : null
+  // Map super_beginner → beginner so it matches the simplified 3-tier filter
+  const scholarLevelId = rawLevelId === 'super_beginner' ? 'beginner' : rawLevelId
   const nextLevelId = scholarLevelId ? getNextLevel(scholarLevelId)?.id ?? null : null
 
   // Default level filter to scholar's current level on first load
@@ -73,7 +76,21 @@ export default function Watch() {
       if (filters.topic) {
         if (v.topic_primary !== filters.topic && v.topic_secondary !== filters.topic) return false
       }
-      if (filters.level && v.level !== filters.level) return false
+      if (filters.level) {
+        const levelMatch = filters.level === 'beginner'
+          ? (v.level === 'super_beginner' || v.level === 'beginner')
+          : v.level === filters.level
+        if (!levelMatch) return false
+      }
+      if (filters.duration && filters.duration !== 'any') {
+        const secs = v.duration_seconds || 0
+        if (filters.duration === 'under5'  && secs >= 300)               return false
+        if (filters.duration === '5to10'   && (secs < 300  || secs >= 600))  return false
+        if (filters.duration === '10to15'  && (secs < 600  || secs >= 900))  return false
+        if (filters.duration === '15to20'  && (secs < 900  || secs >= 1200)) return false
+        if (filters.duration === '20to30'  && (secs < 1200 || secs >= 1800)) return false
+        if (filters.duration === 'over30'  && secs < 1800)               return false
+      }
       if (filters.watchedFilter === 'unwatched' && v.watched) return false
       if (filters.watchedFilter === 'watched' && !v.watched) return false
       return true
@@ -187,7 +204,7 @@ export default function Watch() {
               <p style={styles.noResultsText}>No videos match your filters.</p>
               <button
                 style={styles.clearFiltersBtn}
-                onClick={() => setFilters({ topic: null, level: null, watchedFilter: 'all', search: '', topicSearch: '' })}
+                onClick={() => setFilters({ topic: null, level: null, watchedFilter: 'all', search: '', topicSearch: '', duration: 'any' })}
               >
                 Clear all filters
               </button>

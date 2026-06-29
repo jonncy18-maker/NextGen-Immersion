@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { TOPIC_CATEGORIES } from '../../utils/topics.js'
-import { LEVELS } from '../../utils/levels.js'
+
+const DURATION_OPTIONS = [
+  { value: 'any',    label: 'Any Duration' },
+  { value: 'under5', label: 'Under 5 min' },
+  { value: '5to10',  label: '5–10 min' },
+  { value: '10to15', label: '10–15 min' },
+  { value: '15to20', label: '15–20 min' },
+  { value: '20to30', label: '20–30 min' },
+  { value: 'over30', label: 'Over 30 min' },
+]
 
 export default function FilterDropdowns({ filters, onChange, style }) {
   const [searchDraft, setSearchDraft] = useState(filters.search ?? '')
@@ -45,7 +54,7 @@ export default function FilterDropdowns({ filters, onChange, style }) {
           )}
         </div>
 
-        {/* Level dropdown */}
+        {/* Level dropdown — simplified to 3 tiers */}
         <select
           value={filters.level ?? ''}
           onChange={e => onChange({ ...filters, level: e.target.value || null })}
@@ -53,9 +62,9 @@ export default function FilterDropdowns({ filters, onChange, style }) {
           aria-label="Filter by level"
         >
           <option value="">All Levels</option>
-          {LEVELS.map(l => (
-            <option key={l.id} value={l.id}>{l.label} ({l.cefr})</option>
-          ))}
+          <option value="beginner">Beginner (A1–B1)</option>
+          <option value="intermediate">Intermediate (B1–B2)</option>
+          <option value="advanced">Advanced (B2–C1)</option>
         </select>
 
         {/* Topic dropdown */}
@@ -70,6 +79,18 @@ export default function FilterDropdowns({ filters, onChange, style }) {
             <optgroup key={cat.key} label={cat.label}>
               {cat.topics.map(t => <option key={t} value={t}>{t}</option>)}
             </optgroup>
+          ))}
+        </select>
+
+        {/* Duration dropdown */}
+        <select
+          value={filters.duration ?? 'any'}
+          onChange={e => onChange({ ...filters, duration: e.target.value })}
+          style={styles.select}
+          aria-label="Filter by video duration"
+        >
+          {DURATION_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
 
