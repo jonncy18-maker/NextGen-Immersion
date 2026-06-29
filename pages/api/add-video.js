@@ -29,13 +29,21 @@ export default async function handler(req, res) {
   }
 
   try {
+    // channelId from the client is the YouTube channel ID string (e.g. UCxxxxxx),
+    // not the internal UUID. Look up the channels table to resolve it.
+    let channelUuid = null
+    if (channelId) {
+      const ch = await sql`SELECT id FROM channels WHERE youtube_channel_id = ${channelId}`
+      channelUuid = ch[0]?.id || null
+    }
+
     const rows = await sql`
       INSERT INTO videos
         (youtube_id, title, channel_name, channel_id, description, thumbnail_url,
          duration_seconds, language, level, level_source, topic_primary, topic_secondary,
          source, added_by)
       VALUES
-        (${youtubeId}, ${title}, ${channelName || null}, ${channelId || null},
+        (${youtubeId}, ${title}, ${channelName || null}, ${channelUuid},
          ${description || null}, ${thumbnailUrl || null}, ${durationSeconds || null},
          ${language}, ${level}, 'ai', ${topicPrimary}, ${topicSecondary || null},
          'library', ${authUser.id})
