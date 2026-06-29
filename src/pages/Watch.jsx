@@ -28,8 +28,8 @@ export default function Watch() {
   const [selected, setSelected] = useState(null)
   const playerRef = useRef(null)
   const [filters, setFilters] = useState({
-    topic: null,
-    level: null,
+    topic: [],
+    level: [],
     watchedFilter: 'unwatched',
     search: '',
     topicSearch: '',
@@ -47,7 +47,7 @@ export default function Watch() {
   useEffect(() => {
     if (scholarLevelId && !levelInitialized.current) {
       levelInitialized.current = true
-      setFilters(f => ({ ...f, level: scholarLevelId }))
+      setFilters(f => ({ ...f, level: scholarLevelId ? [scholarLevelId] : [] }))
     }
   }, [scholarLevelId])
 
@@ -73,14 +73,12 @@ export default function Watch() {
         const inSecondary = (v.topic_secondary || '').toLowerCase().includes(topicSearchLower)
         if (!inPrimary && !inSecondary) return false
       }
-      if (filters.topic) {
-        if (v.topic_primary !== filters.topic && v.topic_secondary !== filters.topic) return false
+      if (filters.topic.length > 0) {
+        if (!filters.topic.includes(v.topic_primary) && !filters.topic.includes(v.topic_secondary)) return false
       }
-      if (filters.level) {
-        const levelMatch = filters.level === 'beginner'
-          ? (v.level === 'super_beginner' || v.level === 'beginner')
-          : v.level === filters.level
-        if (!levelMatch) return false
+      if (filters.level.length > 0) {
+        const vLevel = v.level === 'super_beginner' ? 'beginner' : v.level
+        if (!filters.level.includes(vLevel)) return false
       }
       if (filters.duration && filters.duration !== 'any') {
         const secs = v.duration_seconds || 0
@@ -204,7 +202,7 @@ export default function Watch() {
               <p style={styles.noResultsText}>No videos match your filters.</p>
               <button
                 style={styles.clearFiltersBtn}
-                onClick={() => setFilters({ topic: null, level: null, watchedFilter: 'all', search: '', topicSearch: '', duration: 'any' })}
+                onClick={() => setFilters({ topic: [], level: [], watchedFilter: 'all', search: '', topicSearch: '', duration: 'any' })}
               >
                 Clear all filters
               </button>
