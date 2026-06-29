@@ -1,7 +1,7 @@
 import { formatHoursShort, formatRelativeDate } from '../../utils/timeFormat.js'
 import { getWeeklyTarget } from '../../utils/pace.js'
 
-export default function WeekStats({ hoursThisWeek, targetHours, startDate, targetDate, lastSessionAt }) {
+export default function WeekStats({ hoursThisWeek, targetHours, startDate, targetDate, lastSessionAt, videoHoursThisWeek, externalHoursThisWeek }) {
   const weeklyTarget = getWeeklyTarget(targetHours, startDate, targetDate)
 
   const rowStyle = {
@@ -40,6 +40,11 @@ export default function WeekStats({ hoursThisWeek, targetHours, startDate, targe
       <div style={cardStyle}>
         <p style={labelStyle}>This Week</p>
         <p style={valueStyle}>{formatHoursShort(hoursThisWeek)}</p>
+        {externalHoursThisWeek > 0 && (
+          <p style={{ fontSize: '0.7rem', color: '#8a8f99', margin: '2px 0 0' }}>
+            {formatHoursShort(videoHoursThisWeek ?? 0)} video · {formatHoursShort(externalHoursThisWeek)} other
+          </p>
+        )}
       </div>
       <div style={cardStyle}>
         <p style={labelStyle}>Weekly Target</p>
