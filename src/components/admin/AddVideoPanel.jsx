@@ -277,7 +277,12 @@ function ResultCard({ item, onAdd }) {
         <p style={cardStyles.title} title={item.title}>
           {item.title}
         </p>
-        <p style={cardStyles.channel}>{item.channelName}</p>
+        <p style={cardStyles.channel}>
+          {item.channelName}
+          {fmtDuration(item.duration_seconds) && (
+            <span style={cardStyles.dur}> · {fmtDuration(item.duration_seconds)}</span>
+          )}
+        </p>
         <div style={cardStyles.chips}>
           {tagState === 'tagging' && <span style={chipStyles.tagging}>Tagging…</span>}
           {tagState === 'done' && tags && (
@@ -343,6 +348,37 @@ function ResultCard({ item, onAdd }) {
   )
 }
 
+const DURATION_OPTIONS = [
+  { value: 'any',    label: 'Any length' },
+  { value: 'under5', label: '< 5 min' },
+  { value: '5to10',  label: '5–10 min' },
+  { value: '10to15', label: '10–15 min' },
+  { value: '15to20', label: '15–20 min' },
+  { value: '20to30', label: '20–30 min' },
+  { value: 'over30', label: '> 30 min' },
+]
+
+function matchesDuration(secs, filter) {
+  if (!filter || filter === 'any') return true
+  if (filter === 'under5')  return secs < 300
+  if (filter === '5to10')   return secs >= 300  && secs < 600
+  if (filter === '10to15')  return secs >= 600  && secs < 900
+  if (filter === '15to20')  return secs >= 900  && secs < 1200
+  if (filter === '20to30')  return secs >= 1200 && secs < 1800
+  if (filter === 'over30')  return secs >= 1800
+  return true
+}
+
+function fmtDuration(secs) {
+  if (!secs) return null
+  const h = Math.floor(secs / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  const s = secs % 60
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`
+  if (m > 0) return `${m}m`
+  return `${s}s`
+}
+
 const CEFR_LEVEL_CHIPS = [
   { id: 'a1', label: 'A1', query: 'A1 English listening practice beginner' },
   { id: 'a2', label: 'A2', query: 'A2 English listening elementary' },
@@ -357,6 +393,7 @@ export default function AddVideoPanel() {
   const [searchState, setSearchState] = useState('idle') // idle | loading | done | quota | unavailable
   const [results, setResults] = useState([])
   const [activeLevelChip, setActiveLevelChip] = useState(null)
+  const [duration, setDuration] = useState('any')
 
   const doSearch = useCallback(async (q) => {
     if (!q.trim()) {
@@ -440,6 +477,21 @@ export default function AddVideoPanel() {
         ))}
       </div>
 
+      {/* Duration filter */}
+      <div style={panelStyles.durationRow}>
+        <span style={panelStyles.cefrLabel}>Duration</span>
+        <select
+          value={duration}
+          onChange={(e) => setDuration(e.target.value)}
+          style={panelStyles.durationSelect}
+          aria-label="Filter results by duration"
+        >
+          {DURATION_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
       <div style={panelStyles.searchRow}>
         <input
           type="search"
@@ -465,13 +517,20 @@ export default function AddVideoPanel() {
         </p>
       )}
 
-      {results.length > 0 && (
-        <div style={panelStyles.results}>
-          {results.map((item) => (
-            <ResultCard key={item.youtubeId} item={item} />
-          ))}
-        </div>
-      )}
+      {results.length > 0 && (() => {
+        const filtered = results.filter((item) => matchesDuration(item.duration_seconds || 0, duration))
+        return (
+          <div style={panelStyles.results}>
+            {filtered.length === 0 ? (
+              <p style={panelStyles.hint}>No results match the selected duration.</p>
+            ) : (
+              filtered.map((item) => (
+                <ResultCard key={item.youtubeId} item={item} />
+              ))
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -563,6 +622,17 @@ const panelStyles = {
     lineHeight: 1.4,
     transition: 'background 0.12s, color 0.12s',
   },
+  durationRow: { display: 'flex', alignItems: 'center', gap: 8 },
+  durationSelect: {
+    padding: '5px 10px',
+    fontSize: 13,
+    border: '1.5px solid #d0d5dd',
+    borderRadius: 7,
+    background: '#fff',
+    color: 'var(--ngsi-navy)',
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+  },
   searchRow: { display: 'flex', gap: 8 },
   input: {
     flex: 1,
@@ -611,6 +681,7 @@ const cardStyles = {
     textOverflow: 'ellipsis',
   },
   channel: { margin: '0 0 6px', fontSize: 12, color: '#8a8f99' },
+  dur: { color: '#aaa', fontWeight: 400 },
   chips: { display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' },
   action: { flexShrink: 0 },
 }
