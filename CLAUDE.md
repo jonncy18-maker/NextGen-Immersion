@@ -196,6 +196,16 @@ In Vercel: set all of the above as env vars (no prefix) and ensure they are enab
 
 **Goal clock:** Each scholar's goal clock starts on an admin-set `start_date` in the `scholar_goals` table — NOT on account creation and NOT on first session. A scholar with no start_date set has status PENDING and no pace calculation runs. All "today"/"this week" math is computed in **Asia/Manila** (program timezone). `expected_hours` is capped at `target_hours`; past the target date a scholar is ON_TRACK only if the full target was met. `target_hours` is the entry threshold of the target level (Intermediate = 300h).
 
+**Neon Auth password format:** Passwords in `neon_auth.account` use `@better-auth/utils` scrypt — format is `<hex_salt>:<hex_hash>` (161 chars total: 32-char hex salt + `:` + 128-char hex hash). Parameters: N=16384, r=16, p=1, dkLen=64. Critically, the salt is passed to `node:crypto scrypt` as a **hex string** (not a Buffer), and the password is **NFKC-normalized** before hashing. To set a password via SQL, generate the hash with this exact script:
+```js
+const { randomBytes, scrypt } = require('node:crypto')
+const salt = randomBytes(16).toString('hex') // hex string, not Buffer
+scrypt(password.normalize('NFKC'), salt, 64, { N: 16384, r: 16, p: 1, maxmem: 128*16384*16*2 }, (err, key) => {
+  console.log(`${salt}:${key.toString('hex')}`) // paste this into the UPDATE
+})
+```
+Then: `UPDATE neon_auth.account SET password = '<output>', "updatedAt" = now() WHERE "userId" = '<id>' AND "providerId" = 'credential'`
+
 **Scholar data isolation & provisioning:** Accounts are admin-provisioned — no public self-signup. `users.id` is the Neon Auth subject (`sub`), supplied on insert (not a random uuid), so the API can scope every query by the verified JWT `sub`. One login screen for all; `role` (`scholar` | `admin`) drives the UI. Scholars read/write only their own data via their JWT-scoped `/api/*` calls. Admin cross-scholar reads use the service-role connection (`NEON_DATABASE_URL_ADMIN`) in admin-only `pages/api/scholars.js`. Do not rely on database RLS alone — enforce in the API layer.
 
 **Responsive breakpoints:**
