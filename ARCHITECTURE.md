@@ -1,6 +1,6 @@
 # NGS Immersion — Architecture
 
-*Last updated: June 2026 · Design session + audit v2*
+*Last updated: June 2026 · Design session + audit v2 · Phase 14 (Next.js same-origin auth migration)*
 
 ---
 
@@ -15,32 +15,36 @@ Admins (John) manage the video library, set program goals and per-scholar start 
 ## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     Vercel Hosting                       │
-│                                                          │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │          BROWSER — React + Vite (HashRouter)        │ │
-│  │  Scholar pages · Admin pages · YouTube IFrame       │ │
-│  │  useWatchSession (PLAYING-only timer + localStorage)│ │
-│  │  Calls OWN /api/* endpoints — never 3rd-party APIs  │ │
-│  └───────────────────────┬────────────────────────────┘ │
-│                          │ (Neon Auth JWT)               │
-│  ┌───────────────────────▼────────────────────────────┐ │
-│  │       SERVER — Vercel serverless functions (api/)   │ │
-│  │  SECRET KEYS LIVE HERE — never reach the browser    │ │
-│  │  tag-channel · tag-video · youtube-search            │ │
-│  │  flush-session · progress · scholars · youtube-import│ │
-│  └──────┬──────────────────┬──────────────────┬───────┘ │
-└─────────┼──────────────────┼──────────────────┼─────────┘
-          │                  │                  │
-   ┌──────▼──────┐   ┌───────▼────────┐   ┌─────▼─────────┐
-   │    Neon     │   │ YouTube Data   │   │   Anthropic   │
-   │  Postgres   │   │    API v3      │   │ haiku-4-5     │
-   │  Neon Auth  │   │                │   │ (tagging)     │
-   └─────────────┘   └────────────────┘   └───────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                  Vercel Hosting — Next.js 16                   │
+│                                                               │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │  BROWSER — React SPA (HashRouter) inside the Next shell   │ │
+│  │  app/page.jsx → next/dynamic(App, { ssr:false })          │ │
+│  │  Scholar/Admin pages · YouTube IFrame · useWatchSession   │ │
+│  │  Calls OWN same-origin endpoints — never 3rd-party APIs   │ │
+│  └──────────┬───────────────────────────────┬───────────────┘ │
+│             │ (Bearer: Neon Auth JWT)        │ (cookie)        │
+│  ┌──────────▼─────────────────┐  ┌───────────▼──────────────┐ │
+│  │  pages/api/* functions      │  │ app/api/auth/[...path]   │ │
+│  │  SECRET KEYS LIVE HERE      │  │ Neon same-origin auth    │ │
+│  │  tag-channel · tag-video    │  │ proxy (createNeonAuth)   │ │
+│  │  youtube-search/-import     │  │ → FIRST-PARTY cookie     │ │
+│  │  flush-session · progress   │  │   on the app origin      │ │
+│  │  videos · me · scholars …   │  └───────────┬──────────────┘ │
+│  └──────┬──────────┬──────────┬┘              │                │
+└─────────┼──────────┼──────────┼───────────────┼────────────────┘
+          │          │          │               │
+   ┌──────▼────┐ ┌───▼──────┐ ┌─▼─────────┐ ┌───▼──────────┐
+   │   Neon    │ │ YouTube  │ │ Anthropic │ │  Neon Auth   │
+   │ Postgres  │ │ Data API │ │ haiku-4-5 │ │ (Better Auth)│
+   │           │ │   v3     │ │ (tagging) │ │  + JWKS      │
+   └───────────┘ └──────────┘ └───────────┘ └──────────────┘
 ```
 
-**Security boundary:** The browser only ever talks to the app's own `/api/*` functions. All three secret keys (Anthropic, Neon connection, YouTube) live exclusively in the serverless layer. This is the single most important architectural constraint.
+**Security boundary:** The browser only ever talks to the app's own same-origin endpoints (`/api/*` for data, `/api/auth/*` for auth). All secret keys (Anthropic, Neon connection, YouTube, the auth cookie secret) live exclusively server-side. This is the single most important architectural constraint.
+
+**Auth boundary (Phase 14):** Login no longer goes browser→neon.tech directly. The browser hits the same-origin `/api/auth/*` proxy (`createNeonAuth().handler()`), which forwards to Neon server-side and sets a **first-party** session cookie on the app's own origin — so the session survives a page refresh. See *Authentication* below.
 
 ---
 
@@ -175,22 +179,44 @@ Implemented in `src/utils/pace.js`, fed by `api/scholars.js` (admin) and `api/pr
 
 ---
 
-## Serverless API Layer (api/)
+## API Layer (pages/api/)
 
-All secret-key operations. The browser calls these; these call the third-party APIs.
+All secret-key operations. The browser calls these; these call the third-party APIs. They are Next.js **Pages Router** API routes — classic `(req, res)` handlers (the Phase-14 migration relocated them from the old top-level `api/` verbatim; logic unchanged). Shared helpers live in `lib/api/` (outside `pages/` so Next doesn't expose them as routes).
 
 | Endpoint | Method | Purpose | Secret used |
 |---|---|---|---|
-| `api/tag-channel.js` | POST | Classify a channel's level via Haiku → stored on channel row; all its videos inherit `level_source: 'channel'` | ANTHROPIC_API_KEY |
-| `api/tag-video.js` | POST | Tag one video via Haiku → level + topics (fallback for channelless imports only) | ANTHROPIC_API_KEY |
-| `api/youtube-search.js` | GET | Search YouTube, return results | YOUTUBE_API_KEY |
-| `api/youtube-import.js` | POST | Batch import playlist/channel + tag all | YOUTUBE_API_KEY + ANTHROPIC_API_KEY |
-| `api/flush-session.js` | POST | Write watch_session row (sendBeacon target) | NEON_DATABASE_URL |
-| `api/progress.js` | GET | Scholar's own cumulative hours + pace | NEON_DATABASE_URL |
-| `api/scholars.js` | GET | Admin: all scholars' progress | NEON_DATABASE_URL_ADMIN |
-| `api/_db.js` | — | Shared Neon connection helper | NEON_DATABASE_URL |
+| `pages/api/tag-channel.js` | POST | Classify a channel's level via Haiku → stored on channel row; all its videos inherit `level_source: 'channel'` | ANTHROPIC_API_KEY |
+| `pages/api/tag-video.js` | POST | Tag one video via Haiku → level + topics (fallback for channelless imports only) | ANTHROPIC_API_KEY |
+| `pages/api/youtube-search.js` | GET | Search YouTube + filter out music (category 10); quota→429 | YOUTUBE_API_KEY |
+| `pages/api/youtube-import.js` | POST | Batch import playlist/channel + tag all (`maxDuration: 30`) | YOUTUBE_API_KEY + ANTHROPIC_API_KEY |
+| `pages/api/add-video.js` | POST | Admin: save one searched video with pre-computed tags (`ON CONFLICT DO NOTHING`) | NEON_DATABASE_URL |
+| `pages/api/flush-session.js` | POST | Write watch_session row (sendBeacon target) | NEON_DATABASE_URL |
+| `pages/api/progress.js` | GET | Scholar's own cumulative hours + pace | NEON_DATABASE_URL |
+| `pages/api/videos.js` | GET | Library list + per-video watched state (JWT-scoped) | NEON_DATABASE_URL |
+| `pages/api/mark-video.js` | POST | Manual watched/unwatched toggle | NEON_DATABASE_URL |
+| `pages/api/me.js` | GET | Current user role/profile (JWT `sub` → public.users) | NEON_DATABASE_URL |
+| `pages/api/scholars.js` | GET | Admin: all scholars' progress | NEON_DATABASE_URL_ADMIN |
+| `lib/api/_db.js` | — | Shared Neon connection helper (`getDb`/`getAdminDb`) | NEON_DATABASE_URL |
+| `lib/api/_auth.js` | — | `verifySession`/`verifyAdmin` — JWKS-verify the Neon JWT | NEON_AUTH_BASE_URL |
+| `lib/api/_tag.js` | — | Shared Haiku prompt + CEFR/topic taxonomy | ANTHROPIC_API_KEY |
 
-**Auth enforcement:** Each scholar-facing endpoint verifies the Neon Auth JWT and scopes queries to that user's `user_id`. The browser cannot request another scholar's data — the server ignores any client-supplied user_id and uses the JWT identity. `api/scholars.js` checks `role = 'admin'` before using the service-role connection.
+**Auth enforcement:** Each scholar-facing endpoint verifies the Neon Auth JWT (Bearer, JWKS-verified in `lib/api/_auth.js`) and scopes queries to that user's `user_id` (the JWT `sub`). The browser cannot request another scholar's data — the server ignores any client-supplied user_id and uses the JWT identity. `pages/api/scholars.js` checks `role = 'admin'` before using the service-role connection.
+
+---
+
+## Authentication (same-origin, first-party cookie)
+
+Phase 14 replaced the browser-direct-to-Neon SPA auth with Neon's official same-origin handler.
+
+**Why:** In the Vite SPA model the browser talked to Neon Auth on `*.neon.tech` while the app was on `*.vercel.app`. The session cookie was therefore *third-party* (`SameSite=None`), which modern browsers block — so every cold load / refresh lost the session and bounced to `/login`. Neon hosts its auth server, so its cookie can't be reconfigured. A hand-rolled proxy was tried and broke login (PRs #22–#24). The durable fix is to run auth **same-origin**, which Neon documents only for Next.js — hence the migration.
+
+**How it works now:**
+- **Server:** `lib/auth/server.js` → `createNeonAuth({ baseUrl: NEON_AUTH_BASE_URL, cookies: { secret: NEON_AUTH_COOKIE_SECRET, sameSite: 'lax' } })`. Exposed at `app/api/auth/[...path]/route.js` via `export const { GET, POST } = auth.handler()`. This proxy forwards to Neon server-side and issues a **first-party** signed session cookie on the app's own origin → persists across refresh.
+- **Client:** `src/lib/auth.js` = no-arg `createAuthClient()` from `@neondatabase/auth/next`, which targets the same-origin `/api/auth/*`. Same client surface as before (`useSession`/`signIn`/`signOut`/`token`).
+- **API authorization (unchanged in spirit):** the app's own `/api/*` functions still authorize via a JWT. `src/lib/authToken.js` `getAuthToken()` fetches a real EdDSA JWT from `GET /api/auth/token` (minted from the first-party cookie), and `lib/api/_auth.js` JWKS-verifies it. (The SDK's cached token is the opaque session token in this model — not a JWT — so we fetch `/api/auth/token` explicitly.)
+- **Race guards:** the route guard must treat "session present but user not yet fetched" as *loading*, or it redirects to `/login` before auth settles. `AuthContext` initializes `roleLoading = true`; `Login` navigates from an effect once `user` is set (not optimistically after `signIn`). Both were real bugs (refresh logout + first-attempt-login failure) fixed in Phase 14.
+
+**Operational notes:** `NEON_AUTH_COOKIE_SECRET` (32+ chars) and `NEON_DATABASE_URL` must be set for **both Production and Preview** in Vercel. Each preview deploy's unique URL must be added to Neon Auth `trusted_origins` to sign in there. Vercel Framework Preset must be **Next.js**.
 
 ---
 
@@ -279,6 +305,8 @@ advanced       → B2–C1
 ---
 
 ## Routing
+
+Client-side `HashRouter` (React Router v6) running inside the Next.js shell (`app/page.jsx`, `ssr:false`). `next.config.js` rewrites non-API paths to `/` so deep links / hard refreshes serve the SPA shell, then HashRouter resolves the hash. Next owns `/api/*` (Pages Router functions) and `/api/auth/*` (App Router auth handler); those are excluded from the SPA rewrite.
 
 ```
 #/               → Login (unauth) or redirect to #/watch
