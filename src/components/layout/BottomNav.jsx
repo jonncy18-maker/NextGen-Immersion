@@ -3,7 +3,6 @@ import { useAuth } from '../../context/AuthContext.jsx'
 
 const scholarTabs = [
   { to: '/watch', icon: '▶', label: 'Watch' },
-  { to: '/browse', icon: '⊞', label: 'Browse' },
   { to: '/progress', icon: '◎', label: 'Progress' },
 ]
 

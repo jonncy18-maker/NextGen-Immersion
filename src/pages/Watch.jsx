@@ -3,7 +3,7 @@ import { getAuthToken } from '../lib/authToken.js'
 import VideoPlayer from '../components/player/VideoPlayer.jsx'
 import WatchTimer from '../components/player/WatchTimer.jsx'
 import IosPlaybackNotice from '../components/player/IosPlaybackNotice.jsx'
-import FilterBar from '../components/video/FilterBar.jsx'
+import FilterDropdowns from '../components/video/FilterDropdowns.jsx'
 import VideoGrid from '../components/video/VideoGrid.jsx'
 import VideoGridSkeleton from '../components/video/VideoGridSkeleton.jsx'
 import EmptyState from '../components/video/EmptyState.jsx'
@@ -27,7 +27,7 @@ export default function Watch() {
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
   const [filters, setFilters] = useState({
-    topics: [],
+    topic: null,
     level: null,
     watchedFilter: 'unwatched',
   })
@@ -45,11 +45,8 @@ export default function Watch() {
 
   const visibleVideos = useMemo(() => {
     let list = videos.filter(v => {
-      if (filters.topics.length > 0) {
-        const inTopics =
-          filters.topics.includes(v.topic_primary) ||
-          filters.topics.includes(v.topic_secondary)
-        if (!inTopics) return false
+      if (filters.topic) {
+        if (v.topic_primary !== filters.topic && v.topic_secondary !== filters.topic) return false
       }
       if (filters.level && v.level !== filters.level) return false
       if (filters.watchedFilter === 'unwatched' && v.watched) return false
@@ -72,23 +69,18 @@ export default function Watch() {
     return list
   }, [videos, filters, scholarLevelId, nextLevelId])
 
-  // Auto-select the first sorted video once videos (and progress) are ready.
   useEffect(() => {
     if (!selected && visibleVideos.length > 0) {
       setSelected(visibleVideos[0])
     }
   }, [selected, visibleVideos])
 
-  // When a video completes (single session ≥95%), mark it watched in local
-  // state so it moves into the Watched filter immediately — no page refresh.
   const handleComplete = useCallback(completedId => {
     setVideos(vs =>
       vs.map(v => (v.id === completedId ? { ...v, watched: true } : v)),
     )
   }, [])
 
-  // Manual "Mark as watched / unwatched" — optimistic local update, then
-  // persist via /api/mark-video. Revert on failure.
   const handleMark = useCallback(async (video, watched) => {
     const previous = video.watched
     setVideos(vs => vs.map(v => (v.id === video.id ? { ...v, watched } : v)))
@@ -138,8 +130,7 @@ export default function Watch() {
           </div>
         )}
 
-        <div style={styles.browse}>
-          <h2 style={styles.browseHeading}>Browse the library</h2>
+        <div style={styles.library}>
           {error ? (
             <p style={styles.hint}>{error}</p>
           ) : loading ? (
@@ -151,7 +142,7 @@ export default function Watch() {
             />
           ) : (
             <>
-              <FilterBar filters={filters} onChange={setFilters} />
+              <FilterDropdowns filters={filters} onChange={setFilters} />
               <VideoGrid
                 videos={visibleVideos}
                 onSelect={setSelected}
@@ -203,13 +194,7 @@ const styles = {
     fontSize: 13,
     color: '#8a8f99',
   },
-  browse: {
+  library: {
     marginTop: 8,
-  },
-  browseHeading: {
-    margin: '0 0 12px',
-    fontSize: 18,
-    fontWeight: 700,
-    color: 'var(--ngsi-navy)',
   },
 }
