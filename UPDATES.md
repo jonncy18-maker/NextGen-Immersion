@@ -4,6 +4,45 @@ Updates are listed newest-first. Each entry covers what changed and who it affec
 
 ---
 
+## 2026-06-29 (Phase 24)
+
+### CEFR level system across the whole app
+**Affects:** All users
+
+The app now uses the international CEFR scale (A1 → C2) instead of the old DS-style labels. Each level maps to an hours milestone:
+
+| Level | Name | Hours |
+|---|---|---|
+| A1 | Starter | 0 – 150h |
+| A2 | Elementary | 150 – 300h |
+| B1 | Pre-Intermediate | 300 – 600h |
+| B2 | Upper Intermediate | 600 – 1,000h |
+| C1 | Advanced | 1,000 – 1,500h |
+| C2 | Mastery | 1,500h+ |
+
+What changed:
+- **Scholar Progress page** — level badge and milestone bar show CEFR codes (A1, A2…) with their descriptive names
+- **Watch tab** — level filter chips are now A1 / A2 / B1 / B2 / C1 / C2 (6 chips, multi-select)
+- **Admin dashboard** — scholar cards show CEFR level
+- **Videos** — all 51 existing library videos were re-tagged to CEFR level codes (no hours were deleted or changed)
+- **AI tagging** — new videos added via Discover & Import are tagged to CEFR levels automatically
+
+---
+
+### Admin mobile navigation — Videos and Goals tabs added
+**Affects:** Admin (mobile)
+
+The bottom navigation bar for admins now shows 5 tabs: **Watch · Progress · Dashboard · Videos · Goals**. Previously only Dashboard was visible (Videos and Goals were desktop-only). All admin tabs are now reachable from mobile.
+
+---
+
+### CEFR level chips in Discover & Import
+**Affects:** Admin (Discover & Import tab)
+
+A row of CEFR level chips (A1 / A2 / B1 / B2 / C1 / C2) now appears above the YouTube search box. Clicking a chip instantly searches for level-appropriate English content. Clicking it again clears the search. Works independently of the scholar context selector — useful for finding content at a specific level without selecting a scholar first.
+
+---
+
 ## 2026-06-29
 
 ### Hours broken down by 4 categories

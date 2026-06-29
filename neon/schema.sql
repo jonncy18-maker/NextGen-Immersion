@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS channels (
   youtube_channel_id  text UNIQUE NOT NULL,
   name                text NOT NULL,
   language            text NOT NULL DEFAULT 'english',
-  level               text CHECK (level IN ('super_beginner','beginner','intermediate','advanced')),
+  level               text CHECK (level IN ('a1','a2','b1','b2','c1','c2')),
   added_by            uuid REFERENCES users(id) ON DELETE SET NULL,
   created_at          timestamptz NOT NULL DEFAULT now()
 );
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS videos (
   language          text NOT NULL DEFAULT 'english',
 
   level             text NOT NULL
-                    CHECK (level IN ('super_beginner','beginner','intermediate','advanced')),
+                    CHECK (level IN ('a1','a2','b1','b2','c1','c2')),
   level_source      text NOT NULL DEFAULT 'ai'
                     CHECK (level_source IN ('ai','channel','admin')),
 
@@ -149,7 +149,7 @@ CREATE INDEX IF NOT EXISTS sessions_started_idx  ON watch_sessions (started_at D
 CREATE TABLE IF NOT EXISTS program_goals (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   target_level    text NOT NULL
-                  CHECK (target_level IN ('beginner','intermediate','advanced')),
+                  CHECK (target_level IN ('a1','a2','b1','b2','c1','c2')),
   target_hours    integer NOT NULL CHECK (target_hours > 0),
   target_date     date NOT NULL,
   language        text NOT NULL DEFAULT 'english',
@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTS scholar_goals (
   user_id         uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   program_goal_id uuid NOT NULL REFERENCES program_goals(id) ON DELETE CASCADE,
   start_date      date,                          -- admin-set; NULL = not started
-  target_level    text CHECK (target_level IN ('beginner','intermediate','advanced')),
+  target_level    text CHECK (target_level IN ('a1','a2','b1','b2','c1','c2')),
   target_hours    integer CHECK (target_hours IS NULL OR target_hours > 0),
   target_date     date,
   language        text NOT NULL DEFAULT 'english',

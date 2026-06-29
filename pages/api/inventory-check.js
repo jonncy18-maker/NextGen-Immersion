@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     GROUP BY level
   `
 
-  const levels = { super_beginner: 0, beginner: 0, intermediate: 0, advanced: 0 }
+  const levels = { a1: 0, a2: 0, b1: 0, b2: 0, c1: 0, c2: 0 }
   for (const row of rows) {
     if (Object.prototype.hasOwnProperty.call(levels, row.level)) {
       levels[row.level] = row.count

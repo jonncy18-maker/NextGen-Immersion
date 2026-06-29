@@ -6,11 +6,17 @@ const scholarTabs = [
   { to: '/progress', icon: '◎', label: 'Progress' },
 ]
 
-const adminTab = { to: '/admin/progress', icon: '⚙', label: 'Admin' }
+const adminTabs = [
+  { to: '/watch', icon: '▶', label: 'Watch' },
+  { to: '/progress', icon: '◎', label: 'Progress' },
+  { to: '/admin/progress', icon: '⊞', label: 'Dashboard' },
+  { to: '/admin/videos', icon: '▤', label: 'Videos' },
+  { to: '/admin/goals', icon: '◈', label: 'Goals' },
+]
 
 export default function BottomNav() {
   const { role } = useAuth()
-  const tabs = role === 'admin' ? [...scholarTabs, adminTab] : scholarTabs
+  const tabs = role === 'admin' ? adminTabs : scholarTabs
 
   return (
     <nav className="ngsi-hide-desktop" style={styles.nav}>

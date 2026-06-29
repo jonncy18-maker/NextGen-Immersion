@@ -12,9 +12,12 @@ const DURATION_OPTIONS = [
 ]
 
 const LEVELS = [
-  { value: 'beginner',     label: 'Beginner' },
-  { value: 'intermediate', label: 'Intermediate' },
-  { value: 'advanced',     label: 'Advanced' },
+  { value: 'a1', label: 'A1' },
+  { value: 'a2', label: 'A2' },
+  { value: 'b1', label: 'B1' },
+  { value: 'b2', label: 'B2' },
+  { value: 'c1', label: 'C1' },
+  { value: 'c2', label: 'C2' },
 ]
 
 function TopicMultiSelect({ selected, onChange }) {

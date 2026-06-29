@@ -6,48 +6,66 @@ import { useScholars } from '../../hooks/useScholars.js'
 
 const LEVEL_LABELS = Object.fromEntries(LEVELS.map((l) => [l.id, l.label]))
 const LEVEL_COLORS = {
-  super_beginner: '#5B8DB8',
-  beginner: '#4DA67A',
-  intermediate: '#C9A84C',
-  advanced: '#C0524A',
+  a1: '#5B8DB8',
+  a2: '#4a9fc4',
+  b1: '#4DA67A',
+  b2: '#C9A84C',
+  c1: '#C0524A',
+  c2: '#8B3A8B',
 }
 
-// CEFR range prefix injected into topic queries when a scholar is selected.
+// CEFR code injected into topic queries when a scholar is selected.
 const CEFR_PREFIX = {
-  super_beginner: 'A1 A2',
-  beginner: 'A2 B1',
-  intermediate: 'B1 B2',
-  advanced: 'B2 C1',
+  a1: 'A1',
+  a2: 'A2',
+  b1: 'B1',
+  b2: 'B2',
+  c1: 'C1',
+  c2: 'C2',
 }
 
 const LEVEL_QUERY_CHIPS = {
-  super_beginner: [
+  a1: [
     'slow English for beginners',
     'basic English conversation A1',
     'simple English sentences',
     'English for absolute beginners',
-    'easy English listening A2',
+    'A1 English listening practice',
   ],
-  beginner: [
-    'easy English conversation',
-    'A2 B1 English practice',
+  a2: [
+    'easy English conversation A2',
     'English for daily life',
     'slow English listening',
-    'simple English stories',
+    'simple English stories A2',
+    'A2 English practice',
   ],
-  intermediate: [
-    'B1 B2 English conversation',
+  b1: [
+    'B1 English conversation',
+    'English podcast beginner intermediate',
+    'real English listening B1',
+    'English for daily work',
+    'B1 English fluency',
+  ],
+  b2: [
+    'B2 English conversation',
+    'upper intermediate English',
     'English podcast intermediate',
-    'real English listening',
-    'English for work intermediate',
-    'English fluency practice',
+    'B2 English listening',
+    'natural English conversation',
   ],
-  advanced: [
-    'advanced English conversation',
+  c1: [
+    'advanced English conversation C1',
     'native speed English',
     'English news analysis',
     'academic English listening',
-    'English discussion debate',
+    'C1 English discussion',
+  ],
+  c2: [
+    'C2 English mastery',
+    'native English podcast',
+    'advanced academic English',
+    'English debate discussion',
+    'native speaker English',
   ],
 }
 
@@ -184,7 +202,7 @@ function ScholarContext({ onChipClick }) {
 
       {/* Topic chips — always shown; query includes CEFR prefix when scholar is selected */}
       <p style={ctxStyles.sectionLabel}>
-        Topics{level ? ` · combined with ${CEFR_PREFIX[level.id]}` : ' · click to search'}
+        Topics{level ? ` · combined with ${CEFR_PREFIX[level.id] || level.label}` : ' · click to search'}
       </p>
       {TOPIC_CATEGORIES.map((cat) => (
         <div key={cat.key} style={ctxStyles.topicGroup}>
@@ -325,10 +343,20 @@ function ResultCard({ item, onAdd }) {
   )
 }
 
+const CEFR_LEVEL_CHIPS = [
+  { id: 'a1', label: 'A1', query: 'A1 English listening practice beginner' },
+  { id: 'a2', label: 'A2', query: 'A2 English listening elementary' },
+  { id: 'b1', label: 'B1', query: 'B1 English conversation pre-intermediate' },
+  { id: 'b2', label: 'B2', query: 'B2 English listening upper intermediate' },
+  { id: 'c1', label: 'C1', query: 'C1 advanced English conversation' },
+  { id: 'c2', label: 'C2', query: 'C2 mastery English native speaker' },
+]
+
 export default function AddVideoPanel() {
   const [query, setQuery] = useState('')
   const [searchState, setSearchState] = useState('idle') // idle | loading | done | quota | unavailable
   const [results, setResults] = useState([])
+  const [activeLevelChip, setActiveLevelChip] = useState(null)
 
   const doSearch = useCallback(async (q) => {
     if (!q.trim()) {
@@ -352,6 +380,7 @@ export default function AddVideoPanel() {
   const handleChange = (e) => {
     const val = e.target.value
     setQuery(val)
+    setActiveLevelChip(null)
     debouncedSearch(val)
   }
 
@@ -365,14 +394,51 @@ export default function AddVideoPanel() {
   const handleChipClick = useCallback(
     (chip) => {
       setQuery(chip)
+      setActiveLevelChip(null)
       doSearch(chip)
     },
     [doSearch],
   )
 
+  const handleLevelChip = useCallback(
+    (chip) => {
+      const isActive = activeLevelChip === chip.id
+      if (isActive) {
+        setActiveLevelChip(null)
+        setQuery('')
+        setResults([])
+        setSearchState('idle')
+      } else {
+        setActiveLevelChip(chip.id)
+        setQuery(chip.query)
+        doSearch(chip.query)
+      }
+    },
+    [activeLevelChip, doSearch],
+  )
+
   return (
     <div style={panelStyles.wrap}>
       <ScholarContext onChipClick={handleChipClick} />
+
+      {/* CEFR level filter chips */}
+      <div style={panelStyles.cefrRow}>
+        <span style={panelStyles.cefrLabel}>Level</span>
+        {CEFR_LEVEL_CHIPS.map((chip) => (
+          <button
+            key={chip.id}
+            style={{
+              ...panelStyles.cefrChip,
+              background: activeLevelChip === chip.id ? LEVEL_COLORS[chip.id] : '#fff',
+              color: activeLevelChip === chip.id ? '#fff' : 'var(--ngsi-navy)',
+              borderColor: LEVEL_COLORS[chip.id],
+            }}
+            onClick={() => handleLevelChip(chip)}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
 
       <div style={panelStyles.searchRow}>
         <input
@@ -477,6 +543,26 @@ const ctxStyles = {
 
 const panelStyles = {
   wrap: { display: 'flex', flexDirection: 'column', gap: 12 },
+  cefrRow: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' },
+  cefrLabel: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#8a8f99',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    marginRight: 2,
+  },
+  cefrChip: {
+    padding: '4px 10px',
+    fontSize: 12,
+    fontWeight: 600,
+    border: '1.5px solid',
+    borderRadius: 5,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    lineHeight: 1.4,
+    transition: 'background 0.12s, color 0.12s',
+  },
   searchRow: { display: 'flex', gap: 8 },
   input: {
     flex: 1,

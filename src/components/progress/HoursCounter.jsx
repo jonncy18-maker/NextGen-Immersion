@@ -1,5 +1,6 @@
 import { formatHoursDisplay } from '../../utils/timeFormat.js'
 import { getPaceColor, getPaceLabel } from '../../utils/pace.js'
+import { LEVELS } from '../../utils/levels.js'
 
 export default function HoursCounter({
   currentHours,
@@ -71,9 +72,10 @@ export default function HoursCounter({
     textTransform: 'uppercase',
   }
 
-  const targetLevelLabel = targetLevel
-    ? targetLevel.charAt(0).toUpperCase() + targetLevel.slice(1).replace('_', ' ')
-    : null
+  const targetLevelObj = targetLevel ? LEVELS.find(l => l.id === targetLevel) : null
+  const targetLevelLabel = targetLevelObj
+    ? `${targetLevelObj.label} ${targetLevelObj.name}`
+    : targetLevel || null
 
   return (
     <div style={containerStyle}>
@@ -82,7 +84,7 @@ export default function HoursCounter({
       {currentLevel && (
         <span style={levelBadgeStyle}>
           {currentLevel.label}
-          <span style={cefrTagStyle}>{currentLevel.cefr}</span>
+          <span style={cefrTagStyle}>{currentLevel.name}</span>
         </span>
       )}
 

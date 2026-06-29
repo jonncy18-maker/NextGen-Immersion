@@ -14,7 +14,7 @@ import { verifySession } from '../../lib/api/_auth.js'
 //         targetVideoHours, targetChatgptHours, targetMentorHours }
 //      → upserts scholar_goals; all fields except userId are optional
 
-const VALID_LEVELS = ['beginner', 'intermediate', 'advanced']
+const VALID_LEVELS = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2']
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
