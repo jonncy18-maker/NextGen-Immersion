@@ -9,7 +9,7 @@ import { verifySession } from '../../lib/api/_auth.js'
 // new active goal (and deactivating the old one) would orphan every existing
 // scholar to PENDING. Updating in place keeps all scholar links valid.
 
-const TARGET_LEVELS = ['beginner', 'intermediate', 'advanced']
+const TARGET_LEVELS = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2']
 
 export default async function handler(req, res) {
   const authUser = await verifySession(req.headers.authorization)

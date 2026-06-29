@@ -2,7 +2,7 @@ import { getDb } from '../../lib/api/_db.js'
 import { verifyAdmin } from '../../lib/api/_auth.js'
 import { TOPIC_TAGS } from '../../lib/api/_tag.js'
 
-const VALID_LEVELS = ['super_beginner', 'beginner', 'intermediate', 'advanced']
+const VALID_LEVELS = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2']
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })

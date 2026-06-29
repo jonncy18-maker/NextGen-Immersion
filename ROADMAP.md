@@ -308,6 +308,9 @@ Status: **DONE** (Jun 2026 — approach #1, Next.js migration; verified in produ
 | Jun 2026 | Phase 15 | Per-scholar program goals | 1 | Schema: added target_level/target_hours/target_date to scholar_goals (ADD COLUMN IF NOT EXISTS). scholar_pace view rewritten with COALESCE(sg.*, pg.*) fallback — per-scholar values win, program_goals stays as fallback FK. scholar-goal.js: added GET; POST upserts all four goal fields. program-goal.js: applyToAll action stamps template onto all scholar_goals rows. GoalEditor.jsx: ScholarGoalRow gains three labeled inputs + Apply template button. scholars.js + progress.js unchanged (view rewrite covers them). Isolated audit PASS (8/8 SC); next build PASS. |
 | Jun 2026 | Phase 16 | External hours logging | 1 | Schema: external_sessions table (8 cols, user_id index); user_total_hours view replaced with UNION ALL(watch_sessions, external_sessions) so scholar_pace picks up external hours automatically. log-external.js (new): POST; scholar forced to own userId; admin can log for any scholar; validates session_type enum + durationMinutes + sessionDate + notes; returns inserted row. progress.js: 3 parallel queries; adds user_id + video_hours_this_week + external_hours_this_week to response. ExternalHoursButton.jsx (new): modal with 4 inputs, POST, onLogged callback. Progress.jsx + AdminProgress.jsx: button added to normal/drill-down state. WeekStats.jsx: breakdown chip when external > 0. Audit PASS (9/9 SC); next build PASS. |
 | Jun 2026 | Phase 17 | Unified Watch + Browse tab | 1 | FilterDropdowns.jsx (new): 3 compact select elements replacing chip-row FilterBar — Topics with hierarchical optgroup per TOPIC_CATEGORIES, Level with CEFR labels, Watched defaulting to Unwatched. Watch.jsx refactored as unified Watch+Browse page; filter state changed from topics[] to single topic string; filtering/sort logic preserved. Browse.jsx replaced with Navigate redirect to /watch. App.jsx: /browse route is a Navigate redirect; Browse import removed. Sidebar.jsx + BottomNav.jsx: Browse link/tab removed — scholar nav is Watch + Progress only. No API changes, no schema changes. Audit PASS (10/10 SC); next build PASS. |
+| Jun 2026 | Phase 17 (cont.) | Multi-select level chips + topic multi-select on Watch tab | — | FilterDropdowns.jsx: level filter refactored into 6 toggle chips (A1/A2/B1/B2/C1/C2) with multi-select; topic filter added as structured dropdown with grouped checkboxes (multi-select). Topic search filter retained as secondary AND filter. `filters.level` changed from string to string[]. Watch.jsx updated for multi-select includes() checks. `next build` PASS. |
+| Jun 2026 | Phase 17 (cont.) | 4-category hours breakdown | — | Added library_hours + video_external_hours + chatgpt_hours + mentor_hours to progress.js and scholars.js responses. CategoryBreakdown.jsx updated to always show all 4 rows (removed guard). Scholar Progress page and Admin drill-down both show hours by category. `next build` PASS. |
+| Jun 2026 | Phase 24 | CEFR level system + admin mobile nav + Discover level chips | — | Replaced DS-style 4-level system (super_beginner/beginner/intermediate/advanced) with 6 CEFR levels (a1–c2) mapped to hours milestones (A1=0h, A2=150h, B1=300h, B2=600h, C1=1000h, C2=1500h). DB migration: dropped and re-added CHECK constraints on videos.level, channels.level, program_goals.target_level, scholar_goals.target_level; data migrated (51 videos preserved, 0 hours deleted). levels.js rewritten with CEFR ids + name field; _tag.js prompt + fallbacks updated; FilterDropdowns.jsx level chips updated to 6 CEFR chips; Watch.jsx super_beginner mapping removed; HoursCounter.jsx uses level.name instead of level.cefr + proper targetLevelLabel lookup; MilestoneBar max-level text updated; VideoLibraryEditor + AddVideoPanel + inventory-check.js LEVEL_COLORS keys updated. Admin BottomNav expanded from 3 tabs (Watch/Progress/Admin) to 5 (Watch/Progress/Dashboard/Videos/Goals). CEFR level chips row added to Discover & Import search area with toggle-to-search behavior. schema.sql updated. `next build` PASS. |
 
 ---
 
@@ -597,7 +600,31 @@ Status: **DONE** (Jun 2026 — via agentic loop, 1 iteration, audit PASS). Pure 
 
 ---
 
-## Phase 24 — Duration Filter Slider in Admin Video Search
+## Phase 24 — CEFR Level System + Admin Mobile Nav + Discover Level Chips
+
+**Loop goal:** "Replace the DS-style level system with CEFR levels (A1–C2) mapped to hours milestones. Add Videos and Goals to the admin mobile nav. Add standalone CEFR level chips to the Discover & Import search."
+
+**Background:** The original 4 levels (Super Beginner/Beginner/Intermediate/Advanced) were rough DS-style buckets. CEFR provides internationally recognized levels that map cleanly to hours and communicate progress more precisely. Smaller increments (6 levels vs. 4) also give scholars more frequent milestones and oxytocin hits for incremental progress.
+
+Deliverables:
+- `src/utils/levels.js` — 6 CEFR levels: a1 (0h), a2 (150h), b1 (300h), b2 (600h), c1 (1000h), c2 (1500h). Each has `id`, `label` (the CEFR code), and `name` (friendly description). No `cefr` field — the label IS the CEFR code.
+- `lib/api/_tag.js` — updated CEFR_MAP and LEVELS array; fallback default changed from 'beginner' to 'a2'.
+- `src/components/video/FilterDropdowns.jsx` — 6 CEFR chips (A1–C2) replacing the 3-tier filter.
+- `src/pages/Watch.jsx` — removed super_beginner→beginner mapping; direct level id filtering.
+- `src/components/layout/BottomNav.jsx` — admin gets 5 tabs: Watch, Progress, Dashboard, Videos, Goals.
+- `src/components/admin/AddVideoPanel.jsx` — LEVEL_COLORS and CEFR_PREFIX updated for new ids; standalone CEFR level chips row above the search box (toggleable; clicking searches for that level).
+- `pages/api/inventory-check.js` — levels object updated to new 6 keys.
+- `src/components/admin/VideoLibraryEditor.jsx` — LEVEL_COLORS keys updated.
+- `src/components/progress/HoursCounter.jsx` — uses `currentLevel.name` instead of removed `currentLevel.cefr`; targetLevelLabel lookup via LEVELS array.
+- `src/components/progress/MilestoneBar.jsx` — max-level text updated to "C2 Mastery — Maximum Level Reached".
+- `neon/schema.sql` — CHECK constraints updated to CEFR ids.
+- **DB migration** (live on Neon `silent-cherry-49841538`): dropped and re-added CHECK constraints; migrated 51 video rows (super_beginner→a1, beginner→a2, intermediate→b1, advanced→b2); program_goals.target_level migrated (intermediate→b1). No hours deleted, no session data touched.
+
+Status: **DONE** (Jun 2026). `next build` PASS.
+
+---
+
+## Phase 25 — Duration Filter Slider in Admin Video Search
 
 **Loop goal:** "Add a duration range slider to the admin 'Discover & Import' tab so the admin can filter YouTube search results by video length before adding them to the library. Range: < 5 min to > 30 min."
 
@@ -620,7 +647,7 @@ Status: **PLANNED**
 
 ---
 
-## Phase 25 — Watch Later / Library Module
+## Phase 26 — Watch Later / Library Module
 
 **Loop goal:** "Add a 'Watch Later' button below the YouTube video player on the Watch page. Saved videos appear in a new 'Library' module in the left sidebar and bottom nav, so scholars can build a personal queue and come back to it."
 
@@ -656,7 +683,7 @@ Status: **PLANNED**
 
 ---
 
-## Phase 26 — Video Resume Position ("Pick Up Where You Left Off")
+## Phase 27 — Video Resume Position ("Pick Up Where You Left Off")
 
 **Loop goal:** "When a scholar pauses or leaves a video mid-way, save their playback position. When they return to that video later, the player automatically seeks to where they stopped so they can pick up where they left off."
 

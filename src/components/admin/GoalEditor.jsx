@@ -12,9 +12,12 @@ import { getPaceColor, getPaceLabel } from '../../utils/pace.js'
 // Per-scholar target_level / target_hours / target_date COALESCE over the program goal.
 
 const TARGET_LEVELS = [
-  { id: 'beginner', label: 'Beginner (150h)' },
-  { id: 'intermediate', label: 'Intermediate (300h)' },
-  { id: 'advanced', label: 'Advanced (600h)' },
+  { id: 'a1', label: 'A1 Starter (150h)' },
+  { id: 'a2', label: 'A2 Elementary (300h)' },
+  { id: 'b1', label: 'B1 Pre-Intermediate (600h)' },
+  { id: 'b2', label: 'B2 Upper Intermediate (1000h)' },
+  { id: 'c1', label: 'C1 Advanced (1500h)' },
+  { id: 'c2', label: 'C2 Mastery (1500h+)' },
 ]
 
 function toDateInput(value) {
@@ -43,7 +46,7 @@ export default function GoalEditor() {
   const [error, setError] = useState(null)
 
   // Program-goal form state
-  const [form, setForm] = useState({ targetLevel: 'intermediate', targetHours: '300', targetDate: '' })
+  const [form, setForm] = useState({ targetLevel: 'b1', targetHours: '300', targetDate: '' })
   const [goalSave, setGoalSave] = useState('idle') // idle | saving | saved | error
   const [goalErr, setGoalErr] = useState(null)
 

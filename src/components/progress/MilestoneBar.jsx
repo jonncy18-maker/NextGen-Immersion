@@ -45,7 +45,7 @@ export default function MilestoneBar({ currentHours }) {
   if (!next) {
     return (
       <div style={containerStyle}>
-        <p style={advancedStyle}>Advanced — Maximum Level Reached</p>
+        <p style={advancedStyle}>C2 Mastery — Maximum Level Reached</p>
       </div>
     )
   }

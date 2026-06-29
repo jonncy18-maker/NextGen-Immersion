@@ -39,8 +39,7 @@ export default function Watch() {
 
   const { data: progress } = useProgress()
   const rawLevelId = progress ? getLevelForHours(progress.current_hours).id : null
-  // Map super_beginner → beginner so it matches the simplified 3-tier filter
-  const scholarLevelId = rawLevelId === 'super_beginner' ? 'beginner' : rawLevelId
+  const scholarLevelId = rawLevelId
   const nextLevelId = scholarLevelId ? getNextLevel(scholarLevelId)?.id ?? null : null
 
   // Default level filter to scholar's current level on first load
@@ -77,8 +76,7 @@ export default function Watch() {
         if (!filters.topic.includes(v.topic_primary) && !filters.topic.includes(v.topic_secondary)) return false
       }
       if (filters.level.length > 0) {
-        const vLevel = v.level === 'super_beginner' ? 'beginner' : v.level
-        if (!filters.level.includes(vLevel)) return false
+        if (!filters.level.includes(v.level)) return false
       }
       if (filters.duration && filters.duration !== 'any') {
         const secs = v.duration_seconds || 0

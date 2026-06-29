@@ -4,10 +4,12 @@ import { TOPIC_CATEGORIES, ALL_TOPICS, getTopicColor } from '../../utils/topics.
 import { LEVELS } from '../../utils/levels.js'
 
 const LEVEL_COLORS = {
-  super_beginner: '#5B8DB8',
-  beginner: '#4DA67A',
-  intermediate: '#C9A84C',
-  advanced: '#C0524A',
+  a1: '#5B8DB8',
+  a2: '#4a9fc4',
+  b1: '#4DA67A',
+  b2: '#C9A84C',
+  c1: '#C0524A',
+  c2: '#8B3A8B',
 }
 
 const LEVEL_LABELS = Object.fromEntries(LEVELS.map(l => [l.id, l.label]))
