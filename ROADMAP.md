@@ -377,6 +377,40 @@ Status: **PLANNED**
 
 ---
 
+## Phase 18 — Admin Video Library Editor (Tabs, Edit, Delete, Bulk Actions)
+
+**Loop goal:** "Add a tabbed layout to the Admin Videos page. The existing AI search + import content becomes the 'Discover & Import' tab. A new 'Manage Library' tab shows the full video library with single-select and multi-select editing: 3-dot menu per card (delete, change level, change topic), plus a bulk-action bar when multiple videos are selected."
+
+**Background:** The admin currently has no way to remove stale/wrong videos from the library or correct AI-tagged level/topic without deleting and re-adding. The existing `AddVideoPanel` (search + URL import + stale check) becomes one of two tabs; the new tab gives full CRUD over the existing library.
+
+Deliverables:
+- `src/pages/AdminVideos.jsx` — add tab bar at the top with two tabs:
+  - **"Discover & Import"** — wraps the existing `AddVideoPanel` content (AI search, URL import, stale check, inventory tools) unchanged.
+  - **"Manage Library"** — new tab, renders `VideoLibraryEditor`.
+- `src/components/admin/VideoLibraryEditor.jsx` (new) — shows the full video library in a grid:
+  - Each card is selectable (checkbox appears on hover / when any selection is active).
+  - **Single-select:** clicking a card's ⋯ (three-dot) button in the upper-right corner opens a popover menu:
+    - **Delete** — confirmation modal ("Remove this video from the library?") → soft-delete (sets `is_available=false`, preserves watch history; see design note below).
+    - **Change Level** — inline dropdown of the four CEFR levels; saves immediately; stamps `level_source='admin'` so re-classification doesn't overwrite it.
+    - **Change Topic** — inline dropdown of all topic values from the taxonomy; saves immediately.
+  - **Multi-select:** checking 2+ videos shows a sticky bulk-action bar above the grid with the same three actions:
+    - **Delete selected** — single confirmation for the batch.
+    - **Set Level** — level dropdown applies to all selected; stamps `level_source='admin'` on each.
+    - **Set Topic** — topic dropdown applies to all selected.
+  - Select-all checkbox in the bulk bar. Deselect-all clears selection and hides the bar.
+  - Filter/search within the tab (search by title, filter by level/topic/watched state) so admins can quickly find what they need in a large library.
+- `pages/api/delete-video.js` (new) — admin-only POST; accepts `{ videoIds: [...] }` (array, 1 or many); sets `is_available = false` + `unavailable_since = now()` on each. Does NOT hard-delete — watch history and cumulative hours must be preserved. Returns `{ deleted: N }`.
+- `pages/api/update-video.js` (new) — admin-only POST; accepts `{ videoIds: [...], level?: string, topic?: string }`; applies whichever fields are present; sets `level_source='admin'` when `level` is updated. Returns `{ updated: N }`.
+- Inventory badge in Navbar re-checks after any delete or level change (same `/api/inventory-check` call).
+
+**Design note — soft delete:** The existing roadmap note says "keep-forever (never delete)" to protect watch history and cumulative hours. Manual admin deletion uses the same `is_available=false` path as the stale checker — videos disappear from the scholar library and stop counting toward inventory, but `watch_sessions` rows are untouched and cumulative hours are unaffected. If a hard-delete is ever needed (duplicate imports), that's a future DBA operation outside the UI.
+
+**Design note — level_source:** Setting `level_source='admin'` on a bulk level-change marks those videos as admin-overridden, which means a future channel re-classification won't overwrite them (per the existing re-classification rule in CLAUDE.md).
+
+Status: **PLANNED**
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
