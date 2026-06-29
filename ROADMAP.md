@@ -194,7 +194,13 @@ Deliverables:
 - Breakpoints verified: 375 / 640 / 1024 / 1280 / 1920
 - Admin sidebar items hidden from scholar role
 
-Status: **NOT STARTED**
+Status: **DONE** (Jun 2026 — via agentic loop, 1 iteration, audit PASS). Full responsive layout shell:
+- `src/components/layout/Sidebar.jsx` (new) — 200px, cream-dark bg, gold active highlight (left border + tinted bg), Scholar section (Watch/Browse/Progress) + Admin section (Videos 🎬/Dashboard 📊/Goals 🎯) gated on `role==='admin'`; low-inventory red dot on Videos; hidden on mobile via `.ngsi-hide-mobile`.
+- `src/components/layout/BottomNav.jsx` (new) — fixed bottom, 56px, navy bg, 3 scholar tabs + 4th Admin tab for admins (→ `/admin/progress`); gold active tab; hidden on desktop via `.ngsi-hide-desktop`.
+- `src/components/layout/Navbar.jsx` — inline nav links and low-inventory logic removed (both moved to Sidebar); now: wordmark + admin pill + avatar + signout only.
+- `src/App.jsx` `AuthLayout` — flex column shell: Navbar / (Sidebar + main, maxWidth 1280 centered) / BottomNav. `<main>` gets `.ngsi-main-content` class.
+- `src/components/video/VideoGrid.jsx` — minmax tuned from 240px → 220px: 1-col mobile, 2-col tablet (440px content), 3-col desktop (824px content).
+- `src/styles/global.css` — `.ngsi-hide-mobile` / `.ngsi-hide-desktop` responsive helpers; `.ngsi-main-content` padding-bottom 64px on mobile to clear fixed bottom nav. Next.js build PASS.
 
 ---
 
@@ -283,6 +289,7 @@ Status: **DONE** (Jun 2026 — approach #1, Next.js migration; verified in produ
 | Jun 2026 | Phase 9 | Admin progress dashboard + goal editor (provisioning deferred) | 1 | AdminProgress (overview stats + ScholarCard grid + drill-down reusing HoursCounter/MilestoneBar/WeekStats), GoalEditor on /admin/goals (program goal + per-scholar start_date), useScholars hook, program-goal.js (POST updates active goal IN PLACE to preserve scholar_goals FK links), scholar-goal.js (upsert start_date ON CONFLICT (user_id, language)), Admin→/admin/progress redirect, Navbar Goals link. Both endpoints admin-only (401/403). Isolated audit PASS; next build PASS. Provisioning (provision-scholar.js + AddScholarPanel) deferred to its own PR for preview-deploy auth verification. |
 | Jun 2026 | Docs | Post-Phase-14 documentation sync | — | Updated CLAUDE.md (stack/structure/env/auth rules), ARCHITECTURE.md (system diagram + API layer + new Authentication section + routing), README.md (full setup/deploy guide), ROADMAP.md (Phase 14 DONE + this log) to reflect the Next.js/same-origin-auth reality. |
 | Jun 2026 | Phase 10 | Admin video management + AI-assisted search | 1 | Scholar context selector in AddVideoPanel (useScholars + getLevelForHours → level chips, immediate search on chip click). Import by URL section in AdminVideos (client-side video/playlist/channel URL parsing, POST youtube-import, shows imported/skipped). Library Tools section (stale check button → POST stale-check, shows flagged count). inventory-check.js (GET, available video counts per level). stale-check.js (batch 50 to YouTube status API, marks private/non-embeddable as unavailable, skip-on-error). Navbar low-inventory red dot badge on Videos link. Audit PASS; next build PASS. |
+| Jun 2026 | Phase 11 | Responsive layout + desktop sidebar | 1 | Sidebar.jsx (new, cream-dark, gold active, scholar+admin sections, low-inventory dot, hidden mobile). BottomNav.jsx (new, fixed bottom nav, 3/4 tabs, hidden desktop). Navbar stripped to wordmark+avatar+signout only. AuthLayout restructured: Navbar / (Sidebar+main, maxWidth 1280 centered) / BottomNav. VideoGrid minmax 240→220px for correct 2/3-col breakpoints with sidebar. global.css responsive helpers + mobile bottom-nav padding clearance. Audit PASS; next build PASS. |
 
 ---
 
