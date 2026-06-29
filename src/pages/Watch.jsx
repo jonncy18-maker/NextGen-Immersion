@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { getAuthToken } from '../lib/authToken.js'
 import VideoPlayer from '../components/player/VideoPlayer.jsx'
 import WatchTimer from '../components/player/WatchTimer.jsx'
@@ -26,6 +26,7 @@ export default function Watch() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
+  const playerRef = useRef(null)
   const [filters, setFilters] = useState({
     topic: null,
     level: null,
@@ -102,6 +103,11 @@ export default function Watch() {
     }
   }, [])
 
+  const handleSelect = useCallback(video => {
+    setSelected(video)
+    playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
   const { onPlayerStateChange, secondsThisSession, flushStatus } = useWatchSession(
     selected?.id ?? null,
     selected?.duration_seconds ?? 0,
@@ -124,7 +130,7 @@ export default function Watch() {
 
       <div style={styles.container}>
         {selected && (
-          <div style={styles.playerArea}>
+          <div ref={playerRef} style={styles.playerArea}>
             <IosPlaybackNotice />
             <VideoPlayer
               youtubeId={selected.youtube_id}
@@ -155,7 +161,7 @@ export default function Watch() {
           ) : (
             <VideoGrid
               videos={visibleVideos}
-              onSelect={setSelected}
+              onSelect={handleSelect}
               selectedId={selected?.id}
               onMark={handleMark}
             />
