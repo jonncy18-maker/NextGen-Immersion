@@ -53,6 +53,7 @@ export default function Navbar() {
               ? [
                   { to: '/admin/videos', label: 'Videos' },
                   { to: '/admin/progress', label: 'Dashboard' },
+                  { to: '/admin/goals', label: 'Goals' },
                 ]
               : []),
           ].map(({ to, label }) => (

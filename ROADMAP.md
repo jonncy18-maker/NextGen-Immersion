@@ -151,7 +151,14 @@ Deliverables:
 - Overview stats: total scholars, total hours, at-risk count
 - Data from /api/scholars (admin service role)
 
-Status: **NOT STARTED**
+Status: **IN PROGRESS** — Dashboard + goal editor DONE (Jun 2026, agentic loop, 1 iteration, isolated audit PASS). Provisioning (`provision-scholar.js` + `AddScholarPanel.jsx`) DEFERRED to a dedicated follow-up PR so the auth-touching create-scholar path gets its own Vercel preview-deploy verification (per the Phase 14 hard constraint on auth regressions). Built this round:
+- `src/pages/AdminProgress.jsx` — overview stats (total scholars / total hours / at-risk count) + responsive `ScholarCard` grid + click-through drill-down reusing the scholar Progress layout (`HoursCounter` + `MilestoneBar` + `WeekStats`) filtered to one scholar. Data from `/api/scholars`.
+- `src/components/admin/ScholarCard.jsx` — status-accented card: ON TRACK / AT RISK / PENDING pill, current vs expected hours, delta, this-week, last session.
+- `src/components/admin/GoalEditor.jsx` (on `src/pages/AdminGoals.jsx`, route `#/admin/goals`) — program-goal form (level/hours/date) + per-scholar `start_date` rows. start_date is the control that flips a scholar PENDING → ON_TRACK/AT_RISK.
+- `src/hooks/useScholars.js` — admin fetch of `/api/scholars`.
+- `pages/api/program-goal.js` — admin-only GET active goal + POST. **POST updates the active goal IN PLACE** (never insert-new + deactivate-old) so `scholar_goals.program_goal_id` FK links stay valid and existing scholars aren't orphaned to PENDING; inserts only when no active goal exists.
+- `pages/api/scholar-goal.js` — admin-only POST upserts `scholar_goals.start_date` (`ON CONFLICT (user_id, language)`), linking to the active program goal; clears to NULL/PENDING on empty date; 400 if no active program goal exists.
+- `src/pages/Admin.jsx` redirects `#/admin` → `#/admin/progress`; `Navbar` gains a Goals link. Both new endpoints: verifySession → 401, role check → 403; no secret returned. `next build` PASS.
 
 ---
 
@@ -267,6 +274,7 @@ Status: **DONE** (Jun 2026 — approach #1, Next.js migration; verified in produ
 | Jun 2026 | Phase 14 | Next.js migration — same-origin first-party auth | 1 | Migrated Vite SPA → Next.js 16 (App Router) to host Neon's createNeonAuth() same-origin handler (app/api/auth/[...path]), making the session cookie first-party so it survives refresh. Client → no-arg createAuthClient() from @neondatabase/auth/next. api/* → pages/api/* verbatim; shared helpers → lib/api/. Dropped Vite (index.html/main.jsx/vite.config). Two prior client-side bearer attempts reverted (regressed login). (PR #29.) |
 | Jun 2026 | Hotfix | Vercel preset + Preview env vars | — | Vercel project was pinned to Framework Preset = Vite → builds failed (looked for dist/); switched to Next.js. NEON_DATABASE_URL/NEON_AUTH_COOKIE_SECRET weren't scoped to Preview → /api/me 500 broke login on previews; scoped to Prod+Preview. Diagnosed via Vercel runtime logs (now visible since auth runs same-origin). |
 | Jun 2026 | Hotfix | /api/me 401 + refresh/first-login races | — | (a) /api/me 401 "Invalid Compact JWS": same-origin proxy doesn't surface set-auth-jwt header, so getAuthToken() fell back to the opaque session token — fixed by fetching GET /api/auth/token for a real JWT. (b) Refresh logout + first-sign-in-failure: route guard evaluated before auth settled — fixed via AuthContext roleLoading=true init and Login effect-based navigation. Verified in production. (PRs #29, #30.) |
+| Jun 2026 | Phase 9 | Admin progress dashboard + goal editor (provisioning deferred) | 1 | AdminProgress (overview stats + ScholarCard grid + drill-down reusing HoursCounter/MilestoneBar/WeekStats), GoalEditor on /admin/goals (program goal + per-scholar start_date), useScholars hook, program-goal.js (POST updates active goal IN PLACE to preserve scholar_goals FK links), scholar-goal.js (upsert start_date ON CONFLICT (user_id, language)), Admin→/admin/progress redirect, Navbar Goals link. Both endpoints admin-only (401/403). Isolated audit PASS; next build PASS. Provisioning (provision-scholar.js + AddScholarPanel) deferred to its own PR for preview-deploy auth verification. |
 | Jun 2026 | Docs | Post-Phase-14 documentation sync | — | Updated CLAUDE.md (stack/structure/env/auth rules), ARCHITECTURE.md (system diagram + API layer + new Authentication section + routing), README.md (full setup/deploy guide), ROADMAP.md (Phase 14 DONE + this log) to reflect the Next.js/same-origin-auth reality. |
 
 ---

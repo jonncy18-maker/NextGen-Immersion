@@ -1,5 +1,208 @@
-import Placeholder from './Placeholder.jsx';
+import { useState } from 'react'
+import { useScholars } from '../hooks/useScholars.js'
+import ScholarCard from '../components/admin/ScholarCard.jsx'
+import HoursCounter from '../components/progress/HoursCounter.jsx'
+import MilestoneBar from '../components/progress/MilestoneBar.jsx'
+import WeekStats from '../components/progress/WeekStats.jsx'
+import { getLevelForHours, getNextLevel } from '../utils/levels.js'
+import { formatHoursShort } from '../utils/timeFormat.js'
 
 export default function AdminProgress() {
-  return <Placeholder label="Admin Progress" />;
+  const { data, loading, error, refetch } = useScholars()
+  const [selected, setSelected] = useState(null)
+
+  if (loading) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <div style={styles.center}>
+            <div style={styles.spinner} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <p style={styles.centerText}>Loading scholars…</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.container}>
+          <div style={styles.center}>
+            <p style={styles.centerText}>Couldn&apos;t load the dashboard.</p>
+            <button style={styles.retryBtn} onClick={refetch}>
+              Try again
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const scholars = data || []
+
+  // Drill-down: scholar Progress layout, filtered to one scholar.
+  if (selected) {
+    const currentHours = Number(selected.current_hours ?? 0)
+    const currentLevel = getLevelForHours(currentHours)
+    const nextLevel = getNextLevel(currentLevel.id)
+    return (
+      <div style={styles.page}>
+        <div style={styles.detailContainer}>
+          <button style={styles.backBtn} onClick={() => setSelected(null)}>
+            ← All scholars
+          </button>
+          <h1 style={styles.title}>{selected.scholar_name || 'Scholar'}</h1>
+
+          <div style={styles.card}>
+            <HoursCounter
+              currentHours={currentHours}
+              currentLevel={currentLevel}
+              nextLevel={nextLevel}
+              targetHours={selected.target_hours}
+              targetLevel={selected.target_level}
+              status={selected.status}
+            />
+            <MilestoneBar currentHours={currentHours} />
+          </div>
+
+          <div style={styles.card}>
+            <WeekStats
+              hoursThisWeek={Number(selected.hours_this_week ?? 0)}
+              targetHours={selected.target_hours}
+              startDate={selected.start_date}
+              targetDate={selected.target_date}
+              lastSessionAt={selected.last_session_at}
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Overview stats
+  const totalScholars = scholars.length
+  const totalHours = scholars.reduce((sum, s) => sum + Number(s.current_hours ?? 0), 0)
+  const atRisk = scholars.filter((s) => s.status === 'AT_RISK').length
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.container}>
+        <h1 style={styles.title}>Scholar Dashboard</h1>
+
+        <div style={styles.statsRow}>
+          <StatCard label="Scholars" value={String(totalScholars)} />
+          <StatCard label="Total Hours" value={formatHoursShort(totalHours)} />
+          <StatCard
+            label="At Risk"
+            value={String(atRisk)}
+            accent={atRisk > 0 ? '#C95B3A' : '#1D9E75'}
+          />
+        </div>
+
+        {scholars.length === 0 ? (
+          <div style={styles.empty}>
+            <p style={styles.emptyText}>No scholars yet.</p>
+            <p style={styles.emptySub}>
+              Scholars appear here once they&apos;re provisioned and assigned the program goal.
+            </p>
+          </div>
+        ) : (
+          <div style={styles.grid}>
+            {scholars.map((s) => (
+              <ScholarCard key={s.user_id} scholar={s} onSelect={setSelected} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ label, value, accent }) {
+  return (
+    <div style={styles.statCard}>
+      <p style={styles.statLabel}>{label}</p>
+      <p style={{ ...styles.statValue, ...(accent ? { color: accent } : {}) }}>{value}</p>
+    </div>
+  )
+}
+
+const styles = {
+  page: { minHeight: 'calc(100vh - 56px)', background: 'var(--ngsi-cream)' },
+  container: { maxWidth: 960, margin: '0 auto', padding: 24 },
+  detailContainer: { maxWidth: 640, margin: '0 auto', padding: 24 },
+  title: { margin: '0 0 18px', fontSize: 24, fontWeight: 700, color: 'var(--ngsi-navy)', fontFamily: 'Georgia, serif' },
+  statsRow: { display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 24 },
+  statCard: {
+    flex: '1 1 140px',
+    background: '#fff',
+    border: '1px solid #e8e3da',
+    borderRadius: 12,
+    padding: '16px 18px',
+    boxShadow: '0 1px 4px rgba(22,32,64,0.08)',
+  },
+  statLabel: {
+    margin: '0 0 6px',
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#8a8f99',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  statValue: { margin: 0, fontSize: 28, fontWeight: 700, color: 'var(--ngsi-navy)', fontFamily: 'Georgia, serif' },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: 16,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    boxShadow: '0 1px 4px rgba(22,32,64,0.08)',
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  backBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'var(--ngsi-navy)',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    padding: '4px 0',
+    marginBottom: 8,
+    fontFamily: 'inherit',
+  },
+  empty: { textAlign: 'center', padding: '48px 24px' },
+  emptyText: { margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--ngsi-navy)' },
+  emptySub: { margin: 0, fontSize: 13, color: '#8a8f99' },
+  center: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '40vh',
+    gap: 16,
+  },
+  spinner: {
+    width: 40,
+    height: 40,
+    border: '4px solid #ede7d9',
+    borderTop: '4px solid #162040',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+  },
+  centerText: { color: 'var(--ngsi-navy)', fontSize: 14, margin: 0 },
+  retryBtn: {
+    padding: '8px 18px',
+    fontSize: 13,
+    fontWeight: 600,
+    border: 'none',
+    borderRadius: 6,
+    background: 'var(--ngsi-navy)',
+    color: '#fff',
+    cursor: 'pointer',
+  },
 }
