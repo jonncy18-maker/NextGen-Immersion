@@ -307,6 +307,7 @@ Status: **DONE** (Jun 2026 — approach #1, Next.js migration; verified in produ
 | Jun 2026 | Phase 13 | Polish + launch prep | 1 | ErrorBoundary (class, branded reload fallback) wrapped outermost in App.jsx. VideoGridSkeleton (shimmer cards mirroring VideoGrid/VideoCard; `.ngsi-skeleton` + `@keyframes ngsi-shimmer` in global.css + prefers-reduced-motion) replaces bare "Loading…" on Watch+Browse. EmptyState shown when the unfiltered library is empty (distinct from VideoGrid's filtered-empty message); branch order error→loading→empty→grid. IosPlaybackNotice (iOS-only, dismissible, localStorage-persisted) above the player on Watch. README Notes section. Vercel deploy/env + README setup already done in Phase 14. Isolated audit PASS; next build PASS. |
 | Jun 2026 | Phase 15 | Per-scholar program goals | 1 | Schema: added target_level/target_hours/target_date to scholar_goals (ADD COLUMN IF NOT EXISTS). scholar_pace view rewritten with COALESCE(sg.*, pg.*) fallback — per-scholar values win, program_goals stays as fallback FK. scholar-goal.js: added GET; POST upserts all four goal fields. program-goal.js: applyToAll action stamps template onto all scholar_goals rows. GoalEditor.jsx: ScholarGoalRow gains three labeled inputs + Apply template button. scholars.js + progress.js unchanged (view rewrite covers them). Isolated audit PASS (8/8 SC); next build PASS. |
 | Jun 2026 | Phase 16 | External hours logging | 1 | Schema: external_sessions table (8 cols, user_id index); user_total_hours view replaced with UNION ALL(watch_sessions, external_sessions) so scholar_pace picks up external hours automatically. log-external.js (new): POST; scholar forced to own userId; admin can log for any scholar; validates session_type enum + durationMinutes + sessionDate + notes; returns inserted row. progress.js: 3 parallel queries; adds user_id + video_hours_this_week + external_hours_this_week to response. ExternalHoursButton.jsx (new): modal with 4 inputs, POST, onLogged callback. Progress.jsx + AdminProgress.jsx: button added to normal/drill-down state. WeekStats.jsx: breakdown chip when external > 0. Audit PASS (9/9 SC); next build PASS. |
+| Jun 2026 | Phase 17 | Unified Watch + Browse tab | 1 | FilterDropdowns.jsx (new): 3 compact select elements replacing chip-row FilterBar — Topics with hierarchical optgroup per TOPIC_CATEGORIES, Level with CEFR labels, Watched defaulting to Unwatched. Watch.jsx refactored as unified Watch+Browse page; filter state changed from topics[] to single topic string; filtering/sort logic preserved. Browse.jsx replaced with Navigate redirect to /watch. App.jsx: /browse route is a Navigate redirect; Browse import removed. Sidebar.jsx + BottomNav.jsx: Browse link/tab removed — scholar nav is Watch + Progress only. No API changes, no schema changes. Audit PASS (10/10 SC); next build PASS. |
 
 ---
 
@@ -390,7 +391,13 @@ Deliverables:
 
 **Design note:** The three top-level topic buckets map directly to the existing color system (blue OET/Career, green Daily Life, gray Compelling Interests). The sub-category labels inside the dropdown do not need color coding — only the topic chips on the VideoCard keep their colors.
 
-Status: **PLANNED**
+Status: **DONE** (Jun 2026 — via agentic loop, 1 iteration, audit PASS). Merged Watch and Browse into one unified Watch page:
+- `src/components/video/FilterDropdowns.jsx` (new) — three `<select>` dropdowns replacing the chip-row FilterBar: Topics uses `<optgroup>` per `TOPIC_CATEGORIES` (OET/Career, Daily Life, Compelling Interest) with all topics as options; Level shows label + CEFR range; Watched defaults to Unwatched. No hardcoded labels — driven by `utils/topics.js` and `utils/levels.js`.
+- `src/pages/Watch.jsx` — filter state changed from `{ topics: [] }` to `{ topic: null }` (single-select); filtering logic updated accordingly; uses FilterDropdowns; "Browse the library" heading removed; all player/timer/mark/complete logic and scholar-level-first sort unchanged.
+- `src/pages/Browse.jsx` — replaced with `<Navigate to="/watch" replace />`.
+- `src/App.jsx` — Browse import removed; `/browse` route is a `<Navigate to="/watch" replace />`.
+- `src/components/layout/Sidebar.jsx` — Browse SidebarLink removed; Scholar section is Watch + Progress.
+- `src/components/layout/BottomNav.jsx` — Browse tab removed; scholar tabs are Watch + Progress. No API changes, no schema changes. `next build` PASS.
 
 ---
 
