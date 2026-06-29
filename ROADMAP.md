@@ -555,6 +555,65 @@ Status: **PLANNED**
 
 ---
 
+## Phase 23 — Duration Filter Slider in Admin Video Search
+
+**Loop goal:** "Add a duration range slider to the admin 'Discover & Import' tab so the admin can filter YouTube search results by video length before adding them to the library. Range: < 5 min to > 30 min."
+
+**Background:** The YouTube Data API's `videoDuration` parameter only offers three coarse buckets (`short` < 4 min, `medium` 4–20 min, `long` > 20 min). For CI purposes, the sweet spot is usually 5–20 min clips — short enough to be digestible, long enough to provide real input. The admin needs finer control. Since `api/youtube-search.js` already makes a `videos.list` call (to get `contentDetails` for the music-category filter), we can parse `contentDetails.duration` (ISO 8601) at the same time and filter by the admin's chosen range server-side before returning results.
+
+Deliverables:
+- `pages/api/youtube-search.js` — parse `contentDetails.duration` (ISO 8601 → total seconds) for each result already fetched via `videos.list`. Accept optional `minDuration` and `maxDuration` query params (in seconds). Filter out videos outside the range before returning. Return `duration_seconds` on each result so the client can display it. `maxDuration` already exists as a param on `youtube-import.js` (capped at 1800s = 30 min for imports) — apply the same parsing utility here.
+- `src/utils/duration.js` (new, or add to `timeFormat.js`) — `parseIso8601Duration(str)` → total seconds; `formatDuration(seconds)` → "4:32" / "1h 2m" display string. Single source of truth used by both the API layer and the UI.
+- `src/components/admin/DurationSlider.jsx` (new) — dual-handle range slider:
+  - Min handle: 0 to 60 min, default 0 (no minimum).
+  - Max handle: 0 to 60 min (with an "Any" / > 60 min option at the top end), default 30 min.
+  - Labels: "< 5 min", "5 min", "10 min", "15 min", "20 min", "30 min", "> 30 min" as snap points or tick marks.
+  - Live label shows the selected range: e.g. "5 – 20 min" or "Any – 15 min".
+- `src/components/admin/AddVideoPanel.jsx` — add `DurationSlider` above or beside the search input. On search (debounced or chip click), pass the slider values as `minDuration` / `maxDuration` to the `/api/youtube-search` GET call. Search results re-fire automatically when the slider changes (same debounce pattern as the text input).
+- Each search result card displays the video duration (e.g. "12:34") alongside the existing level badge and topic chips.
+
+**Design note:** The slider filters search results, not the existing library. It has no effect on the scholar-facing library or the Manage Library tab — those don't surface duration and the existing library content is already curated.
+
+Status: **PLANNED**
+
+---
+
+## Phase 24 — Watch Later / Library Module
+
+**Loop goal:** "Add a 'Watch Later' button below the YouTube video player on the Watch page. Saved videos appear in a new 'Library' module in the left sidebar and bottom nav, so scholars can build a personal queue and come back to it."
+
+**Background:** Scholars browse the library and may want to save a video for later without watching it immediately — especially when they find something at the right level but don't have time right now. A lightweight bookmarking layer (Watch Later) gives them a personal queue separate from the full library grid. It is scoped to the individual scholar; admins do not manage it.
+
+Deliverables:
+- **Schema:** new `watch_later` table — `id` (serial), `user_id` (references `public.users.id`), `video_id` (references `videos.id`), `added_at` (timestamptz default now()). Unique constraint on `(user_id, video_id)`. Index on `user_id`.
+- `pages/api/watch-later.js` — JWT-auth, scholar-scoped:
+  - `GET` — returns the scholar's watch-later list (video rows joined with video metadata, ordered by `added_at DESC`).
+  - `POST { videoId }` — adds a video; `ON CONFLICT (user_id, video_id) DO NOTHING` for idempotency.
+  - `DELETE { videoId }` — removes a video.
+- `src/hooks/useWatchLater.js` (new) — fetches `GET /api/watch-later`; exposes `{ items, add, remove, isAdded(videoId) }`. `add`/`remove` call the API and update local state optimistically (instant UI feedback, no refetch needed).
+- `src/components/player/WatchLaterButton.jsx` (new) — rendered directly below the YouTube video player on the Watch page (above the WatchTimer). Shows:
+  - **Not saved:** "+ Watch Later" button (outline, navy).
+  - **Saved:** "✓ Saved" button (filled gold) → clicking removes it (toggle).
+  - State derived from `useWatchLater`'s `isAdded(currentVideoId)`. Updates instantly via optimistic state.
+- `src/pages/Library.jsx` (new) — scholar's personal watch-later queue:
+  - Header: "My Library" with a saved count chip.
+  - Video grid using the existing `VideoCard` and `VideoGrid` components (same card design, same watched-state display).
+  - Each card has a "Remove" option (⋯ menu or ✕ icon) to remove from the queue.
+  - Clicking a card navigates to `#/watch` with that video pre-selected (same deep-link pattern as the unified Watch tab).
+  - Empty state: "No saved videos yet. Hit '+ Watch Later' below any video to save it here."
+- **Navigation:**
+  - `src/components/layout/Sidebar.jsx` — add "Library" link (e.g. 🔖 Library → `#/library`) in the Scholar section, below Progress and above the Admin section.
+  - `src/components/layout/BottomNav.jsx` — add a 4th scholar tab "Library" (shifting Admin tab to 5th for admins, or keeping 4 total for scholars with Admin tab only visible to admins).
+- `src/App.jsx` — add `#/library` route → `<Library />`.
+
+**Design note — no admin view:** Watch Later is a personal scholar tool. Admins do not see or manage scholars' watch-later lists. If an admin is logged in and visits `#/library`, they see their own personal list (empty unless they've saved videos themselves).
+
+**Design note — optimistic updates:** `add` and `remove` in `useWatchLater` update local state immediately without waiting for the API response, so the button toggles instantly. On API error, revert the local state and show a brief error toast.
+
+Status: **PLANNED**
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
