@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { getAuthToken } from '../../lib/authToken.js'
-import { getTopicColor } from '../../utils/topics.js'
+import { getTopicColor, TOPIC_CATEGORIES } from '../../utils/topics.js'
 import { LEVELS, getLevelForHours } from '../../utils/levels.js'
 import { useScholars } from '../../hooks/useScholars.js'
 
@@ -10,6 +10,14 @@ const LEVEL_COLORS = {
   beginner: '#4DA67A',
   intermediate: '#C9A84C',
   advanced: '#C0524A',
+}
+
+// CEFR range prefix injected into topic queries when a scholar is selected.
+const CEFR_PREFIX = {
+  super_beginner: 'A1 A2',
+  beginner: 'A2 B1',
+  intermediate: 'B1 B2',
+  advanced: 'B2 C1',
 }
 
 const LEVEL_QUERY_CHIPS = {
@@ -41,6 +49,26 @@ const LEVEL_QUERY_CHIPS = {
     'academic English listening',
     'English discussion debate',
   ],
+}
+
+// YouTube-optimised keywords per topic tag.
+const TOPIC_QUERY_KEYWORDS = {
+  'Medical & Nursing': 'medical nursing',
+  'Work & Career': 'work career professional',
+  'Academic & Study': 'academic study skills',
+  'Daily Life': 'everyday daily life',
+  'Travel & Places': 'travel',
+  'Social & Relationships': 'social conversations',
+  'Food & Cooking': 'food cooking',
+  'Culture & Entertainment': 'culture entertainment',
+  'Sports & Fitness': 'sports fitness',
+  'News & Events': 'news current events',
+}
+
+function buildTopicQuery(topic, level) {
+  const keywords = TOPIC_QUERY_KEYWORDS[topic] || topic.toLowerCase()
+  const prefix = level ? CEFR_PREFIX[level.id] + ' ' : ''
+  return `${prefix}English ${keywords} listening`
 }
 
 function useDebounce(fn, delay) {
@@ -105,10 +133,11 @@ function ScholarContext({ onChipClick }) {
 
   const scholar = scholars.find((s) => s.user_id === selectedId) || null
   const level = scholar ? getLevelForHours(parseFloat(scholar.current_hours || 0)) : null
-  const chips = level ? LEVEL_QUERY_CHIPS[level.id] || [] : []
+  const levelChips = level ? LEVEL_QUERY_CHIPS[level.id] || [] : []
 
   return (
     <div style={ctxStyles.wrap}>
+      {/* Scholar picker */}
       <div style={ctxStyles.row}>
         <select
           value={selectedId}
@@ -138,17 +167,41 @@ function ScholarContext({ onChipClick }) {
           </span>
         )}
       </div>
-      {chips.length > 0 ? (
-        <div style={ctxStyles.chips}>
-          {chips.map((chip) => (
-            <button key={chip} style={ctxStyles.chipBtn} onClick={() => onChipClick(chip)}>
-              {chip}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p style={ctxStyles.hint}>Select a scholar to see suggested search queries</p>
+
+      {/* Level query chips — shown when a scholar is selected */}
+      {levelChips.length > 0 && (
+        <>
+          <p style={ctxStyles.sectionLabel}>Level queries</p>
+          <div style={ctxStyles.chips}>
+            {levelChips.map((chip) => (
+              <button key={chip} style={ctxStyles.chipBtn} onClick={() => onChipClick(chip)}>
+                {chip}
+              </button>
+            ))}
+          </div>
+        </>
       )}
+
+      {/* Topic chips — always shown; query includes CEFR prefix when scholar is selected */}
+      <p style={ctxStyles.sectionLabel}>
+        Topics{level ? ` · combined with ${CEFR_PREFIX[level.id]}` : ' · click to search'}
+      </p>
+      {TOPIC_CATEGORIES.map((cat) => (
+        <div key={cat.key} style={ctxStyles.topicGroup}>
+          <span style={{ ...ctxStyles.catLabel, color: cat.color }}>{cat.label}</span>
+          <div style={ctxStyles.chips}>
+            {cat.topics.map((topic) => (
+              <button
+                key={topic}
+                style={{ ...ctxStyles.topicChipBtn, borderColor: cat.color, color: cat.color }}
+                onClick={() => onChipClick(buildTopicQuery(topic, level))}
+              >
+                {topic}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -156,7 +209,7 @@ function ScholarContext({ onChipClick }) {
 function ResultCard({ item, onAdd }) {
   const [tagState, setTagState] = useState('idle') // idle | tagging | done | error
   const [tags, setTags] = useState(null)
-  const [addState, setAddState] = useState(item.in_library ? 'exists' : 'idle') // idle | adding | added | exists | error
+  const [addState, setAddState] = useState('idle') // idle | adding | added | exists | error
   const tagStarted = useRef(false)
 
   // Kick off tagging once on mount
@@ -377,7 +430,15 @@ const ctxStyles = {
     fontFamily: 'inherit',
     cursor: 'pointer',
   },
-  chips: { display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: '#8a8f99',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    margin: '10px 0 4px',
+  },
+  chips: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   chipBtn: {
     padding: '4px 10px',
     fontSize: 12,
@@ -390,7 +451,26 @@ const ctxStyles = {
     fontFamily: 'inherit',
     lineHeight: 1.4,
   },
-  hint: { fontSize: 12, color: '#8a8f99', margin: '8px 0 0' },
+  topicGroup: { marginBottom: 8 },
+  catLabel: {
+    display: 'block',
+    fontSize: 11,
+    fontWeight: 700,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: '0.03em',
+  },
+  topicChipBtn: {
+    padding: '3px 10px',
+    fontSize: 12,
+    fontWeight: 500,
+    border: '1.5px solid',
+    borderRadius: 5,
+    background: '#fff',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    lineHeight: 1.4,
+  },
 }
 
 const panelStyles = {
