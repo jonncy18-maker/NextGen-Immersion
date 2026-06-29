@@ -340,7 +340,7 @@ export default function AddVideoPanel() {
     setResults([])
     try {
       const data = await searchYouTube(q.trim())
-      setResults(data.items || [])
+      setResults((data.items || []).filter((item) => !item.in_library))
       setSearchState('done')
     } catch (err) {
       setSearchState(err.message === 'quota' ? 'quota' : 'unavailable')
@@ -394,7 +394,9 @@ export default function AddVideoPanel() {
         <p style={panelStyles.error}>YouTube search unavailable. Check connection and try again.</p>
       )}
       {searchState === 'done' && results.length === 0 && (
-        <p style={panelStyles.hint}>No results (music videos are excluded automatically).</p>
+        <p style={panelStyles.hint}>
+          No new results — music videos and videos already in the library are excluded automatically.
+        </p>
       )}
 
       {results.length > 0 && (
