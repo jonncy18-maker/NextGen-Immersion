@@ -37,6 +37,28 @@ export default async function handler(req, res) {
       channelUuid = ch[0]?.id || null
     }
 
+    // Restore a previously soft-deleted video if one exists.
+    const restored = await sql`
+      UPDATE videos
+      SET is_available = true,
+          unavailable_since = null,
+          title = ${title},
+          channel_name = ${channelName || null},
+          description = ${description || null},
+          thumbnail_url = ${thumbnailUrl || null},
+          duration_seconds = ${durationSeconds || null},
+          level = ${level},
+          level_source = 'ai',
+          topic_primary = ${topicPrimary},
+          topic_secondary = ${topicSecondary || null},
+          added_by = ${authUser.id}
+      WHERE youtube_id = ${youtubeId} AND is_available = false
+      RETURNING id
+    `
+    if (restored.length > 0) {
+      return res.status(200).json({ added: true, videoId: restored[0].id })
+    }
+
     const rows = await sql`
       INSERT INTO videos
         (youtube_id, title, channel_name, channel_id, description, thumbnail_url,
