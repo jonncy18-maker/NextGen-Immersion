@@ -503,6 +503,51 @@ Status: **PLANNED**
 
 ---
 
+## Phase 22 — Free-Text Library Search with Level Filter
+
+**Loop goal:** "Add a free-text search input to the scholar video library so scholars (and admins browsing the library) can type a keyword and filter results by title or channel name. Pair it with a level filter dropdown. Results narrow in real-time as the user types — no new API call, purely client-side filtering of the already-loaded library."
+
+**Background:** The current library filter (FilterBar / Phase 17's dropdown redesign) only supports topic chips and a watched-state toggle — no keyword search, and topic selection is all-or-nothing chip rows. Scholars have no way to type a keyword (e.g. 'nursing', 'hospital') or quickly jump to a specific topic. All filtering is client-side over the library already fetched from `/api/videos`, so this is a pure UI addition with no backend changes.
+
+Deliverables:
+- `src/components/video/FilterDropdowns.jsx` (Phase 17 component, or `FilterBar.jsx` if Phase 17 hasn't landed yet) — filter row contains four controls:
+
+  **1. Keyword search input**
+  - Placeholder: "Search videos…"
+  - Filters client-side on `title` and `channel_name` (case-insensitive substring match).
+  - 200ms debounce. Clear (✕) button when non-empty.
+
+  **2. Level filter dropdown**
+  - Options: All Levels / Super Beginner (A1–A2) / Beginner (A2–B1) / Intermediate (B1–B2) / Advanced (B2–C1).
+  - **Default:** pre-selected to the scholar's current level (derived from `current_hours` via `getLevelForHours`) so the library opens showing relevant content. Scholar can change it at any time. Admin view defaults to All Levels.
+
+  **3. Topic filter — structured dropdown**
+  - Hierarchical dropdown matching Phase 17's three-bucket structure:
+    - OET / Career → Medical & Nursing | Work & Professional | Academic & Study Skills
+    - Daily Life → Everyday Conversations | Health & Wellness | Family & Relationships
+    - Compelling Interests → Travel & Culture | Entertainment & Media | Science & Nature
+  - **Default:** pre-selected to the scholar's primary topic bucket based on their profile (e.g. Claire = OET/Career pre-selected). Scholar can change it. Admin defaults to All Topics.
+  - Selecting a top-level bucket shows all videos in that bucket; selecting a sub-category narrows to that sub-category only.
+
+  **4. Free-text topic filter input** (alongside or below the structured dropdown)
+  - Placeholder: "Filter by topic keyword…"
+  - Filters client-side on the video's `topic` field (case-insensitive substring). Useful for finding e.g. all videos tagged 'nursing' without navigating the hierarchy.
+  - Works as an additional AND filter on top of the structured topic dropdown (both can be active at once, or either alone).
+  - Clear (✕) button when non-empty.
+
+- Combined filtering: all four controls apply simultaneously with AND logic. A video must match every active filter to appear.
+- `src/pages/Watch.jsx` — wire all four filter states into the existing filter pipeline; pass scholar level + primary topic as default props so the library opens pre-filtered.
+- Empty state: "No videos match your filters." with a "Clear all filters" link (distinct from the library-is-empty state).
+- Admin "Manage Library" tab (Phase 18's `VideoLibraryEditor`) — wire the keyword search + level + structured topic dropdown (no scholar-default pre-selection for admin; all default to All). Free-text topic filter optional here.
+
+**Design note — scholar defaults:** The level and topic defaults are derived from data already in the app (`current_hours` → level; scholar profile → primary bucket). They are UI defaults only — the scholar can freely override. Do not persist filter state between sessions; always reset to scholar-appropriate defaults on mount.
+
+**Design note — no YouTube search here:** This is library search only (client-side over already-fetched videos). YouTube keyword search for *adding* new videos lives in the admin "Discover & Import" tab (`AddVideoPanel`) and is a separate flow. Do not mix them.
+
+Status: **PLANNED**
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
