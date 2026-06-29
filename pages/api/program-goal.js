@@ -39,6 +39,28 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
+    // ── applyToAll: stamp current program goal onto every scholar_goals row ──
+    if (req.body?.action === 'applyToAll') {
+      const adminSql = getAdminDb()
+      const pg = await adminSql`
+        SELECT id, target_level, target_hours, target_date
+        FROM program_goals
+        WHERE language = ${language} AND is_active = true
+        LIMIT 1
+      `
+      if (!pg.length) return res.status(400).json({ error: 'No active program goal to apply.' })
+      const { target_level, target_hours, target_date } = pg[0]
+      const result = await adminSql`
+        UPDATE scholar_goals
+        SET target_level = ${target_level},
+            target_hours = ${target_hours},
+            target_date  = ${target_date}
+        WHERE language = ${language}
+        RETURNING user_id
+      `
+      return res.status(200).json({ updated: result.length })
+    }
+
     const { targetLevel, targetHours, targetDate } = req.body || {}
 
     if (!TARGET_LEVELS.includes(targetLevel)) {

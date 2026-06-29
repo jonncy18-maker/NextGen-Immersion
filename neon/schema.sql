@@ -173,6 +173,9 @@ CREATE TABLE IF NOT EXISTS scholar_goals (
   user_id         uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   program_goal_id uuid NOT NULL REFERENCES program_goals(id) ON DELETE CASCADE,
   start_date      date,                          -- admin-set; NULL = not started
+  target_level    text CHECK (target_level IN ('beginner','intermediate','advanced')),
+  target_hours    integer CHECK (target_hours IS NULL OR target_hours > 0),
+  target_date     date,
   language        text NOT NULL DEFAULT 'english',
   created_at      timestamptz NOT NULL DEFAULT now()
 );
@@ -238,26 +241,30 @@ CREATE OR REPLACE VIEW user_video_status AS
 -- so expected_hours never exceeds target_hours. PAST THE TARGET DATE this means:
 -- expected = target_hours, so status is ON_TRACK only if the scholar reached the
 -- full target, otherwise AT_RISK — no negative or runaway pace after the deadline.
+-- Per-scholar target_level/target_hours/target_date COALESCE over the program goal,
+-- so scholars can have individual overrides while falling back to the shared template.
 CREATE OR REPLACE VIEW scholar_pace AS
   SELECT
     u.id            AS user_id,
     u.scholar_name,
     u.language,
     sg.start_date,
-    pg.target_hours,
-    pg.target_date,
-    pg.target_level,
+    COALESCE(sg.target_hours, pg.target_hours) AS target_hours,
+    COALESCE(sg.target_date,  pg.target_date)  AS target_date,
+    COALESCE(sg.target_level, pg.target_level) AS target_level,
     COALESCE(h.total_hours, 0)    AS current_hours,
     COALESCE(h.hours_this_week, 0) AS hours_this_week,
     h.last_session_at,
     CASE
       WHEN sg.start_date IS NULL
         OR sg.start_date > (now() AT TIME ZONE 'Asia/Manila')::date THEN 'PENDING'
+      WHEN COALESCE(sg.target_hours, pg.target_hours) IS NULL
+        OR COALESCE(sg.target_date, pg.target_date) IS NULL THEN 'PENDING'
       WHEN COALESCE(h.total_hours,0) >=
-           pg.target_hours *
+           COALESCE(sg.target_hours, pg.target_hours) *
            LEAST(1.0,
              GREATEST((now() AT TIME ZONE 'Asia/Manila')::date - sg.start_date, 0)::numeric /
-             NULLIF(pg.target_date - sg.start_date, 0))
+             NULLIF(COALESCE(sg.target_date, pg.target_date) - sg.start_date, 0))
         THEN 'ON_TRACK'
       ELSE 'AT_RISK'
     END AS status,
@@ -265,11 +272,13 @@ CREATE OR REPLACE VIEW scholar_pace AS
     CASE
       WHEN sg.start_date IS NULL
         OR sg.start_date > (now() AT TIME ZONE 'Asia/Manila')::date THEN 0
+      WHEN COALESCE(sg.target_hours, pg.target_hours) IS NULL
+        OR COALESCE(sg.target_date, pg.target_date) IS NULL THEN 0
       ELSE ROUND(
-        pg.target_hours *
+        COALESCE(sg.target_hours, pg.target_hours) *
         LEAST(1.0,
           GREATEST((now() AT TIME ZONE 'Asia/Manila')::date - sg.start_date, 0)::numeric /
-          NULLIF(pg.target_date - sg.start_date, 0)), 1)
+          NULLIF(COALESCE(sg.target_date, pg.target_date) - sg.start_date, 0)), 1)
     END AS expected_hours
   FROM users u
   LEFT JOIN scholar_goals sg

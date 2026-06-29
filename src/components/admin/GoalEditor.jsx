@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { getAuthToken } from '../../lib/authToken.js'
 import { getPaceColor, getPaceLabel } from '../../utils/pace.js'
 
-// Admin tool for the program-wide goal + each scholar's goal-clock start_date.
+// Admin tool for the program-wide goal + each scholar's individual goal fields.
 //
 //  • Program goal  → POST /api/program-goal  (target level / hours / date)
-//  • Start dates   → POST /api/scholar-goal   (per scholar; NULL = PENDING)
+//  • Scholar goals → POST /api/scholar-goal   (per scholar; NULL fields fall back to program goal)
 //
 // The start_date is what actually starts a scholar's pace calculation, so this
 // is the control that flips a scholar from PENDING to ON_TRACK / AT_RISK.
+// Per-scholar target_level / target_hours / target_date COALESCE over the program goal.
 
 const TARGET_LEVELS = [
   { id: 'beginner', label: 'Beginner (150h)' },
@@ -18,7 +19,7 @@ const TARGET_LEVELS = [
 
 function toDateInput(value) {
   if (!value) return ''
-  // scholar_pace returns start_date as 'YYYY-MM-DD' (or an ISO timestamp); keep
+  // scholar_pace returns dates as 'YYYY-MM-DD' (or an ISO timestamp); keep
   // just the date part for <input type="date">.
   return String(value).slice(0, 10)
 }
@@ -45,6 +46,10 @@ export default function GoalEditor() {
   const [form, setForm] = useState({ targetLevel: 'intermediate', targetHours: '300', targetDate: '' })
   const [goalSave, setGoalSave] = useState('idle') // idle | saving | saved | error
   const [goalErr, setGoalErr] = useState(null)
+
+  // Apply-template state
+  const [applyState, setApplyState] = useState('idle') // idle | applying | applied | error
+  const [applyErr, setApplyErr] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -99,6 +104,25 @@ export default function GoalEditor() {
     } catch (err) {
       setGoalErr(err.message)
       setGoalSave('error')
+    }
+  }
+
+  async function applyTemplate() {
+    setApplyErr(null)
+    setApplyState('applying')
+    try {
+      const res = await authedFetch('/api/program-goal', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'applyToAll' }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)
+      setApplyState('applied')
+      setTimeout(() => setApplyState('idle'), 2500)
+      load() // refresh scholar rows
+    } catch (e) {
+      setApplyErr(e.message)
+      setApplyState('error')
     }
   }
 
@@ -165,21 +189,43 @@ export default function GoalEditor() {
         {!goal && goalSave !== 'error' && (
           <p style={styles.warn}>No program goal set yet — scholars stay PENDING until you set one.</p>
         )}
+
+        {/* Apply template to all scholars */}
+        <div style={styles.applyRow}>
+          <button
+            type="button"
+            onClick={applyTemplate}
+            disabled={!goal || applyState === 'applying'}
+            style={{
+              ...styles.saveBtn,
+              ...((!goal || applyState === 'applying') ? styles.saveBtnDisabled : {}),
+            }}
+          >
+            {applyState === 'applying'
+              ? 'Applying…'
+              : applyState === 'applied'
+              ? 'Applied ✓'
+              : 'Apply template to all scholars'}
+          </button>
+          {applyState === 'error' && (
+            <p style={{ ...styles.error, margin: '0 0 0 12px' }}>{applyErr || 'Apply failed.'}</p>
+          )}
+        </div>
       </section>
 
-      {/* ── Per-scholar start dates ──────────────────────────────── */}
+      {/* ── Per-scholar goals ────────────────────────────────────── */}
       <section style={styles.section}>
-        <h2 style={styles.h2}>Scholar Start Dates</h2>
+        <h2 style={styles.h2}>Scholar Goals</h2>
         <p style={styles.sectionSub}>
-          A scholar&apos;s goal clock starts on their start date. Before it&apos;s set (or while
-          it&apos;s in the future) the scholar is PENDING and no pace is calculated.
+          Set each scholar&apos;s goal clock start date, target date, level, and hours. Fields left
+          blank fall back to the program template.
         </p>
         {scholars.length === 0 ? (
           <p style={styles.hint}>No scholars yet.</p>
         ) : (
           <div style={styles.rows}>
             {scholars.map((s) => (
-              <StartDateRow key={s.user_id} scholar={s} onSaved={load} disabled={!goal} />
+              <ScholarGoalRow key={s.user_id} scholar={s} onSaved={load} disabled={!goal} />
             ))}
           </div>
         )}
@@ -191,11 +237,22 @@ export default function GoalEditor() {
   )
 }
 
-function StartDateRow({ scholar, onSaved, disabled }) {
+function ScholarGoalRow({ scholar, onSaved, disabled }) {
   const [value, setValue] = useState(toDateInput(scholar.start_date))
+  const [targetDate, setTargetDate] = useState(toDateInput(scholar.target_date))
+  const [targetLevel, setTargetLevel] = useState(scholar.target_level || '')
+  const [targetHours, setTargetHours] = useState(
+    scholar.target_hours ? String(scholar.target_hours) : ''
+  )
   const [save, setSave] = useState('idle') // idle | saving | saved | error
   const [err, setErr] = useState(null)
-  const dirty = value !== toDateInput(scholar.start_date)
+
+  // Dirty: any field differs from the scholar's loaded values
+  const dirty =
+    value !== toDateInput(scholar.start_date) ||
+    targetDate !== toDateInput(scholar.target_date) ||
+    targetLevel !== (scholar.target_level || '') ||
+    targetHours !== (scholar.target_hours ? String(scholar.target_hours) : '')
 
   async function submit() {
     setErr(null)
@@ -203,7 +260,13 @@ function StartDateRow({ scholar, onSaved, disabled }) {
     try {
       const res = await authedFetch('/api/scholar-goal', {
         method: 'POST',
-        body: JSON.stringify({ userId: scholar.user_id, startDate: value || null }),
+        body: JSON.stringify({
+          userId: scholar.user_id,
+          startDate: value || null,
+          targetDate: targetDate || null,
+          targetLevel: targetLevel || null,
+          targetHours: targetHours ? Number(targetHours) : null,
+        }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)
@@ -223,16 +286,71 @@ function StartDateRow({ scholar, onSaved, disabled }) {
           {getPaceLabel(scholar.status)}
         </span>
       </div>
-      <input
-        type="date"
-        value={value}
-        onChange={(e) => {
-          setValue(e.target.value)
-          setSave('idle')
-        }}
-        style={styles.input}
-        disabled={disabled}
-      />
+
+      <label style={styles.field}>
+        <span style={styles.label}>Start date</span>
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value)
+            setSave('idle')
+          }}
+          style={styles.input}
+          disabled={disabled}
+        />
+      </label>
+
+      <label style={styles.field}>
+        <span style={styles.label}>Target date</span>
+        <input
+          type="date"
+          value={targetDate}
+          onChange={(e) => {
+            setTargetDate(e.target.value)
+            setSave('idle')
+          }}
+          style={styles.input}
+          disabled={disabled}
+        />
+      </label>
+
+      <label style={styles.field}>
+        <span style={styles.label}>Target level</span>
+        <select
+          value={targetLevel}
+          onChange={(e) => {
+            setTargetLevel(e.target.value)
+            setSave('idle')
+          }}
+          style={styles.input}
+          disabled={disabled}
+        >
+          <option value="">— program default —</option>
+          {TARGET_LEVELS.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label style={styles.field}>
+        <span style={styles.label}>Target hours</span>
+        <input
+          type="number"
+          min="1"
+          placeholder="default"
+          value={targetHours}
+          onChange={(e) => {
+            setTargetHours(e.target.value)
+            setSave('idle')
+          }}
+          style={{ ...styles.input, width: 90 }}
+          disabled={disabled}
+        />
+      </label>
+
       <button
         type="button"
         onClick={submit}
@@ -240,6 +358,7 @@ function StartDateRow({ scholar, onSaved, disabled }) {
         style={{
           ...styles.saveBtn,
           ...(disabled || !dirty || save === 'saving' ? styles.saveBtnDisabled : {}),
+          alignSelf: 'flex-end',
         }}
       >
         {save === 'saving' ? 'Saving…' : save === 'saved' && !dirty ? 'Saved ✓' : 'Save'}
@@ -261,7 +380,8 @@ const styles = {
   h2: { margin: '0 0 4px', fontSize: 17, fontWeight: 700, color: 'var(--ngsi-navy)' },
   sectionSub: { margin: '0 0 16px', fontSize: 13, color: '#5a6070', lineHeight: 1.5 },
   goalForm: { display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end' },
-  field: { display: 'flex', flexDirection: 'column', gap: 5, flex: '1 1 150px' },
+  applyRow: { display: 'flex', alignItems: 'center', marginTop: 12 },
+  field: { display: 'flex', flexDirection: 'column', gap: 5, flex: '1 1 140px' },
   label: {
     fontSize: 11,
     fontWeight: 700,
@@ -295,7 +415,7 @@ const styles = {
   rows: { display: 'flex', flexDirection: 'column', gap: 10 },
   row: {
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 12,
     flexWrap: 'wrap',
     padding: '10px 0',

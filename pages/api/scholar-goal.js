@@ -1,19 +1,20 @@
 import { getDb, getAdminDb } from '../../lib/api/_db.js'
 import { verifySession } from '../../lib/api/_auth.js'
 
-// Admin-only. Sets (or clears) a scholar's goal-clock start_date.
+// Admin-only. Reads and writes a scholar's goal-clock fields:
+//   start_date    → flips PENDING → ON_TRACK / AT_RISK
+//   target_level  → per-scholar override (COALESCE fallback to program_goals)
+//   target_hours  → per-scholar override
+//   target_date   → per-scholar override
 //
-// start_date drives the entire pace calculation (scholar_pace view):
-//   NULL or future → PENDING (no pace calc)
-//   past           → active ON_TRACK / AT_RISK calculation
-//
-// Upserts the scholar_goals row, linking it to the active program goal for the
-// scholar's language. A program goal must exist first — provisioning normally
-// creates the row, but this endpoint also creates it so an admin can start the
-// clock for a SQL-seeded scholar (e.g. Claire) who has no scholar_goals row yet.
+// GET  ?userId=<id>   → returns the scholar_goals row (or null)
+// POST { userId, startDate, targetLevel, targetHours, targetDate }
+//      → upserts scholar_goals; all fields except userId are optional
+
+const VALID_LEVELS = ['beginner', 'intermediate', 'advanced']
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
@@ -26,9 +27,26 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Forbidden' })
   }
 
-  const { userId, startDate } = req.body || {}
+  const adminSql = getAdminDb()
+
+  // ── GET ──────────────────────────────────────────────────────────────────────
+  if (req.method === 'GET') {
+    const { userId } = req.query
+    if (!userId) return res.status(400).json({ error: 'userId required' })
+
+    const rows = await adminSql`
+      SELECT user_id, start_date, target_level, target_hours, target_date, language
+      FROM scholar_goals
+      WHERE user_id = ${userId}
+    `
+    return res.status(200).json(rows[0] || null)
+  }
+
+  // ── POST ─────────────────────────────────────────────────────────────────────
+  const { userId, startDate, targetLevel, targetHours, targetDate } = req.body || {}
   if (!userId) return res.status(400).json({ error: 'userId required' })
 
+  // Validate start date
   let start = null
   if (startDate) {
     if (Number.isNaN(Date.parse(startDate))) {
@@ -37,8 +55,35 @@ export default async function handler(req, res) {
     start = startDate
   }
 
-  const adminSql = getAdminDb()
+  // Validate targetLevel if provided
+  let level = null
+  if (targetLevel !== undefined && targetLevel !== null && targetLevel !== '') {
+    if (!VALID_LEVELS.includes(targetLevel)) {
+      return res.status(400).json({ error: 'Invalid target level' })
+    }
+    level = targetLevel
+  }
 
+  // Validate targetHours if provided
+  let hours = null
+  if (targetHours !== undefined && targetHours !== null && targetHours !== '') {
+    const parsed = Number(targetHours)
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      return res.status(400).json({ error: 'targetHours must be a positive integer' })
+    }
+    hours = parsed
+  }
+
+  // Validate targetDate if provided
+  let tDate = null
+  if (targetDate !== undefined && targetDate !== null && targetDate !== '') {
+    if (Number.isNaN(Date.parse(targetDate))) {
+      return res.status(400).json({ error: 'Invalid target date' })
+    }
+    tDate = targetDate
+  }
+
+  // Look up the scholar
   const target = await adminSql`
     SELECT id, role, language FROM users WHERE id = ${userId}
   `
@@ -48,6 +93,7 @@ export default async function handler(req, res) {
   }
   const language = target[0].language
 
+  // Active program goal is required as the COALESCE base
   const pg = await adminSql`
     SELECT id FROM program_goals
     WHERE language = ${language} AND is_active = true
@@ -60,13 +106,16 @@ export default async function handler(req, res) {
   }
 
   const rows = await adminSql`
-    INSERT INTO scholar_goals (user_id, program_goal_id, start_date, language)
-    VALUES (${userId}, ${pg[0].id}, ${start}, ${language})
+    INSERT INTO scholar_goals (user_id, program_goal_id, start_date, target_level, target_hours, target_date, language)
+    VALUES (${userId}, ${pg[0].id}, ${start}, ${level}, ${hours}, ${tDate}, ${language})
     ON CONFLICT (user_id, language)
     DO UPDATE SET
       start_date      = EXCLUDED.start_date,
-      program_goal_id = EXCLUDED.program_goal_id
-    RETURNING user_id, start_date
+      program_goal_id = EXCLUDED.program_goal_id,
+      target_level    = EXCLUDED.target_level,
+      target_hours    = EXCLUDED.target_hours,
+      target_date     = EXCLUDED.target_date
+    RETURNING user_id, start_date, target_level, target_hours, target_date, language
   `
 
   return res.status(200).json(rows[0])
