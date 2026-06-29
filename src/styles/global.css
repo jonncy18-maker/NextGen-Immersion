@@ -38,3 +38,13 @@ h3,
 a {
   color: var(--ngsi-navy);
 }
+
+/* Responsive layout helpers */
+@media (min-width: 640px) {
+  .ngsi-hide-desktop { display: none !important; }
+}
+
+@media (max-width: 639px) {
+  .ngsi-hide-mobile { display: none !important; }
+  .ngsi-main-content { padding-bottom: 64px; }
+}

@@ -1,6 +1,8 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import Navbar from './components/layout/Navbar.jsx';
+import Sidebar from './components/layout/Sidebar.jsx';
+import BottomNav from './components/layout/BottomNav.jsx';
 import Watch from './pages/Watch.jsx';
 import Progress from './pages/Progress.jsx';
 import Browse from './pages/Browse.jsx';
@@ -33,12 +35,29 @@ function RequireAdmin({ children }) {
 
 function AuthLayout({ children }) {
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navbar />
-      {children}
-    </>
+      <div style={shellStyles.body}>
+        <Sidebar />
+        <main className="ngsi-main-content" style={{ flex: 1, minWidth: 0 }}>
+          {children}
+        </main>
+      </div>
+      <BottomNav />
+    </div>
   );
 }
+
+const shellStyles = {
+  body: {
+    flex: 1,
+    display: 'flex',
+    width: '100%',
+    maxWidth: 1280,
+    margin: '0 auto',
+    boxSizing: 'border-box',
+  },
+};
 
 function AdminLayout({ children }) {
   return (
