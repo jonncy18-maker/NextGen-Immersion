@@ -442,6 +442,39 @@ Status: **PLANNED**
 
 ---
 
+## Phase 20 — Category-Split Goals + Read-Only Progress Breakdown
+
+**Loop goal:** "Extend the per-scholar goal (Phase 15) with per-category hour targets. Goals are set by admin only. The scholar Progress page shows a read-only breakdown of actual vs. target hours per category. The only scholar action is logging external hours (Phase 16's button) with the category dropdown — no other goal editing."
+
+**Background:** Currently the goal is a single total-hours target. The program has three distinct input categories — video library watching, ChatGPT conversation practice, and weekly mentor calls — and it makes sense to set and track a target for each independently (e.g. 200h video + 50h ChatGPT + 50h mentor = 300h total). The admin sets the split; scholars see their progress against it and log their own external hours.
+
+**Decision (locked):** There are 3 external session types. Phase 16's `session_type` enum gains a third value: `video_external` — self-reported video watching done outside the NGS library (e.g. Dreaming Spanish, YouTube directly). The log-hours dropdown has 3 options: 🎬 Video watching (outside app) / 💬 ChatGPT practice / 📞 Mentor call. The automatically-tracked NGS library hours (`watch_sessions`) remain separate and are never manually logged — they are the 4th data source that feeds `video_hours` in the progress breakdown (library hours + `video_external` hours combined).
+
+Deliverables:
+- **Schema:** add `target_video_hours`, `target_chatgpt_hours`, `target_mentor_hours` columns to `scholar_goals` (alongside the existing `target_hours` total). Admin sets all three; total should sum to `target_hours` (enforce at the API layer, not DB constraint). Migration via `ALTER TABLE`.
+- `pages/api/scholar-goal.js` — POST accepts the three per-category targets; validates they sum to `target_hours`; returns them on GET.
+- `pages/api/progress.js` — extend response to include per-category actuals:
+  - `video_hours` — sum of `watch_sessions.duration_seconds / 3600` for the scholar (already computable from existing data).
+  - `chatgpt_hours` — sum of `external_sessions` where `session_type = 'chatgpt_conversation'`.
+  - `mentor_hours` — sum of `external_sessions` where `session_type = 'mentor_call'`.
+  - Plus their corresponding targets (`target_video_hours`, `target_chatgpt_hours`, `target_mentor_hours`) from `scholar_goals`. All coerced to `Number()`.
+- `src/components/progress/CategoryBreakdown.jsx` (new) — read-only three-row breakdown rendered on the scholar Progress page and the admin per-scholar drill-down. Each row shows:
+  - Category icon + label (🎬 Video Library / 💬 ChatGPT Practice / 📞 Mentor Calls)
+  - A mini progress bar: `actual / target` hours
+  - Numeric label: e.g. "47.2 / 100h"
+  - Color coded by the existing `--ngsi-status-*` tokens (green if on track within that category, amber/red if behind).
+- `src/pages/Progress.jsx` — render `CategoryBreakdown` below `PaceAnalysis`. No new API call — same `useProgress` data, now with category fields.
+- `src/pages/AdminProgress.jsx` drill-down — same `CategoryBreakdown` component, same props.
+- `src/components/admin/GoalEditor.jsx` — per-scholar goal rows gain three number inputs for the category targets (`Video h`, `ChatGPT h`, `Mentor h`) alongside the existing `start_date` and `target_date` fields. Live validation shows the sum vs. `target_hours`. Admin-only; no scholar-facing edit UI.
+- Phase 16's `external_sessions.session_type` enum updated to add `video_external`. `ExternalHoursButton` dropdown updated to 3 options: 🎬 Video watching (outside app) / 💬 ChatGPT practice / 📞 Mentor call.
+- `pages/api/progress.js` — `video_hours` = NGS library hours (`watch_sessions`) + self-reported external video hours (`external_sessions` where `session_type = 'video_external'`), combined into a single total for the Video category.
+
+**Design note — total vs. category targets:** `target_hours` (the overall goal) remains the primary pace-calculation input (used by `scholar_pace`, `PaceAnalysis`, `ScholarCard`). The category targets are additive detail — they must sum to `target_hours`, but the AT RISK / ON TRACK logic continues to operate on the total. Per-category pace is displayed informally (the mini bars) rather than with a separate AT RISK pill per category.
+
+Status: **PLANNED**
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
