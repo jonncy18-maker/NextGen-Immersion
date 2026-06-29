@@ -172,10 +172,10 @@ export default function Progress() {
             delta={data.delta ?? 0}
           />
           <CategoryBreakdown
-            videoHours={data.video_hours}
+            libraryHours={data.library_hours}
+            videoExternalHours={data.video_external_hours}
             chatgptHours={data.chatgpt_hours}
             mentorHours={data.mentor_hours}
-            targetVideoHours={data.target_video_hours}
             targetChatgptHours={data.target_chatgpt_hours}
             targetMentorHours={data.target_mentor_hours}
             expectedHours={data.expected_hours}

@@ -1,6 +1,5 @@
 function CategoryRow({ icon, label, actual, target, paceRatio }) {
   const hasTarget = target != null
-
   const ratio = hasTarget && target > 0 ? Math.min(1, actual / target) : 0
   const isOnTrack = hasTarget ? actual >= target * paceRatio : true
   const isComplete = hasTarget ? actual >= target : false
@@ -27,31 +26,33 @@ function CategoryRow({ icon, label, actual, target, paceRatio }) {
 }
 
 export default function CategoryBreakdown({
-  videoHours,
+  libraryHours,
+  videoExternalHours,
   chatgptHours,
   mentorHours,
-  targetVideoHours,
   targetChatgptHours,
   targetMentorHours,
   expectedHours,
   targetHours,
 }) {
-  const hasAnyTarget =
-    targetVideoHours != null || targetChatgptHours != null || targetMentorHours != null
-
-  if (!hasAnyTarget) return null
-
   const paceRatio =
     targetHours > 0 ? Math.min(1, (expectedHours ?? 0) / targetHours) : 0
 
   return (
     <div style={styles.wrap}>
-      <p style={styles.heading}>Category Breakdown</p>
+      <p style={styles.heading}>Hours by Category</p>
       <CategoryRow
-        icon="🎬"
-        label="Video Library"
-        actual={videoHours ?? 0}
-        target={targetVideoHours}
+        icon="📱"
+        label="App Video"
+        actual={libraryHours ?? 0}
+        target={null}
+        paceRatio={paceRatio}
+      />
+      <CategoryRow
+        icon="📺"
+        label="Outside Listening"
+        actual={videoExternalHours ?? 0}
+        target={null}
         paceRatio={paceRatio}
       />
       <CategoryRow

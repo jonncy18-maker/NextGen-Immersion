@@ -70,6 +70,8 @@ export default async function handler(req, res) {
         expected_hours: expectedHours,
         delta: expectedHours - currentHours,
         video_hours: libraryHours + videoExternalHours,
+        library_hours: libraryHours,
+        video_external_hours: videoExternalHours,
         chatgpt_hours: Number(ext.chatgpt_hours ?? 0),
         mentor_hours: Number(ext.mentor_hours ?? 0),
         target_video_hours:   goal.target_video_hours   != null ? Number(goal.target_video_hours)   : null,

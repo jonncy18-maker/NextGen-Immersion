@@ -76,10 +76,10 @@ export default function AdminProgress() {
               delta={selected.delta ?? 0}
             />
             <CategoryBreakdown
-              videoHours={Number(selected.video_hours ?? 0)}
+              libraryHours={Number(selected.library_hours ?? 0)}
+              videoExternalHours={Number(selected.video_external_hours ?? 0)}
               chatgptHours={Number(selected.chatgpt_hours ?? 0)}
               mentorHours={Number(selected.mentor_hours ?? 0)}
-              targetVideoHours={selected.target_video_hours != null ? Number(selected.target_video_hours) : null}
               targetChatgptHours={selected.target_chatgpt_hours != null ? Number(selected.target_chatgpt_hours) : null}
               targetMentorHours={selected.target_mentor_hours != null ? Number(selected.target_mentor_hours) : null}
               expectedHours={Number(selected.expected_hours ?? 0)}
