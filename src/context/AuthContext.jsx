@@ -7,7 +7,12 @@ const AuthContext = createContext({ user: null, role: null, loading: true, signO
 export function AuthProvider({ children }) {
   const { data: sessionData, isPending } = authClient.useSession();
   const [role, setRole] = useState(null);
-  const [roleLoading, setRoleLoading] = useState(false);
+  // Start true: when useSession resolves a valid session, isPending flips to
+  // false one render BEFORE the effect below runs (effects run after render).
+  // If roleLoading were false in that gap, `loading` would be false with user
+  // still null, and RequireAuth would redirect to /login before /api/me
+  // resolves — stranding an authenticated user on the login page after refresh.
+  const [roleLoading, setRoleLoading] = useState(true);
   const [user, setUser] = useState(null);
 
   useEffect(() => {

@@ -231,7 +231,14 @@ Status: **NOT STARTED**
 
 **Hard constraint:** any attempt must be built on a branch and **verified on a Vercel preview deploy that sign-in still works** before merging — login regression is the failure mode that bit us repeatedly.
 
-Status: **NOT STARTED** (deferred — login works; cold-open re-login accepted for now. Internal SPA, single launch scholar, so low impact today.)
+Status: **BUILT — PENDING PREVIEW VERIFICATION** (Jun 2026 — approach #1, Next.js migration). Two client-side bearer-token attempts first (fetchOptions, then window.fetch interception) both regressed sign-in and were reverted — confirming the roadmap's call that only the architectural fix works. Migrated the Vite SPA to **Next.js 16** (App Router) hosting Neon's official same-origin handler:
+- `lib/auth/server.js` — `createNeonAuth({ baseUrl, cookies:{ secret, sameSite:'lax' }})` (issues a first-party `session_data` cookie on the app origin).
+- `app/api/auth/[...path]/route.js` — `export const { GET, POST } = auth.handler()` (force-dynamic).
+- `src/lib/auth.js` — swapped to no-arg `createAuthClient()` from `@neondatabase/auth/next` (same-origin `/api/auth/*`); identical client surface (useSession/signIn/signOut/token) so AuthContext/Login/authToken.js are unchanged.
+- App shell: `app/layout.jsx` + `app/page.jsx` (`'use client'`, `next/dynamic(..., { ssr:false })`) renders the existing HashRouter SPA verbatim. `next.config.js` rewrites non-API paths to `/`.
+- Backend: `api/*` → `pages/api/*` verbatim (classic `(req,res)`); shared helpers moved to `lib/api/` (Next 16 no longer excludes `_`-prefixed files from routing, so leaving them under pages/api exposed them as endpoints). JWT/JWKS verification unchanged.
+- `package.json` (next 16, @neondatabase/auth; dropped vite), `vercel.json`, `.env.example` (added NEON_AUTH_COOKIE_SECRET), removed index.html/main.jsx/vite.config.js. `next build` PASS.
+- **Requires in Vercel before it works:** set `NEON_AUTH_COOKIE_SECRET` (32+ chars) and `NEON_AUTH_BASE_URL`; framework preset auto-detects Next.js. **Not merged until login + refresh-persistence verified on the preview** (the hard constraint — the builder cannot reach the auth host to self-verify).
 
 ---
 

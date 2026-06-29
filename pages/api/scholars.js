@@ -1,5 +1,5 @@
-import { getDb, getAdminDb } from "./_db.js"
-import { verifySession } from "./_auth.js"
+import { getDb, getAdminDb } from '../../lib/api/_db.js'
+import { verifySession } from '../../lib/api/_auth.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {

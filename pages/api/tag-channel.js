@@ -1,6 +1,6 @@
-import { getDb } from "./_db.js"
-import { verifyAdmin } from "./_auth.js"
-import { classifyChannelLevel } from "./_tag.js"
+import { getDb } from '../../lib/api/_db.js'
+import { verifyAdmin } from '../../lib/api/_auth.js'
+import { classifyChannelLevel } from '../../lib/api/_tag.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

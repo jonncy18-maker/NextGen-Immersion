@@ -1,6 +1,9 @@
-import { getDb } from "./_db.js"
-import { verifyAdmin } from "./_auth.js"
-import { classifyChannelLevel, classifyVideoTopics, classifyVideo } from "./_tag.js"
+import { getDb } from '../../lib/api/_db.js'
+import { verifyAdmin } from '../../lib/api/_auth.js'
+import { classifyChannelLevel, classifyVideoTopics, classifyVideo } from '../../lib/api/_tag.js'
+
+// Batch import + per-video Haiku tagging can exceed the default 10s limit.
+export const config = { maxDuration: 30 }
 
 const YT_API = 'https://www.googleapis.com/youtube/v3'
 

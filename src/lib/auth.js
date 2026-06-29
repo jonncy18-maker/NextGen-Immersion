@@ -1,21 +1,15 @@
-import { createAuthClient } from "@neondatabase/neon-js/auth"
-import { BetterAuthReactAdapter } from "@neondatabase/neon-js/auth/react/adapters"
+import { createAuthClient } from '@neondatabase/auth/next'
 
-// Talk to the Neon Auth (Better Auth) server directly at VITE_NEON_AUTH_URL.
+// Same-origin auth client (Next.js model).
 //
-// We previously tried routing auth through a same-origin serverless proxy
-// (/api/neon-auth) to make the session cookie first-party, but that broke login
-// entirely: Vercel's catch-all only matched single-segment subpaths, so the
-// two-segment POST /sign-in/email never reached the proxy (HTTP 404), and the
-// upstream path the proxy forwarded to 404'd on Neon as well. The direct config
-// below is the one that actually logs in (verified in production).
+// The app now runs on Next.js and hosts Neon Auth's official same-origin proxy
+// at /api/auth/* (see lib/auth/server.js + app/api/auth/[...path]/route.js). The
+// proxy signs a FIRST-PARTY session cookie on the app's own origin, so the
+// session survives a page refresh — fixing the cross-site third-party-cookie
+// problem of the previous browser-direct-to-neon.tech SPA model.
 //
-// Neon's official SDK (Better Auth under the hood) with the React adapter caches
-// the session in localStorage and syncs across tabs, so the session survives a
-// page refresh without depending on the cross-domain session cookie. The app's
-// own /api/* calls are authorized with a short-lived JWT (see authToken.js), not
-// the cookie. Neon Auth trusts the app origin (trusted_origins), so the direct
-// cross-origin sign-in / get-session requests are allowed.
-export const authClient = createAuthClient(import.meta.env.VITE_NEON_AUTH_URL, {
-  adapter: BetterAuthReactAdapter(),
-})
+// createAuthClient() takes no URL: it talks to the app's own /api/auth proxy.
+// The returned client uses the React adapter under the hood and exposes the same
+// surface the app already relies on (useSession, getSession, signIn, signOut,
+// token), so AuthContext / Login / authToken.js need no changes.
+export const authClient = createAuthClient()

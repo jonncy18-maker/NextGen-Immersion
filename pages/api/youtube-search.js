@@ -1,4 +1,4 @@
-import { verifySession } from "./_auth.js"
+import { verifySession } from '../../lib/api/_auth.js'
 
 const MUSIC_CATEGORY_ID = '10'
 const YT_API = 'https://www.googleapis.com/youtube/v3'

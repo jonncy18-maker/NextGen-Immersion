@@ -1,5 +1,5 @@
-import { verifySession } from "./_auth.js"
-import { classifyVideo } from "./_tag.js"
+import { verifySession } from '../../lib/api/_auth.js'
+import { classifyVideo } from '../../lib/api/_tag.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
