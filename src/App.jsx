@@ -52,10 +52,6 @@ const shellStyles = {
   body: {
     flex: 1,
     display: 'flex',
-    width: '100%',
-    maxWidth: 1280,
-    margin: '0 auto',
-    boxSizing: 'border-box',
   },
 };
 
