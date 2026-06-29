@@ -4,6 +4,7 @@ import ScholarCard from '../components/admin/ScholarCard.jsx'
 import HoursCounter from '../components/progress/HoursCounter.jsx'
 import MilestoneBar from '../components/progress/MilestoneBar.jsx'
 import WeekStats from '../components/progress/WeekStats.jsx'
+import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 import { formatHoursShort } from '../utils/timeFormat.js'
 
@@ -75,6 +76,10 @@ export default function AdminProgress() {
               targetDate={selected.target_date}
               lastSessionAt={selected.last_session_at}
             />
+          </div>
+
+          <div style={{ marginTop: '0.75rem' }}>
+            <ExternalHoursButton userId={selected.user_id} onLogged={refetch} />
           </div>
         </div>
       </div>

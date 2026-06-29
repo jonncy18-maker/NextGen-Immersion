@@ -198,6 +198,26 @@ CREATE TABLE IF NOT EXISTS video_marks (
   PRIMARY KEY (user_id, video_id)
 );
 
+-- ─── External Sessions ───────────────────────────────────────────────────────
+-- Non-video study time: ChatGPT conversation practice and weekly mentor calls.
+-- duration_seconds > 0 enforced at DB level; conversion from minutes happens
+-- server-side in api/log-external.js. session_date is admin/scholar-supplied;
+-- defaults to CURRENT_DATE. Included in user_total_hours via UNION ALL.
+
+CREATE TABLE IF NOT EXISTS external_sessions (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_type     text NOT NULL
+                   CHECK (session_type IN ('chatgpt_conversation','mentor_call')),
+  duration_seconds integer NOT NULL CHECK (duration_seconds > 0),
+  session_date     date NOT NULL DEFAULT CURRENT_DATE,
+  language         text NOT NULL DEFAULT 'english',
+  notes            text,
+  created_at       timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS external_sessions_user_idx ON external_sessions (user_id);
+
 -- ─── Helper Views ─────────────────────────────────────────────────────────────
 --
 -- TIMEZONE: All "this week" / "today" boundaries use Asia/Manila (the program
@@ -205,21 +225,28 @@ CREATE TABLE IF NOT EXISTS video_marks (
 -- runs UTC, so week/day math is anchored to Manila local time explicitly.
 -- Add a future timezone column to users/scholar_goals if scholars span zones.
 
--- Total hours per user per language
+-- Total hours per user per language (video + external sessions combined).
 CREATE OR REPLACE VIEW user_total_hours AS
   SELECT
     user_id,
     language,
-    ROUND(SUM(seconds_watched)::numeric / 3600, 1) AS total_hours,
+    ROUND(SUM(seconds)::numeric / 3600, 1) AS total_hours,
     COUNT(*) AS total_sessions,
-    MAX(started_at) AS last_session_at,
+    MAX(session_ts) AS last_session_at,
     ROUND(
       SUM(CASE
-            WHEN (started_at AT TIME ZONE 'Asia/Manila')
+            WHEN (session_ts AT TIME ZONE 'Asia/Manila')
                  >= date_trunc('week', now() AT TIME ZONE 'Asia/Manila')
-            THEN seconds_watched ELSE 0 END)::numeric / 3600, 1
+            THEN seconds ELSE 0 END)::numeric / 3600, 1
     ) AS hours_this_week
-  FROM watch_sessions
+  FROM (
+    SELECT user_id, language, seconds_watched AS seconds, started_at AS session_ts
+    FROM watch_sessions
+    UNION ALL
+    SELECT user_id, language, duration_seconds AS seconds,
+           (session_date::timestamptz) AS session_ts
+    FROM external_sessions
+  ) all_sessions
   GROUP BY user_id, language;
 
 -- Watched/unwatched status per user per video.
