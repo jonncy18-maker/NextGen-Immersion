@@ -175,7 +175,13 @@ Deliverables:
 - Low-inventory badge on admin nav
 - Weekly stale check → flag is_available=false, preserve history
 
-Status: **NOT STARTED**
+Status: **DONE** (Jun 2026 — via agentic loop, 1 iteration, audit PASS). Built on top of Phase 8 search foundation:
+- `src/components/admin/AddVideoPanel.jsx` — scholar context selector (dropdown of all scholars via `useScholars`; computes current level from `current_hours` via `getLevelForHours`); 5 level-appropriate query chips per scholar; chip click fires search immediately (not debounced); ScholarContext hidden when no scholars in system.
+- `src/pages/AdminVideos.jsx` — added Import by URL section (client-side URL parsing for video/?v=, playlist/?list=, channel /channel/UC… patterns; POST /api/youtube-import; shows imported N / skipped M result); added Library Tools section (stale check button + inline result).
+- `pages/api/inventory-check.js` (new) — GET, admin-only; counts is_available=true videos per level; returns `{ levels: { super_beginner, beginner, intermediate, advanced } }` with 0 defaults.
+- `pages/api/stale-check.js` (new) — POST, admin-only, maxDuration:30; batches all available video youtube_ids 50/call to YouTube videos?part=status; marks private/non-embeddable/missing videos as is_available=false + unavailable_since; skips batch on API error (no false positives); returns { checked, flagged, flaggedTitles }.
+- `src/components/layout/Navbar.jsx` — fetches /api/inventory-check on admin mount; shows red dot badge on Videos link when any level < 20 available; cancelled-flag cleanup on unmount.
+- All new endpoints: verifyAdmin → 403; YOUTUBE_API_KEY server-side only; next build PASS.
 
 ---
 
@@ -276,6 +282,7 @@ Status: **DONE** (Jun 2026 — approach #1, Next.js migration; verified in produ
 | Jun 2026 | Hotfix | /api/me 401 + refresh/first-login races | — | (a) /api/me 401 "Invalid Compact JWS": same-origin proxy doesn't surface set-auth-jwt header, so getAuthToken() fell back to the opaque session token — fixed by fetching GET /api/auth/token for a real JWT. (b) Refresh logout + first-sign-in-failure: route guard evaluated before auth settled — fixed via AuthContext roleLoading=true init and Login effect-based navigation. Verified in production. (PRs #29, #30.) |
 | Jun 2026 | Phase 9 | Admin progress dashboard + goal editor (provisioning deferred) | 1 | AdminProgress (overview stats + ScholarCard grid + drill-down reusing HoursCounter/MilestoneBar/WeekStats), GoalEditor on /admin/goals (program goal + per-scholar start_date), useScholars hook, program-goal.js (POST updates active goal IN PLACE to preserve scholar_goals FK links), scholar-goal.js (upsert start_date ON CONFLICT (user_id, language)), Admin→/admin/progress redirect, Navbar Goals link. Both endpoints admin-only (401/403). Isolated audit PASS; next build PASS. Provisioning (provision-scholar.js + AddScholarPanel) deferred to its own PR for preview-deploy auth verification. |
 | Jun 2026 | Docs | Post-Phase-14 documentation sync | — | Updated CLAUDE.md (stack/structure/env/auth rules), ARCHITECTURE.md (system diagram + API layer + new Authentication section + routing), README.md (full setup/deploy guide), ROADMAP.md (Phase 14 DONE + this log) to reflect the Next.js/same-origin-auth reality. |
+| Jun 2026 | Phase 10 | Admin video management + AI-assisted search | 1 | Scholar context selector in AddVideoPanel (useScholars + getLevelForHours → level chips, immediate search on chip click). Import by URL section in AdminVideos (client-side video/playlist/channel URL parsing, POST youtube-import, shows imported/skipped). Library Tools section (stale check button → POST stale-check, shows flagged count). inventory-check.js (GET, available video counts per level). stale-check.js (batch 50 to YouTube status API, marks private/non-embeddable as unavailable, skip-on-error). Navbar low-inventory red dot badge on Videos link. Audit PASS; next build PASS. |
 
 ---
 

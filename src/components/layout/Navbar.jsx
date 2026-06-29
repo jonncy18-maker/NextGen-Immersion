@@ -1,17 +1,56 @@
-import { useNavigate, NavLink } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useState, useEffect } from 'react'
+import { useNavigate, NavLink } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext.jsx'
+import { getAuthToken } from '../../lib/authToken.js'
 
 export default function Navbar() {
-  const { user, role, signOut } = useAuth();
-  const navigate = useNavigate();
+  const { user, role, signOut } = useAuth()
+  const navigate = useNavigate()
+  const [lowInventory, setLowInventory] = useState(false)
 
-  const displayName = user?.name || user?.email || '';
-  const initial = displayName.charAt(0).toUpperCase();
+  const displayName = user?.name || user?.email || ''
+  const initial = displayName.charAt(0).toUpperCase()
+
+  useEffect(() => {
+    if (role !== 'admin') return
+    let cancelled = false
+    async function checkInventory() {
+      try {
+        const token = await getAuthToken()
+        if (cancelled) return
+        const res = await fetch('/api/inventory-check', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        if (!cancelled) {
+          setLowInventory(Object.values(data.levels).some((n) => n < 20))
+        }
+      } catch {}
+    }
+    checkInventory()
+    return () => {
+      cancelled = true
+    }
+  }, [role])
 
   async function handleSignOut() {
-    await signOut();
-    navigate('/login', { replace: true });
+    await signOut()
+    navigate('/login', { replace: true })
   }
+
+  const navItems = [
+    { to: '/watch', label: 'Watch' },
+    { to: '/browse', label: 'Browse' },
+    { to: '/progress', label: 'Progress' },
+    ...(role === 'admin'
+      ? [
+          { to: '/admin/videos', label: 'Videos', badge: lowInventory },
+          { to: '/admin/progress', label: 'Dashboard' },
+          { to: '/admin/goals', label: 'Goals' },
+        ]
+      : []),
+  ]
 
   return (
     <nav
@@ -45,34 +84,40 @@ export default function Navbar() {
           NGS Immersion
         </span>
         <nav style={{ display: 'flex', gap: 4 }}>
-          {[
-            { to: '/watch', label: 'Watch' },
-            { to: '/browse', label: 'Browse' },
-            { to: '/progress', label: 'Progress' },
-            ...(role === 'admin'
-              ? [
-                  { to: '/admin/videos', label: 'Videos' },
-                  { to: '/admin/progress', label: 'Dashboard' },
-                  { to: '/admin/goals', label: 'Goals' },
-                ]
-              : []),
-          ].map(({ to, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              style={({ isActive }) => ({
-                fontSize: 13,
-                fontWeight: isActive ? 700 : 400,
-                color: isActive ? 'var(--ngsi-gold)' : 'var(--ngsi-cream)',
-                textDecoration: 'none',
-                padding: '4px 10px',
-                borderRadius: 6,
-                background: isActive ? 'rgba(201,168,76,0.12)' : 'transparent',
-                transition: 'background 0.15s',
-              })}
-            >
-              {label}
-            </NavLink>
+          {navItems.map(({ to, label, badge }) => (
+            <div key={to} style={{ position: 'relative', display: 'inline-block' }}>
+              <NavLink
+                to={to}
+                style={({ isActive }) => ({
+                  fontSize: 13,
+                  fontWeight: isActive ? 700 : 400,
+                  color: isActive ? 'var(--ngsi-gold)' : 'var(--ngsi-cream)',
+                  textDecoration: 'none',
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  background: isActive ? 'rgba(201,168,76,0.12)' : 'transparent',
+                  transition: 'background 0.15s',
+                  display: 'block',
+                })}
+              >
+                {label}
+              </NavLink>
+              {badge && (
+                <span
+                  title="Low inventory — some levels have fewer than 20 videos"
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: '#c0524a',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
+            </div>
           ))}
         </nav>
       </div>
@@ -159,5 +204,5 @@ export default function Navbar() {
         </button>
       </div>
     </nav>
-  );
+  )
 }
