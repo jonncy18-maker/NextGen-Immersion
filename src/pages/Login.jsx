@@ -1,13 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '../lib/auth.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Navigate only once auth state actually reflects the signed-in user. Doing
+  // this here (instead of right after signIn resolves) avoids a race: signIn
+  // sets the session, but useSession + /api/me haven't propagated yet, so an
+  // immediate navigate to /watch hit the guard with user still null and bounced
+  // back to /login — which is why the FIRST sign-in attempt failed and only the
+  // second (session already present) worked. This also redirects an already
+  // authenticated user away from /login.
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/watch', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -22,13 +37,14 @@ export default function Login() {
 
       if (result?.error) {
         setError(result.error.message || 'Sign in failed. Please check your credentials.');
+        setSubmitting(false);
         return;
       }
-
-      navigate('/watch', { replace: true });
+      // Success: keep the button in its submitting state and let the effect
+      // above navigate once the auth context resolves the user. Do NOT navigate
+      // here — the session hasn't propagated to the route guard yet.
     } catch (err) {
       setError(err?.message || 'Sign in failed. Please try again.');
-    } finally {
       setSubmitting(false);
     }
   }
