@@ -7,7 +7,7 @@ const WATCHED_OPTIONS = [
   { value: 'all', label: 'All' },
 ]
 
-export default function FilterBar({ filters, onChange }) {
+export default function FilterBar({ filters, onChange, style }) {
   const toggleTopic = topic => {
     const has = filters.topics.includes(topic)
     const topics = has
@@ -20,7 +20,7 @@ export default function FilterBar({ filters, onChange }) {
   const setWatched = watchedFilter => onChange({ ...filters, watchedFilter })
 
   return (
-    <div style={styles.bar}>
+    <div style={{ ...styles.bar, ...style }}>
       {/* ── Topics ── */}
       <div style={styles.group}>
         <span style={styles.groupLabel}>Topics</span>

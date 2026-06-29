@@ -1,9 +1,9 @@
 import { TOPIC_CATEGORIES } from '../../utils/topics.js'
 import { LEVELS } from '../../utils/levels.js'
 
-export default function FilterDropdowns({ filters, onChange }) {
+export default function FilterDropdowns({ filters, onChange, style }) {
   return (
-    <div style={styles.row}>
+    <div style={{ ...styles.row, ...style }}>
       <select
         value={filters.topic ?? ''}
         onChange={e => onChange({ ...filters, topic: e.target.value || null })}

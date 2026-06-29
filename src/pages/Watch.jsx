@@ -110,6 +110,18 @@ export default function Watch() {
 
   return (
     <div style={styles.page}>
+      {!loading && !error && videos.length > 0 && (
+        <div style={styles.stickyFilterStrip}>
+          <div style={styles.stickyFilterInner}>
+            <FilterDropdowns
+              filters={filters}
+              onChange={setFilters}
+              style={{ marginBottom: 0 }}
+            />
+          </div>
+        </div>
+      )}
+
       <div style={styles.container}>
         {selected && (
           <div style={styles.playerArea}>
@@ -141,15 +153,12 @@ export default function Watch() {
               message="The library is being set up — your coordinator is adding videos. Check back soon."
             />
           ) : (
-            <>
-              <FilterDropdowns filters={filters} onChange={setFilters} />
-              <VideoGrid
-                videos={visibleVideos}
-                onSelect={setSelected}
-                selectedId={selected?.id}
-                onMark={handleMark}
-              />
-            </>
+            <VideoGrid
+              videos={visibleVideos}
+              onSelect={setSelected}
+              selectedId={selected?.id}
+              onMark={handleMark}
+            />
           )}
         </div>
       </div>
@@ -161,6 +170,19 @@ const styles = {
   page: {
     minHeight: 'calc(100vh - 56px)',
     background: 'var(--ngsi-cream)',
+  },
+  stickyFilterStrip: {
+    position: 'sticky',
+    top: 56,
+    zIndex: 90,
+    background: '#fff',
+    borderBottom: '1px solid #e8e3da',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+  },
+  stickyFilterInner: {
+    maxWidth: 1280,
+    margin: '0 auto',
+    padding: '10px 16px',
   },
   container: {
     maxWidth: 1280,
