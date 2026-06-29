@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { getAuthToken } from '../../lib/authToken.js'
 
 const SESSION_TYPES = [
-  { value: 'chatgpt_conversation', label: 'ChatGPT Conversation' },
-  { value: 'mentor_call', label: 'Weekly Mentor Call' },
+  { value: 'video_external', label: '🎬 Video watching (outside app)' },
+  { value: 'chatgpt_conversation', label: '💬 ChatGPT practice' },
+  { value: 'mentor_call', label: '📞 Mentor call' },
 ]
 
 function todayManila() {
@@ -12,7 +13,7 @@ function todayManila() {
 
 export default function ExternalHoursButton({ userId, onLogged }) {
   const [open, setOpen] = useState(false)
-  const [sessionType, setSessionType] = useState('chatgpt_conversation')
+  const [sessionType, setSessionType] = useState('video_external')
   const [durationMinutes, setDurationMinutes] = useState('')
   const [sessionDate, setSessionDate] = useState(todayManila)
   const [notes, setNotes] = useState('')
@@ -20,7 +21,7 @@ export default function ExternalHoursButton({ userId, onLogged }) {
   const [errorMsg, setErrorMsg] = useState(null)
 
   function openModal() {
-    setSessionType('chatgpt_conversation')
+    setSessionType('video_external')
     setDurationMinutes('')
     setSessionDate(todayManila())
     setNotes('')

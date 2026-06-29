@@ -4,6 +4,7 @@ import ScholarCard from '../components/admin/ScholarCard.jsx'
 import HoursCounter from '../components/progress/HoursCounter.jsx'
 import MilestoneBar from '../components/progress/MilestoneBar.jsx'
 import PaceAnalysis from '../components/progress/PaceAnalysis.jsx'
+import CategoryBreakdown from '../components/progress/CategoryBreakdown.jsx'
 import WeekStats from '../components/progress/WeekStats.jsx'
 import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
@@ -73,6 +74,16 @@ export default function AdminProgress() {
               targetHours={selected.target_hours}
               status={selected.status}
               delta={selected.delta ?? 0}
+            />
+            <CategoryBreakdown
+              videoHours={Number(selected.video_hours ?? 0)}
+              chatgptHours={Number(selected.chatgpt_hours ?? 0)}
+              mentorHours={Number(selected.mentor_hours ?? 0)}
+              targetVideoHours={selected.target_video_hours != null ? Number(selected.target_video_hours) : null}
+              targetChatgptHours={selected.target_chatgpt_hours != null ? Number(selected.target_chatgpt_hours) : null}
+              targetMentorHours={selected.target_mentor_hours != null ? Number(selected.target_mentor_hours) : null}
+              expectedHours={Number(selected.expected_hours ?? 0)}
+              targetHours={selected.target_hours}
             />
           </div>
 

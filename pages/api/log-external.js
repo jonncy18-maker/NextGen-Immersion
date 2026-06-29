@@ -1,7 +1,7 @@
 import { getDb, getAdminDb } from '../../lib/api/_db.js'
 import { verifySession } from '../../lib/api/_auth.js'
 
-const VALID_TYPES = ['chatgpt_conversation', 'mentor_call']
+const VALID_TYPES = ['chatgpt_conversation', 'mentor_call', 'video_external']
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
   // Validate sessionType
   if (!VALID_TYPES.includes(sessionType)) {
-    return res.status(400).json({ error: 'Invalid session type. Must be chatgpt_conversation or mentor_call.' })
+    return res.status(400).json({ error: 'Invalid session type. Must be chatgpt_conversation, mentor_call, or video_external.' })
   }
 
   // Validate durationMinutes

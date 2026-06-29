@@ -6,9 +6,12 @@ import { verifySession } from '../../lib/api/_auth.js'
 //   target_level  → per-scholar override (COALESCE fallback to program_goals)
 //   target_hours  → per-scholar override
 //   target_date   → per-scholar override
+//   target_video_hours, target_chatgpt_hours, target_mentor_hours
+//                 → Phase 20 category splits (must sum to target_hours)
 //
 // GET  ?userId=<id>   → returns the scholar_goals row (or null)
-// POST { userId, startDate, targetLevel, targetHours, targetDate }
+// POST { userId, startDate, targetLevel, targetHours, targetDate,
+//         targetVideoHours, targetChatgptHours, targetMentorHours }
 //      → upserts scholar_goals; all fields except userId are optional
 
 const VALID_LEVELS = ['beginner', 'intermediate', 'advanced']
@@ -35,7 +38,8 @@ export default async function handler(req, res) {
     if (!userId) return res.status(400).json({ error: 'userId required' })
 
     const rows = await adminSql`
-      SELECT user_id, start_date, target_level, target_hours, target_date, language
+      SELECT user_id, start_date, target_level, target_hours, target_date, language,
+             target_video_hours, target_chatgpt_hours, target_mentor_hours
       FROM scholar_goals
       WHERE user_id = ${userId}
     `
@@ -43,7 +47,16 @@ export default async function handler(req, res) {
   }
 
   // ── POST ─────────────────────────────────────────────────────────────────────
-  const { userId, startDate, targetLevel, targetHours, targetDate } = req.body || {}
+  const {
+    userId,
+    startDate,
+    targetLevel,
+    targetHours,
+    targetDate,
+    targetVideoHours,
+    targetChatgptHours,
+    targetMentorHours,
+  } = req.body || {}
   if (!userId) return res.status(400).json({ error: 'userId required' })
 
   // Validate start date
@@ -83,6 +96,31 @@ export default async function handler(req, res) {
     tDate = targetDate
   }
 
+  // Validate category hours if provided
+  const parseOptInt = (v, name) => {
+    if (v === undefined || v === null || v === '') return null
+    const n = Number(v)
+    if (!Number.isInteger(n) || n <= 0) throw new Error(`${name} must be a positive integer`)
+    return n
+  }
+  let catVideo = null, catChatgpt = null, catMentor = null
+  try {
+    catVideo   = parseOptInt(targetVideoHours,   'targetVideoHours')
+    catChatgpt = parseOptInt(targetChatgptHours, 'targetChatgptHours')
+    catMentor  = parseOptInt(targetMentorHours,  'targetMentorHours')
+  } catch (e) {
+    return res.status(400).json({ error: e.message })
+  }
+
+  // If all three category targets are set, validate they sum to targetHours
+  if (catVideo !== null && catChatgpt !== null && catMentor !== null && hours !== null) {
+    if (catVideo + catChatgpt + catMentor !== hours) {
+      return res.status(400).json({
+        error: `Category targets (${catVideo} + ${catChatgpt} + ${catMentor} = ${catVideo + catChatgpt + catMentor}) must sum to targetHours (${hours})`,
+      })
+    }
+  }
+
   // Look up the scholar
   const target = await adminSql`
     SELECT id, role, language FROM users WHERE id = ${userId}
@@ -106,16 +144,24 @@ export default async function handler(req, res) {
   }
 
   const rows = await adminSql`
-    INSERT INTO scholar_goals (user_id, program_goal_id, start_date, target_level, target_hours, target_date, language)
-    VALUES (${userId}, ${pg[0].id}, ${start}, ${level}, ${hours}, ${tDate}, ${language})
+    INSERT INTO scholar_goals
+      (user_id, program_goal_id, start_date, target_level, target_hours, target_date, language,
+       target_video_hours, target_chatgpt_hours, target_mentor_hours)
+    VALUES
+      (${userId}, ${pg[0].id}, ${start}, ${level}, ${hours}, ${tDate}, ${language},
+       ${catVideo}, ${catChatgpt}, ${catMentor})
     ON CONFLICT (user_id, language)
     DO UPDATE SET
-      start_date      = EXCLUDED.start_date,
-      program_goal_id = EXCLUDED.program_goal_id,
-      target_level    = EXCLUDED.target_level,
-      target_hours    = EXCLUDED.target_hours,
-      target_date     = EXCLUDED.target_date
-    RETURNING user_id, start_date, target_level, target_hours, target_date, language
+      start_date            = EXCLUDED.start_date,
+      program_goal_id       = EXCLUDED.program_goal_id,
+      target_level          = EXCLUDED.target_level,
+      target_hours          = EXCLUDED.target_hours,
+      target_date           = EXCLUDED.target_date,
+      target_video_hours    = EXCLUDED.target_video_hours,
+      target_chatgpt_hours  = EXCLUDED.target_chatgpt_hours,
+      target_mentor_hours   = EXCLUDED.target_mentor_hours
+    RETURNING user_id, start_date, target_level, target_hours, target_date, language,
+              target_video_hours, target_chatgpt_hours, target_mentor_hours
   `
 
   return res.status(200).json(rows[0])

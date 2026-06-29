@@ -244,15 +244,32 @@ function ScholarGoalRow({ scholar, onSaved, disabled }) {
   const [targetHours, setTargetHours] = useState(
     scholar.target_hours ? String(scholar.target_hours) : ''
   )
+  const [targetVideoHours,   setTargetVideoHours]   = useState(scholar.target_video_hours   ? String(scholar.target_video_hours)   : '')
+  const [targetChatgptHours, setTargetChatgptHours] = useState(scholar.target_chatgpt_hours ? String(scholar.target_chatgpt_hours) : '')
+  const [targetMentorHours,  setTargetMentorHours]  = useState(scholar.target_mentor_hours  ? String(scholar.target_mentor_hours)  : '')
   const [save, setSave] = useState('idle') // idle | saving | saved | error
   const [err, setErr] = useState(null)
+
+  // Live category-sum validation
+  const catSum =
+    (Number(targetVideoHours) || 0) +
+    (Number(targetChatgptHours) || 0) +
+    (Number(targetMentorHours) || 0)
+  const catTarget = Number(targetHours) || 0
+  const catMismatch =
+    catTarget > 0 &&
+    (targetVideoHours || targetChatgptHours || targetMentorHours) &&
+    catSum !== catTarget
 
   // Dirty: any field differs from the scholar's loaded values
   const dirty =
     value !== toDateInput(scholar.start_date) ||
     targetDate !== toDateInput(scholar.target_date) ||
     targetLevel !== (scholar.target_level || '') ||
-    targetHours !== (scholar.target_hours ? String(scholar.target_hours) : '')
+    targetHours !== (scholar.target_hours ? String(scholar.target_hours) : '') ||
+    targetVideoHours   !== (scholar.target_video_hours   ? String(scholar.target_video_hours)   : '') ||
+    targetChatgptHours !== (scholar.target_chatgpt_hours ? String(scholar.target_chatgpt_hours) : '') ||
+    targetMentorHours  !== (scholar.target_mentor_hours  ? String(scholar.target_mentor_hours)  : '')
 
   async function submit() {
     setErr(null)
@@ -266,6 +283,9 @@ function ScholarGoalRow({ scholar, onSaved, disabled }) {
           targetDate: targetDate || null,
           targetLevel: targetLevel || null,
           targetHours: targetHours ? Number(targetHours) : null,
+          targetVideoHours:   targetVideoHours   ? Number(targetVideoHours)   : null,
+          targetChatgptHours: targetChatgptHours ? Number(targetChatgptHours) : null,
+          targetMentorHours:  targetMentorHours  ? Number(targetMentorHours)  : null,
         }),
       })
       const json = await res.json()
@@ -351,18 +371,62 @@ function ScholarGoalRow({ scholar, onSaved, disabled }) {
         />
       </label>
 
+      <label style={styles.field}>
+        <span style={styles.label}>Video h</span>
+        <input
+          type="number"
+          min="1"
+          placeholder="—"
+          value={targetVideoHours}
+          onChange={(e) => { setTargetVideoHours(e.target.value); setSave('idle') }}
+          style={{ ...styles.input, width: 72, ...(catMismatch ? { borderColor: '#c0524a' } : {}) }}
+          disabled={disabled}
+        />
+      </label>
+
+      <label style={styles.field}>
+        <span style={styles.label}>ChatGPT h</span>
+        <input
+          type="number"
+          min="1"
+          placeholder="—"
+          value={targetChatgptHours}
+          onChange={(e) => { setTargetChatgptHours(e.target.value); setSave('idle') }}
+          style={{ ...styles.input, width: 72, ...(catMismatch ? { borderColor: '#c0524a' } : {}) }}
+          disabled={disabled}
+        />
+      </label>
+
+      <label style={styles.field}>
+        <span style={styles.label}>Mentor h</span>
+        <input
+          type="number"
+          min="1"
+          placeholder="—"
+          value={targetMentorHours}
+          onChange={(e) => { setTargetMentorHours(e.target.value); setSave('idle') }}
+          style={{ ...styles.input, width: 72, ...(catMismatch ? { borderColor: '#c0524a' } : {}) }}
+          disabled={disabled}
+        />
+      </label>
+
       <button
         type="button"
         onClick={submit}
-        disabled={disabled || !dirty || save === 'saving'}
+        disabled={disabled || !dirty || save === 'saving' || catMismatch}
         style={{
           ...styles.saveBtn,
-          ...(disabled || !dirty || save === 'saving' ? styles.saveBtnDisabled : {}),
+          ...(disabled || !dirty || save === 'saving' || catMismatch ? styles.saveBtnDisabled : {}),
           alignSelf: 'flex-end',
         }}
       >
         {save === 'saving' ? 'Saving…' : save === 'saved' && !dirty ? 'Saved ✓' : 'Save'}
       </button>
+      {catMismatch && (
+        <span style={styles.rowErr}>
+          {catSum}h ≠ {catTarget}h total
+        </span>
+      )}
       {save === 'error' && <span style={styles.rowErr}>{err || 'Failed'}</span>}
     </div>
   )
