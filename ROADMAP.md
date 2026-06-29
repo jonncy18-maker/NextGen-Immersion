@@ -377,6 +377,63 @@ Status: **PLANNED**
 
 ---
 
+## Phase 18 — Admin Video Library Editor (Tabs, Edit, Delete, Bulk Actions)
+
+**Loop goal:** "Add a tabbed layout to the Admin Videos page. The existing AI search + import content becomes the 'Discover & Import' tab. A new 'Manage Library' tab shows the full video library with single-select and multi-select editing: 3-dot menu per card (delete, change level, change topic), plus a bulk-action bar when multiple videos are selected."
+
+**Background:** The admin currently has no way to remove stale/wrong videos from the library or correct AI-tagged level/topic without deleting and re-adding. The existing `AddVideoPanel` (search + URL import + stale check) becomes one of two tabs; the new tab gives full CRUD over the existing library.
+
+Deliverables:
+- `src/pages/AdminVideos.jsx` — add tab bar at the top with two tabs:
+  - **"Discover & Import"** — wraps the existing `AddVideoPanel` content (AI search, URL import, stale check, inventory tools) unchanged.
+  - **"Manage Library"** — new tab, renders `VideoLibraryEditor`.
+- `src/components/admin/VideoLibraryEditor.jsx` (new) — shows the full video library in a grid:
+  - Each card is selectable (checkbox appears on hover / when any selection is active).
+  - **Single-select:** clicking a card's ⋯ (three-dot) button in the upper-right corner opens a popover menu:
+    - **Delete** — confirmation modal ("Remove this video from the library?") → soft-delete (sets `is_available=false`, preserves watch history; see design note below).
+    - **Change Level** — inline dropdown of the four CEFR levels; saves immediately; stamps `level_source='admin'` so re-classification doesn't overwrite it.
+    - **Change Topic** — inline dropdown of all topic values from the taxonomy; saves immediately.
+  - **Multi-select:** checking 2+ videos shows a sticky bulk-action bar above the grid with the same three actions:
+    - **Delete selected** — single confirmation for the batch.
+    - **Set Level** — level dropdown applies to all selected; stamps `level_source='admin'` on each.
+    - **Set Topic** — topic dropdown applies to all selected.
+  - Select-all checkbox in the bulk bar. Deselect-all clears selection and hides the bar.
+  - Filter/search within the tab (search by title, filter by level/topic/watched state) so admins can quickly find what they need in a large library.
+- `pages/api/delete-video.js` (new) — admin-only POST; accepts `{ videoIds: [...] }` (array, 1 or many); sets `is_available = false` + `unavailable_since = now()` on each. Does NOT hard-delete — watch history and cumulative hours must be preserved. Returns `{ deleted: N }`.
+- `pages/api/update-video.js` (new) — admin-only POST; accepts `{ videoIds: [...], level?: string, topic?: string }`; applies whichever fields are present; sets `level_source='admin'` when `level` is updated. Returns `{ updated: N }`.
+- Inventory badge in Navbar re-checks after any delete or level change (same `/api/inventory-check` call).
+
+**Design note — soft delete:** The existing roadmap note says "keep-forever (never delete)" to protect watch history and cumulative hours. Manual admin deletion uses the same `is_available=false` path as the stale checker — videos disappear from the scholar library and stop counting toward inventory, but `watch_sessions` rows are untouched and cumulative hours are unaffected. If a hard-delete is ever needed (duplicate imports), that's a future DBA operation outside the UI.
+
+**Design note — level_source:** Setting `level_source='admin'` on a bulk level-change marks those videos as admin-overridden, which means a future channel re-classification won't overwrite them (per the existing re-classification rule in CLAUDE.md).
+
+Status: **PLANNED**
+
+---
+
+## Phase 19 — Progress Analysis: Hours Behind / Ahead
+
+**Loop goal:** "Surface an explicit hours-behind (or ahead) figure on the Progress page for scholars, and on the admin per-scholar drill-down. Replace the bare ON TRACK / AT RISK pill with a quantified delta — e.g. '14.5h behind pace' or '3h ahead of pace' — so scholars and admins can see exactly how far off target they are, not just a traffic-light status."
+
+**Background:** The `scholar_pace` view already computes `expected_hours` (hours the scholar should have by today given their start date and target) and `current_hours`. The difference (`expected_hours − current_hours`) is already used to determine AT RISK vs. ON TRACK, but the raw number is never shown to the user. This phase surfaces it prominently.
+
+Deliverables:
+- `pages/api/progress.js` — confirm `delta` (or `hours_behind`) is returned in the response. It is `expected_hours − current_hours`; positive = behind, negative = ahead. Coerce to `Number()` (same rule as the other NUMERIC fields). If not already returned, add it.
+- `src/components/progress/PaceAnalysis.jsx` (new) — replaces or extends the existing status pill in `Progress.jsx` and the admin drill-down. Displays:
+  - **Hours behind / ahead:** large, prominent number with sign — e.g. "14.5h behind pace" (amber/red) or "3.2h ahead of pace" (green). Shown to one decimal place.
+  - **Status label:** ON TRACK / AT RISK derived from the delta (unchanged logic), shown as a smaller secondary label alongside or below the number.
+  - **PENDING state:** if no start_date is set, shows "Goal not started — no pace data yet."
+  - **Goal met state:** if `current_hours ≥ target_hours`, shows "Goal reached" with total hours.
+- `src/pages/Progress.jsx` — render `PaceAnalysis` below `MilestoneBar` (or replace the existing status pill in `WeekStats`/`HoursCounter` with the new component). Same data already fetched from `/api/progress` — no new API calls.
+- `src/pages/AdminProgress.jsx` drill-down — render `PaceAnalysis` in the per-scholar detail view so admins see the same quantified delta when they click into a scholar. `ScholarCard` can optionally show a compact one-liner (e.g. "−14.5h") in the card body.
+- `src/components/admin/ScholarCard.jsx` — add the numeric delta as a secondary line under the AT RISK / ON TRACK pill (compact form, same color coding).
+
+**Design note:** Use the existing `--ngsi-status-*` token colors (green saved → ahead, amber buffering → behind-but-close, red offline → significantly behind). "Significantly behind" threshold TBD by the pace logic already in `src/utils/pace.js`.
+
+Status: **PLANNED**
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
