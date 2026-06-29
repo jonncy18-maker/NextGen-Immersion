@@ -4,6 +4,13 @@ import { getDb } from '../../lib/api/_db.js'
 const MUSIC_CATEGORY_ID = '10'
 const YT_API = 'https://www.googleapis.com/youtube/v3'
 
+function parseDuration(iso) {
+  if (!iso) return 0
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+  if (!m) return 0
+  return (Number(m[1] || 0) * 3600) + (Number(m[2] || 0) * 60) + Number(m[3] || 0)
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -44,9 +51,10 @@ export default async function handler(req, res) {
     // Fetch categoryId for all results to filter out music (category 10)
     const videoIds = rawItems.map((i) => i.id?.videoId).filter(Boolean)
     let categoryMap = {}
+    let durationMap = {}
     if (videoIds.length > 0) {
       const detailParams = new URLSearchParams({
-        part: 'snippet',
+        part: 'snippet,contentDetails',
         id: videoIds.join(','),
         key: process.env.YOUTUBE_API_KEY,
       })
@@ -55,6 +63,7 @@ export default async function handler(req, res) {
         const detailData = await detailRes.json()
         for (const v of detailData.items || []) {
           categoryMap[v.id] = v.snippet?.categoryId
+          durationMap[v.id] = parseDuration(v.contentDetails?.duration)
         }
       }
     }
@@ -74,6 +83,7 @@ export default async function handler(req, res) {
         thumbnail_url:
           item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url,
         publishedAt: item.snippet?.publishedAt,
+        duration_seconds: durationMap[item.id?.videoId] || 0,
       }))
 
     // Check which returned IDs are already in the library
