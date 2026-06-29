@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback } from 'react'
 import { getAuthToken } from '../../lib/authToken.js'
 import { getTopicColor } from '../../utils/topics.js'
-import { LEVELS } from '../../utils/levels.js'
+import { LEVELS, getLevelForHours } from '../../utils/levels.js'
+import { useScholars } from '../../hooks/useScholars.js'
 
 const LEVEL_LABELS = Object.fromEntries(LEVELS.map((l) => [l.id, l.label]))
 const LEVEL_COLORS = {
@@ -9,6 +10,37 @@ const LEVEL_COLORS = {
   beginner: '#4DA67A',
   intermediate: '#C9A84C',
   advanced: '#C0524A',
+}
+
+const LEVEL_QUERY_CHIPS = {
+  super_beginner: [
+    'slow English for beginners',
+    'basic English conversation A1',
+    'simple English sentences',
+    'English for absolute beginners',
+    'easy English listening A2',
+  ],
+  beginner: [
+    'easy English conversation',
+    'A2 B1 English practice',
+    'English for daily life',
+    'slow English listening',
+    'simple English stories',
+  ],
+  intermediate: [
+    'B1 B2 English conversation',
+    'English podcast intermediate',
+    'real English listening',
+    'English for work intermediate',
+    'English fluency practice',
+  ],
+  advanced: [
+    'advanced English conversation',
+    'native speed English',
+    'English news analysis',
+    'academic English listening',
+    'English discussion debate',
+  ],
 }
 
 function useDebounce(fn, delay) {
@@ -63,6 +95,62 @@ async function addVideo(video, tags) {
   })
   if (!res.ok) throw new Error('save failed')
   return res.json()
+}
+
+function ScholarContext({ onChipClick }) {
+  const { data: scholars } = useScholars()
+  const [selectedId, setSelectedId] = useState('')
+
+  if (!scholars || scholars.length === 0) return null
+
+  const scholar = scholars.find((s) => s.user_id === selectedId) || null
+  const level = scholar ? getLevelForHours(parseFloat(scholar.current_hours || 0)) : null
+  const chips = level ? LEVEL_QUERY_CHIPS[level.id] || [] : []
+
+  return (
+    <div style={ctxStyles.wrap}>
+      <div style={ctxStyles.row}>
+        <select
+          value={selectedId}
+          onChange={(e) => setSelectedId(e.target.value)}
+          style={ctxStyles.select}
+        >
+          <option value="">Scholar context (optional)</option>
+          {scholars.map((s) => {
+            const lv = getLevelForHours(parseFloat(s.current_hours || 0))
+            return (
+              <option key={s.user_id} value={s.user_id}>
+                {s.scholar_name} — {lv.label} ({s.current_hours}h)
+              </option>
+            )
+          })}
+        </select>
+        {level && (
+          <span
+            style={{
+              ...chipStyles.base,
+              background: LEVEL_COLORS[level.id] || '#8a8f99',
+              color: '#fff',
+              flexShrink: 0,
+            }}
+          >
+            {level.label}
+          </span>
+        )}
+      </div>
+      {chips.length > 0 ? (
+        <div style={ctxStyles.chips}>
+          {chips.map((chip) => (
+            <button key={chip} style={ctxStyles.chipBtn} onClick={() => onChipClick(chip)}>
+              {chip}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p style={ctxStyles.hint}>Select a scholar to see suggested search queries</p>
+      )}
+    </div>
+  )
 }
 
 function ResultCard({ item, onAdd }) {
@@ -221,8 +309,18 @@ export default function AddVideoPanel() {
     }
   }
 
+  const handleChipClick = useCallback(
+    (chip) => {
+      setQuery(chip)
+      doSearch(chip)
+    },
+    [doSearch],
+  )
+
   return (
     <div style={panelStyles.wrap}>
+      <ScholarContext onChipClick={handleChipClick} />
+
       <div style={panelStyles.searchRow}>
         <input
           type="search"
@@ -258,6 +356,42 @@ export default function AddVideoPanel() {
 }
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
+
+const ctxStyles = {
+  wrap: {
+    background: '#f8f5ef',
+    border: '1px solid #e8e3da',
+    borderRadius: 10,
+    padding: '12px 14px',
+    marginBottom: 12,
+  },
+  row: { display: 'flex', alignItems: 'center', gap: 8 },
+  select: {
+    flex: 1,
+    padding: '7px 10px',
+    fontSize: 13,
+    border: '1.5px solid #d0d5dd',
+    borderRadius: 7,
+    background: '#fff',
+    color: 'var(--ngsi-navy)',
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+  },
+  chips: { display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 },
+  chipBtn: {
+    padding: '4px 10px',
+    fontSize: 12,
+    fontWeight: 500,
+    border: '1px solid #c5bfb0',
+    borderRadius: 5,
+    background: '#fff',
+    color: 'var(--ngsi-navy)',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    lineHeight: 1.4,
+  },
+  hint: { fontSize: 12, color: '#8a8f99', margin: '8px 0 0' },
+}
 
 const panelStyles = {
   wrap: { display: 'flex', flexDirection: 'column', gap: 12 },
