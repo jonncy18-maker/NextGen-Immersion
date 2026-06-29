@@ -308,6 +308,75 @@ Status: **DONE** (Jun 2026 — approach #1, Next.js migration; verified in produ
 
 ---
 
+## Phase 15 — Per-Scholar Program Goals
+
+**Loop goal:** "Make the program goal configurable per scholar. Each scholar gets their own target level, target hours, and target date — not a single shared program goal. Admin can set or override each scholar's goal independently."
+
+**Background:** Phase 9 built a single `program_goals` table with one active global goal that all scholars share via `scholar_goals.program_goal_id`. In practice, scholars join at different times and have different graduation / registration deadlines (e.g. Claire's OET exam date vs. April's or Nathalie's), so a single shared target date doesn't fit.
+
+Deliverables:
+- Schema change: add `target_level`, `target_hours`, and `target_date` columns directly to `scholar_goals` (or migrate `program_goals` to a per-scholar model). Each scholar row is self-contained — no shared FK.
+- `pages/api/scholar-goal.js` updated — POST accepts per-scholar `target_level` / `target_hours` / `target_date` in addition to `start_date`; GET returns the scholar's own goal fields.
+- `pages/api/program-goal.js` — retain as a template/default-setter (admin can push a template to all scholars at once) but individual scholars can diverge.
+- `src/components/admin/GoalEditor.jsx` updated — per-scholar rows now show editable `target_date` (and optionally target level/hours) alongside `start_date`. Template apply button pushes defaults to all scholars.
+- `pages/api/scholars.js` + `scholar_pace` view updated — pace calculations use the scholar's own `target_date` / `target_hours` instead of the global goal.
+- `src/pages/Progress.jsx` + `src/components/progress/WeekStats.jsx` — deadline display uses the scholar's own target date.
+
+Status: **PLANNED**
+
+---
+
+## Phase 16 — External Hours Logging
+
+**Loop goal:** "Add the ability to log external study hours from the dashboard. Both scholars and admins can record time spent on activities outside the video library. Supported types: ChatGPT conversation practice and weekly mentor call."
+
+**Background:** Comprehensible input doesn't happen only through video watching. Scholars also practice English via ChatGPT conversation and have weekly 1-on-1 calls with their NGS mentor — both of which count toward total input hours and should appear in the progress display.
+
+Deliverables:
+- Schema: new `external_sessions` table — `id`, `user_id`, `session_type` (enum: `chatgpt_conversation` | `mentor_call`), `duration_seconds`, `session_date`, `notes` (optional), `created_at`. Indexed by `user_id`.
+- `pages/api/log-external.js` — POST, JWT-auth (scholar logs their own; admin can log on behalf of a scholar). Validates `session_type` against the allowed enum.
+- `pages/api/progress.js` updated — cumulative hours query sums both `watch_sessions` and `external_sessions` for the scholar.
+- `src/components/progress/ExternalHoursButton.jsx` — modal/drawer triggered by a "+ Add Hours" button on the Progress page and the admin per-scholar drill-down. Contains:
+  - Type dropdown: "ChatGPT Conversation" / "Weekly Mentor Call"
+  - Duration input (minutes)
+  - Optional date picker (defaults today)
+  - Submit → POST `/api/log-external`
+- Admin dashboard: same button available on each ScholarCard drill-down so the admin can log on behalf of a scholar who didn't self-log.
+- `src/components/progress/WeekStats.jsx` — "This Week" stat includes external hours alongside video hours. Optionally show a breakdown chip (e.g. "2h video · 1h external").
+
+Status: **PLANNED**
+
+---
+
+## Phase 17 — Unified Watch + Browse Tab
+
+**Loop goal:** "Merge the Watch and Browse tabs into a single tab using the Browse layout as the base. The topic filter becomes a hierarchical menu at the top of the library with three top-level buckets and nested sub-categories. Level and watched state become dropdown filters rather than chip rows."
+
+**Background:** The current app has two separate nav items — Watch (player + quick browse) and Browse (full library). This split is confusing; Dreaming Spanish puts discovery and playback on the same screen. The Browse layout (video grid + filters) is the better base. The topic chip rows also get crowded at mobile widths — hierarchical dropdowns scale better.
+
+Deliverables:
+- Nav change: remove the separate Browse tab. Sidebar and BottomNav show one "Watch" tab that opens the unified page.
+- `src/pages/Watch.jsx` refactored as the unified Watch+Browse page:
+  - Player area (collapsible on mobile, hidden until a video is selected) at the top.
+  - Filter row below the player (or at the very top on desktop): **Topics** dropdown | **Level** dropdown | **Watched** dropdown — all as `<select>` or custom dropdown components, not chip rows.
+  - Topics dropdown structure (hierarchical, single-select at the sub-category level):
+    - **OET / Career** (top-level label, not selectable) → Medical & Nursing | Work & Professional | Academic & Study Skills
+    - **Daily Life** (top-level label) → Everyday Conversations | Health & Wellness | Family & Relationships
+    - **Compelling Interests** (top-level label) → Travel & Culture | Entertainment & Media | Science & Nature
+    - "All Topics" as the default/reset option at the top.
+  - Level dropdown: All Levels | Super Beginner (A1–A2) | Beginner (A2–B1) | Intermediate (B1–B2) | Advanced (B2–C1)
+  - Watched dropdown: Unwatched | Watched | All
+  - `VideoGrid` below — same card, same scholar-level-first sort, same empty + skeleton states.
+- `src/pages/Browse.jsx` deleted (or redirected to `#/watch` for any bookmarked deep links).
+- `src/components/video/FilterBar.jsx` replaced or refactored into the new dropdown-based `FilterDropdowns.jsx` component.
+- Route cleanup: remove `#/browse` route from `src/App.jsx`; admin Videos page link to Watch is updated if needed.
+
+**Design note:** The three top-level topic buckets map directly to the existing color system (blue OET/Career, green Daily Life, gray Compelling Interests). The sub-category labels inside the dropdown do not need color coding — only the topic chips on the VideoCard keep their colors.
+
+Status: **PLANNED**
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
