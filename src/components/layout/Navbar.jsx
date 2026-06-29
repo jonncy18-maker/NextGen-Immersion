@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
+import ConnectionPill from './ConnectionPill.jsx'
 
 export default function Navbar() {
   const { user, role, signOut } = useAuth()
@@ -18,6 +19,8 @@ export default function Navbar() {
       <span style={styles.wordmark}>NGS Immersion</span>
 
       <div style={styles.right}>
+        <ConnectionPill />
+
         {role === 'admin' && <span style={styles.adminPill}>Admin</span>}
 
         <div aria-hidden="true" style={styles.avatar}>
