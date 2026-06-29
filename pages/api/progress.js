@@ -36,5 +36,11 @@ export default async function handler(req, res) {
     })
   }
 
-  return res.status(200).json(rows[0])
+  const row = rows[0]
+  return res.status(200).json({
+    ...row,
+    current_hours: Number(row.current_hours ?? 0),
+    hours_this_week: Number(row.hours_this_week ?? 0),
+    expected_hours: Number(row.expected_hours ?? 0),
+  })
 }
