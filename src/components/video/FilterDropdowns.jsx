@@ -11,6 +11,85 @@ const DURATION_OPTIONS = [
   { value: 'over30', label: 'Over 30 min' },
 ]
 
+const LEVELS = [
+  { value: 'beginner',     label: 'Beginner' },
+  { value: 'intermediate', label: 'Intermediate' },
+  { value: 'advanced',     label: 'Advanced' },
+]
+
+function TopicMultiSelect({ selected, onChange }) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  function toggleTopic(topic) {
+    if (selected.includes(topic)) {
+      onChange(selected.filter(t => t !== topic))
+    } else {
+      onChange([...selected, topic])
+    }
+  }
+
+  const label = selected.length === 0
+    ? 'All Topics'
+    : selected.length === 1
+      ? selected[0]
+      : `${selected[0]}, +${selected.length - 1}`
+
+  return (
+    <div ref={containerRef} style={styles.topicContainer}>
+      <button
+        style={{ ...styles.topicBtn, ...(open ? styles.topicBtnOpen : {}) }}
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Filter by topic"
+      >
+        <span style={styles.topicBtnLabel}>{label}</span>
+        <span style={{ ...styles.topicBtnArrow, transform: open ? 'rotate(180deg)' : 'none' }}>▾</span>
+      </button>
+      {open && (
+        <div style={styles.topicPopover} role="listbox" aria-multiselectable="true">
+          {TOPIC_CATEGORIES.map(cat => (
+            <div key={cat.key} style={styles.topicGroup}>
+              <p style={styles.topicGroupLabel}>{cat.label}</p>
+              {cat.topics.map(topic => {
+                const checked = selected.includes(topic)
+                return (
+                  <label key={topic} style={styles.topicOption}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleTopic(topic)}
+                      style={styles.topicCheckbox}
+                    />
+                    <span style={styles.topicOptionText}>{topic}</span>
+                  </label>
+                )
+              })}
+            </div>
+          ))}
+          {selected.length > 0 && (
+            <button style={styles.clearTopicsBtn} onClick={() => { onChange([]); setOpen(false) }}>
+              Clear all topics
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function FilterDropdowns({ filters, onChange, style }) {
   const [searchDraft, setSearchDraft] = useState(filters.search ?? '')
   const [topicSearchDraft, setTopicSearchDraft] = useState(filters.topicSearch ?? '')
@@ -34,6 +113,15 @@ export default function FilterDropdowns({ filters, onChange, style }) {
     topicSearchTimer.current = setTimeout(() => onChange({ ...filters, topicSearch: val || '' }), 200)
   }
 
+  function toggleLevel(value) {
+    const current = filters.level ?? []
+    if (current.includes(value)) {
+      onChange({ ...filters, level: current.filter(l => l !== value) })
+    } else {
+      onChange({ ...filters, level: [...current, value] })
+    }
+  }
+
   return (
     <div style={{ ...styles.wrap, ...style }}>
       <div style={styles.row}>
@@ -54,33 +142,11 @@ export default function FilterDropdowns({ filters, onChange, style }) {
           )}
         </div>
 
-        {/* Level dropdown — simplified to 3 tiers */}
-        <select
-          value={filters.level ?? ''}
-          onChange={e => onChange({ ...filters, level: e.target.value || null })}
-          style={styles.select}
-          aria-label="Filter by level"
-        >
-          <option value="">All Levels</option>
-          <option value="beginner">Beginner (A1–B1)</option>
-          <option value="intermediate">Intermediate (B1–B2)</option>
-          <option value="advanced">Advanced (B2–C1)</option>
-        </select>
-
-        {/* Topic dropdown */}
-        <select
-          value={filters.topic ?? ''}
-          onChange={e => onChange({ ...filters, topic: e.target.value || null })}
-          style={styles.select}
-          aria-label="Filter by topic"
-        >
-          <option value="">All Topics</option>
-          {TOPIC_CATEGORIES.map(cat => (
-            <optgroup key={cat.key} label={cat.label}>
-              {cat.topics.map(t => <option key={t} value={t}>{t}</option>)}
-            </optgroup>
-          ))}
-        </select>
+        {/* Topic multi-select */}
+        <TopicMultiSelect
+          selected={filters.topic ?? []}
+          onChange={topics => onChange({ ...filters, topic: topics })}
+        />
 
         {/* Duration dropdown */}
         <select
@@ -105,6 +171,31 @@ export default function FilterDropdowns({ filters, onChange, style }) {
           <option value="watched">Watched</option>
           <option value="all">All</option>
         </select>
+      </div>
+
+      {/* Level toggle chips */}
+      <div style={styles.levelRow}>
+        {LEVELS.map(lvl => {
+          const active = (filters.level ?? []).includes(lvl.value)
+          return (
+            <button
+              key={lvl.value}
+              style={{ ...styles.levelChip, ...(active ? styles.levelChipActive : {}) }}
+              onClick={() => toggleLevel(lvl.value)}
+              aria-pressed={active}
+            >
+              {lvl.label}
+            </button>
+          )
+        })}
+        {(filters.level ?? []).length > 0 && (
+          <button
+            style={styles.clearLevelBtn}
+            onClick={() => onChange({ ...filters, level: [] })}
+          >
+            All Levels
+          </button>
+        )}
       </div>
 
       {/* Topic keyword search — secondary AND filter */}
@@ -132,6 +223,7 @@ export default function FilterDropdowns({ filters, onChange, style }) {
 const styles = {
   wrap: { marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 },
   row: { display: 'flex', gap: 10, flexWrap: 'wrap' },
+  levelRow: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' },
   topicRow: { display: 'flex', gap: 10 },
   searchWrap: { position: 'relative', flex: '2 1 200px', minWidth: 160 },
   searchInput: {
@@ -173,5 +265,124 @@ const styles = {
     minWidth: 120,
     appearance: 'auto',
     fontFamily: 'inherit',
+  },
+  levelChip: {
+    padding: '5px 14px',
+    border: '1.5px solid var(--ngsi-cream-dark)',
+    borderRadius: 20,
+    background: '#fff',
+    color: 'var(--ngsi-navy)',
+    fontSize: 12,
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    transition: 'background 0.12s, color 0.12s, border-color 0.12s',
+  },
+  levelChipActive: {
+    background: 'var(--ngsi-navy)',
+    color: '#fff',
+    borderColor: 'var(--ngsi-navy)',
+  },
+  clearLevelBtn: {
+    padding: '5px 10px',
+    border: 'none',
+    borderRadius: 20,
+    background: 'none',
+    color: '#8a8f99',
+    fontSize: 12,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    textDecoration: 'underline',
+  },
+  topicContainer: {
+    position: 'relative',
+    flex: '1 1 150px',
+    minWidth: 140,
+  },
+  topicBtn: {
+    width: '100%',
+    padding: '7px 12px',
+    border: '1px solid var(--ngsi-cream-dark)',
+    borderRadius: 8,
+    background: '#fff',
+    color: 'var(--ngsi-navy)',
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 4,
+    textAlign: 'left',
+  },
+  topicBtnOpen: {
+    borderColor: 'var(--ngsi-navy)',
+  },
+  topicBtnLabel: {
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+  },
+  topicBtnArrow: {
+    flexShrink: 0,
+    fontSize: 11,
+    transition: 'transform 0.15s',
+    display: 'inline-block',
+  },
+  topicPopover: {
+    position: 'absolute',
+    top: 'calc(100% + 4px)',
+    left: 0,
+    zIndex: 200,
+    background: '#fff',
+    border: '1px solid #e8e3da',
+    borderRadius: 10,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+    padding: '10px 0',
+    minWidth: 220,
+    maxHeight: 320,
+    overflowY: 'auto',
+  },
+  topicGroup: {
+    padding: '6px 12px',
+  },
+  topicGroupLabel: {
+    margin: '0 0 4px',
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    color: '#8a8f99',
+  },
+  topicOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '4px 0',
+    cursor: 'pointer',
+    fontSize: 13,
+    color: 'var(--ngsi-navy)',
+  },
+  topicCheckbox: {
+    cursor: 'pointer',
+    accentColor: 'var(--ngsi-navy)',
+  },
+  topicOptionText: {
+    userSelect: 'none',
+  },
+  clearTopicsBtn: {
+    display: 'block',
+    width: '100%',
+    padding: '6px 12px',
+    background: 'none',
+    border: 'none',
+    borderTop: '1px solid #e8e3da',
+    color: '#8a8f99',
+    fontSize: 12,
+    cursor: 'pointer',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+    marginTop: 4,
   },
 }
