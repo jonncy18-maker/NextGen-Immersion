@@ -28,5 +28,16 @@ export default async function handler(req, res) {
     ORDER BY status ASC, current_hours DESC
   `
 
-  return res.status(200).json(scholars)
+  return res.status(200).json(
+    scholars.map(s => {
+      const currentHours = Number(s.current_hours ?? 0)
+      const expectedHours = Number(s.expected_hours ?? 0)
+      return {
+        ...s,
+        current_hours: currentHours,
+        expected_hours: expectedHours,
+        delta: expectedHours - currentHours,
+      }
+    })
+  )
 }

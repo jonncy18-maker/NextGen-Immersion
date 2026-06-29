@@ -1,10 +1,10 @@
 import { useProgress } from '../hooks/useProgress.js'
 import HoursCounter from '../components/progress/HoursCounter.jsx'
 import MilestoneBar from '../components/progress/MilestoneBar.jsx'
+import PaceAnalysis from '../components/progress/PaceAnalysis.jsx'
 import WeekStats from '../components/progress/WeekStats.jsx'
 import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
-import { getPaceColor, getPaceLabel } from '../utils/pace.js'
 
 export default function Progress() {
   const { data, loading, error, refetch } = useProgress()
@@ -163,6 +163,13 @@ export default function Progress() {
             status={data.status}
           />
           <MilestoneBar currentHours={data.current_hours} />
+          <PaceAnalysis
+            currentHours={data.current_hours}
+            expectedHours={data.expected_hours}
+            targetHours={data.target_hours}
+            status={data.status}
+            delta={data.delta ?? 0}
+          />
         </div>
 
         <div style={cardStyle}>

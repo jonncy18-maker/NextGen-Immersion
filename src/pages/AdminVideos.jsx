@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import AddVideoPanel from '../components/admin/AddVideoPanel.jsx'
+import VideoLibraryEditor from '../components/admin/VideoLibraryEditor.jsx'
 import { getAuthToken } from '../lib/authToken.js'
 
 function parseYouTubeUrl(raw) {
@@ -25,6 +26,8 @@ function parseYouTubeUrl(raw) {
 }
 
 export default function AdminVideos() {
+  const [tab, setTab] = useState('discover')
+
   const [importUrl, setImportUrl] = useState('')
   const [importState, setImportState] = useState('idle') // idle|loading|done|error
   const [importResult, setImportResult] = useState(null)
@@ -85,81 +88,107 @@ export default function AdminVideos() {
   return (
     <div style={styles.page}>
       <div style={styles.container}>
-        {/* ── Search & Add ───────────────────────────────────────────── */}
         <h1 style={styles.title}>Video Library</h1>
-        <p style={styles.sub}>
-          Search YouTube to find content for the library. Music videos are excluded automatically.
-          Each result is AI-tagged with level and topic before you add it.
-        </p>
-        <AddVideoPanel />
 
-        {/* ── Import by URL ──────────────────────────────────────────── */}
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Import by URL</h2>
-          <p style={styles.sub}>
-            Paste a YouTube video, playlist, or channel URL. AI-tags and adds all videos (up to 50
-            per import). Channel URLs must use the /channel/UC… format.
-          </p>
-          <div style={styles.importRow}>
-            <input
-              type="url"
-              value={importUrl}
-              onChange={(e) => {
-                setImportUrl(e.target.value)
-                setImportError('')
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && handleImport()}
-              placeholder="https://www.youtube.com/watch?v=… or /playlist?list=… or /channel/UC…"
-              style={styles.importInput}
-              disabled={importState === 'loading'}
-            />
-            <button
-              onClick={handleImport}
-              disabled={!importUrl.trim() || importState === 'loading'}
-              style={{
-                ...styles.btn,
-                ...(!importUrl.trim() || importState === 'loading' ? styles.btnDisabled : {}),
-              }}
-            >
-              {importState === 'loading' ? 'Importing…' : 'Import'}
-            </button>
-          </div>
-          {importError && <p style={styles.error}>{importError}</p>}
-          {importState === 'done' && importResult && (
-            <p style={styles.success}>
-              Imported {importResult.imported} video{importResult.imported !== 1 ? 's' : ''},
-              skipped {importResult.skipped} already in library.
-            </p>
-          )}
-        </div>
-
-        {/* ── Library Tools ──────────────────────────────────────────── */}
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Library Tools</h2>
-          <p style={styles.sub}>
-            Check for videos that have been deleted, made private, or are no longer embeddable.
-            Stale videos are flagged unavailable but never deleted — their watch history is
-            preserved.
-          </p>
+        {/* ── Tab bar ───────────────────────────────────────────────── */}
+        <div style={styles.tabBar}>
           <button
-            onClick={handleStaleCheck}
-            disabled={staleState === 'loading'}
-            style={{
-              ...styles.outlineBtn,
-              ...(staleState === 'loading' ? styles.btnDisabled : {}),
-            }}
+            style={{ ...styles.tab, ...(tab === 'discover' ? styles.tabActive : {}) }}
+            onClick={() => setTab('discover')}
           >
-            {staleState === 'loading' ? 'Checking…' : 'Check for stale videos'}
+            Discover &amp; Import
           </button>
-          {staleState === 'done' && staleResult && (
-            <p style={styles.success}>
-              {staleResult.flagged === 0
-                ? `All ${staleResult.checked} videos are available.`
-                : `Checked ${staleResult.checked} — flagged ${staleResult.flagged} unavailable: ${staleResult.flaggedTitles.join(', ')}${staleResult.flagged > 5 ? '…' : ''}`}
-            </p>
-          )}
-          {staleState === 'error' && <p style={styles.error}>Stale check failed. Try again.</p>}
+          <button
+            style={{ ...styles.tab, ...(tab === 'library' ? styles.tabActive : {}) }}
+            onClick={() => setTab('library')}
+          >
+            Manage Library
+          </button>
         </div>
+
+        {/* ── Discover & Import tab ─────────────────────────────────── */}
+        {tab === 'discover' && (
+          <>
+            <p style={styles.sub}>
+              Search YouTube to find content for the library. Music videos are excluded
+              automatically. Each result is AI-tagged with level and topic before you add it.
+            </p>
+            <AddVideoPanel />
+
+            {/* ── Import by URL ──────────────────────────────────────── */}
+            <div style={styles.section}>
+              <h2 style={styles.sectionTitle}>Import by URL</h2>
+              <p style={styles.sub}>
+                Paste a YouTube video, playlist, or channel URL. AI-tags and adds all videos (up to
+                50 per import). Channel URLs must use the /channel/UC… format.
+              </p>
+              <div style={styles.importRow}>
+                <input
+                  type="url"
+                  value={importUrl}
+                  onChange={(e) => {
+                    setImportUrl(e.target.value)
+                    setImportError('')
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleImport()}
+                  placeholder="https://www.youtube.com/watch?v=… or /playlist?list=… or /channel/UC…"
+                  style={styles.importInput}
+                  disabled={importState === 'loading'}
+                />
+                <button
+                  onClick={handleImport}
+                  disabled={!importUrl.trim() || importState === 'loading'}
+                  style={{
+                    ...styles.btn,
+                    ...(!importUrl.trim() || importState === 'loading' ? styles.btnDisabled : {}),
+                  }}
+                >
+                  {importState === 'loading' ? 'Importing…' : 'Import'}
+                </button>
+              </div>
+              {importError && <p style={styles.error}>{importError}</p>}
+              {importState === 'done' && importResult && (
+                <p style={styles.success}>
+                  Imported {importResult.imported} video{importResult.imported !== 1 ? 's' : ''},
+                  skipped {importResult.skipped} already in library.
+                </p>
+              )}
+            </div>
+
+            {/* ── Library Tools ──────────────────────────────────────── */}
+            <div style={styles.section}>
+              <h2 style={styles.sectionTitle}>Library Tools</h2>
+              <p style={styles.sub}>
+                Check for videos that have been deleted, made private, or are no longer embeddable.
+                Stale videos are flagged unavailable but never deleted — their watch history is
+                preserved.
+              </p>
+              <button
+                onClick={handleStaleCheck}
+                disabled={staleState === 'loading'}
+                style={{
+                  ...styles.outlineBtn,
+                  ...(staleState === 'loading' ? styles.btnDisabled : {}),
+                }}
+              >
+                {staleState === 'loading' ? 'Checking…' : 'Check for stale videos'}
+              </button>
+              {staleState === 'done' && staleResult && (
+                <p style={styles.success}>
+                  {staleResult.flagged === 0
+                    ? `All ${staleResult.checked} videos are available.`
+                    : `Checked ${staleResult.checked} — flagged ${staleResult.flagged} unavailable: ${staleResult.flaggedTitles.join(', ')}${staleResult.flagged > 5 ? '…' : ''}`}
+                </p>
+              )}
+              {staleState === 'error' && (
+                <p style={styles.error}>Stale check failed. Try again.</p>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Manage Library tab ───────────────────────────────────── */}
+        {tab === 'library' && <VideoLibraryEditor />}
       </div>
     </div>
   )
@@ -176,10 +205,33 @@ const styles = {
     padding: 24,
   },
   title: {
-    margin: '0 0 6px',
+    margin: '0 0 16px',
     fontSize: 22,
     fontWeight: 700,
     color: 'var(--ngsi-navy)',
+  },
+  tabBar: {
+    display: 'flex',
+    gap: 4,
+    borderBottom: '2px solid #e8e3da',
+    marginBottom: 24,
+  },
+  tab: {
+    padding: '8px 18px',
+    fontSize: 13,
+    fontWeight: 600,
+    border: 'none',
+    background: 'none',
+    color: '#8a8f99',
+    cursor: 'pointer',
+    borderBottom: '2px solid transparent',
+    marginBottom: -2,
+    fontFamily: 'inherit',
+    transition: 'color 0.12s',
+  },
+  tabActive: {
+    color: 'var(--ngsi-navy)',
+    borderBottom: '2px solid var(--ngsi-navy)',
   },
   sub: {
     margin: '0 0 20px',

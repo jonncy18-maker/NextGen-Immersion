@@ -58,12 +58,15 @@ export default async function handler(req, res) {
   }
 
   const row = rows[0]
+  const currentHours = Number(row.current_hours ?? 0)
+  const expectedHours = Number(row.expected_hours ?? 0)
   return res.status(200).json({
     ...row,
     user_id: authUser.id,
-    current_hours: Number(row.current_hours ?? 0),
+    current_hours: currentHours,
     hours_this_week: Number(row.hours_this_week ?? 0),
-    expected_hours: Number(row.expected_hours ?? 0),
+    expected_hours: expectedHours,
+    delta: expectedHours - currentHours,
     video_hours_this_week: videoHours,
     external_hours_this_week: externalHours,
   })

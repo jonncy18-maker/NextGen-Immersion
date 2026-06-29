@@ -23,8 +23,10 @@ export default function Sidebar() {
       } catch {}
     }
     checkInventory()
+    window.addEventListener('ngsi-inventory-change', checkInventory)
     return () => {
       cancelled = true
+      window.removeEventListener('ngsi-inventory-change', checkInventory)
     }
   }, [role])
 

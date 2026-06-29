@@ -3,6 +3,7 @@ import { useScholars } from '../hooks/useScholars.js'
 import ScholarCard from '../components/admin/ScholarCard.jsx'
 import HoursCounter from '../components/progress/HoursCounter.jsx'
 import MilestoneBar from '../components/progress/MilestoneBar.jsx'
+import PaceAnalysis from '../components/progress/PaceAnalysis.jsx'
 import WeekStats from '../components/progress/WeekStats.jsx'
 import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
@@ -66,6 +67,13 @@ export default function AdminProgress() {
               status={selected.status}
             />
             <MilestoneBar currentHours={currentHours} />
+            <PaceAnalysis
+              currentHours={currentHours}
+              expectedHours={Number(selected.expected_hours ?? 0)}
+              targetHours={selected.target_hours}
+              status={selected.status}
+              delta={selected.delta ?? 0}
+            />
           </div>
 
           <div style={styles.card}>
