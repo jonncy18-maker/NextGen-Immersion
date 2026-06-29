@@ -614,6 +614,31 @@ Status: **PLANNED**
 
 ---
 
+## Phase 25 — Video Resume Position ("Pick Up Where You Left Off")
+
+**Loop goal:** "When a scholar pauses or leaves a video mid-way, save their playback position. When they return to that video later, the player automatically seeks to where they stopped so they can pick up where they left off."
+
+**Background:** The existing watch session flush (`api/flush-session.js`) records `duration_seconds` — how many seconds were watched in that session. This is used for cumulative hours and is deliberately not a position marker (a scholar could rewatch the same segment). A separate `position_seconds` value — the absolute timestamp in the video at the moment of pause/stop — is needed for resume. These are distinct: `duration_seconds` feeds the hours counter; `position_seconds` feeds the player on next load.
+
+**Key distinction:** `duration_seconds` = seconds actively watched this session (for hours counting). `position_seconds` = `player.getCurrentTime()` at pause/stop (for resume). A scholar who watches from 5:00 to 5:30, then scrubs back to 2:00 and watches to 2:20 has `duration_seconds = 50` but `position_seconds = 140` (2:20).
+
+Deliverables:
+- **Schema:** new `video_resume_positions` table — `user_id`, `video_id`, `position_seconds` (integer), `updated_at`. Primary key on `(user_id, video_id)`. Upserted on every flush.
+- `pages/api/flush-session.js` — accept an additional optional field `position_seconds` in the POST body. Upsert into `video_resume_positions` on `(user_id, video_id)` — this is a separate write from the `watch_sessions` insert; the existing `client_flush_id` idempotency on `watch_sessions` is unchanged. Clear the position row when `completed = true` (≥95% watched — no point resuming a finished video).
+- `pages/api/videos.js` — LEFT JOIN `video_resume_positions` (scoped to the JWT user) and include `resume_position_seconds` (null if none) on each video in the response.
+- `src/hooks/useWatchSession.js` — on PAUSED and ENDED events, read `player.getCurrentTime()` and include `position_seconds` in the flush payload alongside `duration_seconds`. On ENDED (video finished), send `position_seconds: 0` so it clears on the server (handled by the `completed = true` path).
+- `src/components/player/VideoPlayer.jsx` — accept a `resumeAt` prop (seconds). After the player is ready (`onReady` event), if `resumeAt > 0`, call `player.seekTo(resumeAt, true)` before playback begins. Show a brief dismissible "Resuming from 5:23 →" toast/chip below the player so the scholar knows the seek happened; include a "Start from beginning" link that clears the resume position and seeks to 0.
+- `src/pages/Watch.jsx` — pass `video.resume_position_seconds` as `resumeAt` to `VideoPlayer` when a video is selected.
+- `src/pages/Library.jsx` (Phase 24) — VideoCards for videos with a saved resume position show a small progress bar indicator at the bottom of the thumbnail (similar to Netflix/YouTube's red progress bar) so the scholar can see at a glance which saved videos they've partially watched.
+
+**Design note — no resume for completed videos:** Once a video is marked `completed = true` (single session ≥95%), the `video_resume_positions` row is deleted server-side. Re-watching a completed video always starts from the beginning.
+
+**Design note — flush on video switch:** `useWatchSession.js` already flushes when the user switches videos within the SPA (cleanup effect). That flush should also include the current `player.getCurrentTime()` as `position_seconds`.
+
+Status: **PLANNED**
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
