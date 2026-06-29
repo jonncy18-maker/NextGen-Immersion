@@ -156,7 +156,7 @@ function ScholarContext({ onChipClick }) {
 function ResultCard({ item, onAdd }) {
   const [tagState, setTagState] = useState('idle') // idle | tagging | done | error
   const [tags, setTags] = useState(null)
-  const [addState, setAddState] = useState('idle') // idle | adding | added | exists | error
+  const [addState, setAddState] = useState(item.in_library ? 'exists' : 'idle') // idle | adding | added | exists | error
   const tagStarted = useRef(false)
 
   // Kick off tagging once on mount
