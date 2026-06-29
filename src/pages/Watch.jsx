@@ -31,11 +31,22 @@ export default function Watch() {
     topic: null,
     level: null,
     watchedFilter: 'unwatched',
+    search: '',
+    topicSearch: '',
   })
+  const levelInitialized = useRef(false)
 
   const { data: progress } = useProgress()
   const scholarLevelId = progress ? getLevelForHours(progress.current_hours).id : null
   const nextLevelId = scholarLevelId ? getNextLevel(scholarLevelId)?.id ?? null : null
+
+  // Default level filter to scholar's current level on first load
+  useEffect(() => {
+    if (scholarLevelId && !levelInitialized.current) {
+      levelInitialized.current = true
+      setFilters(f => ({ ...f, level: scholarLevelId }))
+    }
+  }, [scholarLevelId])
 
   useEffect(() => {
     fetchVideos()
@@ -45,7 +56,20 @@ export default function Watch() {
   }, [])
 
   const visibleVideos = useMemo(() => {
+    const searchLower = filters.search.toLowerCase()
+    const topicSearchLower = filters.topicSearch.toLowerCase()
+
     let list = videos.filter(v => {
+      if (searchLower) {
+        const inTitle = v.title.toLowerCase().includes(searchLower)
+        const inChannel = (v.channel_name || '').toLowerCase().includes(searchLower)
+        if (!inTitle && !inChannel) return false
+      }
+      if (topicSearchLower) {
+        const inPrimary = (v.topic_primary || '').toLowerCase().includes(topicSearchLower)
+        const inSecondary = (v.topic_secondary || '').toLowerCase().includes(topicSearchLower)
+        if (!inPrimary && !inSecondary) return false
+      }
       if (filters.topic) {
         if (v.topic_primary !== filters.topic && v.topic_secondary !== filters.topic) return false
       }
@@ -158,6 +182,16 @@ export default function Watch() {
               title="No videos yet"
               message="The library is being set up — your coordinator is adding videos. Check back soon."
             />
+          ) : visibleVideos.length === 0 ? (
+            <div style={styles.noResults}>
+              <p style={styles.noResultsText}>No videos match your filters.</p>
+              <button
+                style={styles.clearFiltersBtn}
+                onClick={() => setFilters({ topic: null, level: null, watchedFilter: 'all', search: '', topicSearch: '' })}
+              >
+                Clear all filters
+              </button>
+            </div>
           ) : (
             <VideoGrid
               videos={visibleVideos}
@@ -221,6 +255,26 @@ const styles = {
     margin: '4px 0 0',
     fontSize: 13,
     color: '#8a8f99',
+  },
+  noResults: {
+    textAlign: 'center',
+    padding: '48px 24px',
+  },
+  noResultsText: {
+    margin: '0 0 12px',
+    fontSize: 15,
+    color: '#5a6070',
+  },
+  clearFiltersBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'var(--ngsi-navy)',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    fontFamily: 'inherit',
+    padding: 0,
   },
   library: {
     marginTop: 8,

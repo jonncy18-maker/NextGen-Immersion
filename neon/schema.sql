@@ -177,6 +177,10 @@ CREATE TABLE IF NOT EXISTS scholar_goals (
   target_hours    integer CHECK (target_hours IS NULL OR target_hours > 0),
   target_date     date,
   language        text NOT NULL DEFAULT 'english',
+  -- Phase 20: category-split hour targets (must sum to target_hours; enforced at API layer)
+  target_video_hours   integer CHECK (target_video_hours   IS NULL OR target_video_hours   > 0),
+  target_chatgpt_hours integer CHECK (target_chatgpt_hours IS NULL OR target_chatgpt_hours > 0),
+  target_mentor_hours  integer CHECK (target_mentor_hours  IS NULL OR target_mentor_hours  > 0),
   created_at      timestamptz NOT NULL DEFAULT now()
 );
 
@@ -208,7 +212,7 @@ CREATE TABLE IF NOT EXISTS external_sessions (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id          uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   session_type     text NOT NULL
-                   CHECK (session_type IN ('chatgpt_conversation','mentor_call')),
+                   CHECK (session_type IN ('chatgpt_conversation','mentor_call','video_external')),
   duration_seconds integer NOT NULL CHECK (duration_seconds > 0),
   session_date     date NOT NULL DEFAULT CURRENT_DATE,
   language         text NOT NULL DEFAULT 'english',

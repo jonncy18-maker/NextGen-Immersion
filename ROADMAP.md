@@ -498,7 +498,17 @@ Deliverables:
 
 **Design note — total vs. category targets:** `target_hours` (the overall goal) remains the primary pace-calculation input (used by `scholar_pace`, `PaceAnalysis`, `ScholarCard`). The category targets are additive detail — they must sum to `target_hours`, but the AT RISK / ON TRACK logic continues to operate on the total. Per-category pace is displayed informally (the mini bars) rather than with a separate AT RISK pill per category.
 
-Status: **PLANNED**
+Status: **DONE** (Jun 2026 — via agentic loop, 1 iteration, audit PASS). Implemented category-split goals across the full stack:
+- **Schema:** Added `target_video_hours`, `target_chatgpt_hours`, `target_mentor_hours` columns to `scholar_goals` via `ALTER TABLE`. Added `'video_external'` to `external_sessions.session_type` CHECK constraint.
+- `pages/api/scholar-goal.js`: GET returns all 3 category targets; POST accepts + validates they sum to `target_hours`; upserts via ON CONFLICT.
+- `pages/api/progress.js`: Extended to 6 parallel queries — returns `video_hours` (library + video_external), `chatgpt_hours`, `mentor_hours`, plus category targets. All NUMERIC coerced with `Number()`.
+- `pages/api/log-external.js`: Added `'video_external'` as valid session type.
+- `pages/api/scholars.js`: 4-query parallel fetch returns per-category actuals + targets for every scholar.
+- `src/components/progress/CategoryBreakdown.jsx` (new): Read-only 3-row breakdown (🎬 Video Library / 💬 ChatGPT Practice / 📞 Mentor Calls) with mini progress bars, color-coded by pace.
+- `src/pages/Progress.jsx`: Renders `CategoryBreakdown` below `PaceAnalysis`.
+- `src/pages/AdminProgress.jsx`: Same `CategoryBreakdown` in per-scholar drill-down.
+- `src/components/admin/GoalEditor.jsx`: 3 number inputs for category targets with live sum validation.
+- `src/components/progress/ExternalHoursButton.jsx`: Added `video_external` option (default); 3-option dropdown.
 
 ---
 
@@ -517,7 +527,7 @@ Deliverables:
 
 **Design note — refetch propagation:** `ExternalHoursButton` needs access to the `refetch` for the *scholar's own* progress data. On `Progress.jsx` this is trivial (same hook, pass as prop). On `AdminProgress.jsx` the drill-down uses a separate per-scholar data fetch — ensure `refetch` refers to the correct scholar's data hook, not the overview list.
 
-Status: **PLANNED**
+Status: **DONE** (Jun 2026 — confirmed already implemented in Phase 16/earlier work; `useProgress` already returned `refetch`, and both `Progress.jsx` and `AdminProgress.jsx` already passed it as `onLogged` to `ExternalHoursButton`). No new code required — deliverables verified complete.
 
 ---
 
@@ -562,7 +572,9 @@ Deliverables:
 
 **Design note — no YouTube search here:** This is library search only (client-side over already-fetched videos). YouTube keyword search for *adding* new videos lives in the admin "Discover & Import" tab (`AddVideoPanel`) and is a separate flow. Do not mix them.
 
-Status: **PLANNED**
+Status: **DONE** (Jun 2026 — via agentic loop, 1 iteration, audit PASS). Implemented full free-text library search with level + topic filters:
+- `src/components/video/FilterDropdowns.jsx`: Rewritten with keyword search (title/channel), level dropdown, hierarchical topic dropdown, and topic keyword search. All with 200ms debounce and clear (✕) buttons. Level and topic dropdowns sync via external `useEffect` on parent-driven resets (e.g. "Clear all").
+- `src/pages/Watch.jsx`: Filter state extended to include `search`, `topicSearch`; `visibleVideos` useMemo applies all 4 filters with AND logic. Level defaults to scholar's current level on first mount (via `levelInitialized` ref); re-renders don't override user changes. "No videos match your filters" empty state with "Clear all filters" reset.
 
 ---
 

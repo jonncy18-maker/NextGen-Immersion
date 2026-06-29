@@ -11,34 +11,68 @@ export default async function handler(req, res) {
 
   const sql = getDb()
 
-  const [rows, videoRows, externalRows] = await Promise.all([
-    sql`
-      SELECT
-        user_id, scholar_name, language,
-        start_date, target_hours, target_date, target_level,
-        current_hours, hours_this_week, last_session_at,
-        status, expected_hours
-      FROM scholar_pace
-      WHERE user_id = ${authUser.id}
-    `,
-    sql`
-      SELECT ROUND(SUM(seconds_watched)::numeric / 3600, 1) AS video_hours_this_week
-      FROM watch_sessions
-      WHERE user_id = ${authUser.id}
-        AND (started_at AT TIME ZONE 'Asia/Manila')
-            >= date_trunc('week', now() AT TIME ZONE 'Asia/Manila')
-    `,
-    sql`
-      SELECT ROUND(SUM(duration_seconds)::numeric / 3600, 1) AS external_hours_this_week
-      FROM external_sessions
-      WHERE user_id = ${authUser.id}
-        AND (session_date::timestamptz AT TIME ZONE 'Asia/Manila')
-            >= date_trunc('week', now() AT TIME ZONE 'Asia/Manila')
-    `,
-  ])
+  const [rows, videoRows, externalRows, libraryTotals, externalTotals, categoryTargets] =
+    await Promise.all([
+      sql`
+        SELECT
+          user_id, scholar_name, language,
+          start_date, target_hours, target_date, target_level,
+          current_hours, hours_this_week, last_session_at,
+          status, expected_hours
+        FROM scholar_pace
+        WHERE user_id = ${authUser.id}
+      `,
+      sql`
+        SELECT ROUND(SUM(seconds_watched)::numeric / 3600, 1) AS video_hours_this_week
+        FROM watch_sessions
+        WHERE user_id = ${authUser.id}
+          AND (started_at AT TIME ZONE 'Asia/Manila')
+              >= date_trunc('week', now() AT TIME ZONE 'Asia/Manila')
+      `,
+      sql`
+        SELECT ROUND(SUM(duration_seconds)::numeric / 3600, 1) AS external_hours_this_week
+        FROM external_sessions
+        WHERE user_id = ${authUser.id}
+          AND (session_date::timestamptz AT TIME ZONE 'Asia/Manila')
+              >= date_trunc('week', now() AT TIME ZONE 'Asia/Manila')
+      `,
+      // Total library hours (watch_sessions only, for Video category)
+      sql`
+        SELECT ROUND(SUM(seconds_watched)::numeric / 3600, 1) AS library_hours
+        FROM watch_sessions
+        WHERE user_id = ${authUser.id}
+      `,
+      // Per-type totals from external_sessions
+      sql`
+        SELECT
+          ROUND(SUM(CASE WHEN session_type = 'video_external'       THEN duration_seconds ELSE 0 END)::numeric / 3600, 1) AS video_external_hours,
+          ROUND(SUM(CASE WHEN session_type = 'chatgpt_conversation' THEN duration_seconds ELSE 0 END)::numeric / 3600, 1) AS chatgpt_hours,
+          ROUND(SUM(CASE WHEN session_type = 'mentor_call'          THEN duration_seconds ELSE 0 END)::numeric / 3600, 1) AS mentor_hours
+        FROM external_sessions
+        WHERE user_id = ${authUser.id}
+      `,
+      // Per-category targets from scholar_goals (joined to get the right language)
+      sql`
+        SELECT sg.target_video_hours, sg.target_chatgpt_hours, sg.target_mentor_hours
+        FROM scholar_goals sg
+        JOIN users u ON sg.user_id = u.id AND sg.language = u.language
+        WHERE sg.user_id = ${authUser.id}
+      `,
+    ])
 
-  const videoHours = Number(videoRows[0]?.video_hours_this_week ?? 0)
+  const videoHoursThisWeek = Number(videoRows[0]?.video_hours_this_week ?? 0)
   const externalHours = Number(externalRows[0]?.external_hours_this_week ?? 0)
+
+  const libraryHours = Number(libraryTotals[0]?.library_hours ?? 0)
+  const videoExternalHours = Number(externalTotals[0]?.video_external_hours ?? 0)
+  const chatgptHours = Number(externalTotals[0]?.chatgpt_hours ?? 0)
+  const mentorHours = Number(externalTotals[0]?.mentor_hours ?? 0)
+  const videoHours = libraryHours + videoExternalHours
+
+  const catTargets = categoryTargets[0] || {}
+  const targetVideoHours = catTargets.target_video_hours != null ? Number(catTargets.target_video_hours) : null
+  const targetChatgptHours = catTargets.target_chatgpt_hours != null ? Number(catTargets.target_chatgpt_hours) : null
+  const targetMentorHours = catTargets.target_mentor_hours != null ? Number(catTargets.target_mentor_hours) : null
 
   if (rows.length === 0) {
     return res.status(200).json({
@@ -54,6 +88,12 @@ export default async function handler(req, res) {
       target_level: null,
       start_date: null,
       last_session_at: null,
+      video_hours: videoHours,
+      chatgpt_hours: chatgptHours,
+      mentor_hours: mentorHours,
+      target_video_hours: targetVideoHours,
+      target_chatgpt_hours: targetChatgptHours,
+      target_mentor_hours: targetMentorHours,
     })
   }
 
@@ -67,7 +107,13 @@ export default async function handler(req, res) {
     hours_this_week: Number(row.hours_this_week ?? 0),
     expected_hours: expectedHours,
     delta: expectedHours - currentHours,
-    video_hours_this_week: videoHours,
+    video_hours_this_week: videoHoursThisWeek,
     external_hours_this_week: externalHours,
+    video_hours: videoHours,
+    chatgpt_hours: chatgptHours,
+    mentor_hours: mentorHours,
+    target_video_hours: targetVideoHours,
+    target_chatgpt_hours: targetChatgptHours,
+    target_mentor_hours: targetMentorHours,
   })
 }

@@ -2,6 +2,7 @@ import { useProgress } from '../hooks/useProgress.js'
 import HoursCounter from '../components/progress/HoursCounter.jsx'
 import MilestoneBar from '../components/progress/MilestoneBar.jsx'
 import PaceAnalysis from '../components/progress/PaceAnalysis.jsx'
+import CategoryBreakdown from '../components/progress/CategoryBreakdown.jsx'
 import WeekStats from '../components/progress/WeekStats.jsx'
 import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
@@ -169,6 +170,16 @@ export default function Progress() {
             targetHours={data.target_hours}
             status={data.status}
             delta={data.delta ?? 0}
+          />
+          <CategoryBreakdown
+            videoHours={data.video_hours}
+            chatgptHours={data.chatgpt_hours}
+            mentorHours={data.mentor_hours}
+            targetVideoHours={data.target_video_hours}
+            targetChatgptHours={data.target_chatgpt_hours}
+            targetMentorHours={data.target_mentor_hours}
+            expectedHours={data.expected_hours}
+            targetHours={data.target_hours}
           />
         </div>
 
