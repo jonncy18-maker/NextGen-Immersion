@@ -2,6 +2,7 @@ import { useProgress } from '../hooks/useProgress.js'
 import HoursCounter from '../components/progress/HoursCounter.jsx'
 import MilestoneBar from '../components/progress/MilestoneBar.jsx'
 import WeekStats from '../components/progress/WeekStats.jsx'
+import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 import { getPaceColor, getPaceLabel } from '../utils/pace.js'
 
@@ -171,7 +172,13 @@ export default function Progress() {
             startDate={data.start_date}
             targetDate={data.target_date}
             lastSessionAt={data.last_session_at}
+            videoHoursThisWeek={data.video_hours_this_week}
+            externalHoursThisWeek={data.external_hours_this_week}
           />
+        </div>
+
+        <div style={{ marginTop: '0.75rem' }}>
+          <ExternalHoursButton userId={data.user_id} onLogged={refetch} />
         </div>
       </div>
     </div>
