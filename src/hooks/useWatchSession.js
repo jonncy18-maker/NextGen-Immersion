@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { getAuthToken } from '../lib/authToken.js'
-import { bufferFlush, getBuffered, removeBuffered } from '../utils/offlineBuffer.js'
+import { bufferFlush, removeBuffered, drainBuffer } from '../utils/offlineBuffer.js'
 
 // useWatchSession manages the full play/pause/end/close state machine.
 // videoId: DB UUID (videos.id) — required for flushing
@@ -80,34 +80,14 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
     }
   }, [videoId])
 
-  // Drain offline buffer on mount + reconnect
-  const drainBuffer = useCallback(async () => {
-    const items = getBuffered()
-    if (!items.length) return
-    const token = tokenRef.current
-    if (!token) return
-    for (const item of items) {
-      try {
-        const res = await fetch('/api/flush-session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(item),
-        })
-        if (res.ok) removeBuffered(item.clientFlushId)
-      } catch {
-        break // Still offline — stop trying
-      }
-    }
-  }, [])
-
+  // Drain offline buffer on mount + reconnect. The shared drainBuffer (single
+  // source of truth in offlineBuffer.js) is also driven app-wide by useConnection,
+  // and its in-flight guard makes these overlapping triggers safe.
   useEffect(() => {
     drainBuffer()
     window.addEventListener('online', drainBuffer)
     return () => window.removeEventListener('online', drainBuffer)
-  }, [drainBuffer])
+  }, [])
 
   function stopTimer() {
     if (intervalRef.current) {

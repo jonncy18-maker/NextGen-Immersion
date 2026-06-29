@@ -7,6 +7,11 @@
   --ngsi-cream: #f5f0e8;
   --ngsi-cream-dark: #ede7d9;
 
+  /* Status — connection / save state */
+  --ngsi-status-saved: #1d9e75; /* online, nothing pending — green */
+  --ngsi-status-buffering: #c9a84c; /* online, queued writes — amber */
+  --ngsi-status-offline: #d9534f; /* no connection — red */
+
   /* Topic category tag colors */
   --ngsi-cat-oet: #378add; /* OET / career topics — blue */
   --ngsi-cat-life: #1d9e75; /* daily life topics — green */
