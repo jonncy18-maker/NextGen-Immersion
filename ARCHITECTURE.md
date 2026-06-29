@@ -196,6 +196,8 @@ All secret-key operations. The browser calls these; these call the third-party A
 | `pages/api/mark-video.js` | POST | Manual watched/unwatched toggle | NEON_DATABASE_URL |
 | `pages/api/me.js` | GET | Current user role/profile (JWT `sub` → public.users) | NEON_DATABASE_URL |
 | `pages/api/scholars.js` | GET | Admin: all scholars' progress | NEON_DATABASE_URL_ADMIN |
+| `pages/api/program-goal.js` | GET/POST | Admin: read active program goal; POST updates it **in place** (preserves `scholar_goals` FK links — no orphan-to-PENDING) | NEON_DATABASE_URL(_ADMIN) |
+| `pages/api/scholar-goal.js` | POST | Admin: upsert a scholar's goal-clock `start_date` (`ON CONFLICT (user_id, language)`); NULL = PENDING | NEON_DATABASE_URL_ADMIN |
 | `lib/api/_db.js` | — | Shared Neon connection helper (`getDb`/`getAdminDb`) | NEON_DATABASE_URL |
 | `lib/api/_auth.js` | — | `verifySession`/`verifyAdmin` — JWKS-verify the Neon JWT | NEON_AUTH_BASE_URL |
 | `lib/api/_tag.js` | — | Shared Haiku prompt + CEFR/topic taxonomy | ANTHROPIC_API_KEY |
