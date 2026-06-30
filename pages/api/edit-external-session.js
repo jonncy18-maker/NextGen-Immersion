@@ -11,7 +11,9 @@ export default async function handler(req, res) {
 
   const sql = getDb()
   const userRows = await sql`SELECT role FROM users WHERE id = ${authUser.id}`
-  if (!userRows.length || userRows[0].role !== 'admin') {
+  if (!userRows.length) return res.status(403).json({ error: 'Forbidden' })
+  const isAdmin = userRows[0].role === 'admin'
+  if (!isAdmin && userRows[0].role !== 'scholar') {
     return res.status(403).json({ error: 'Forbidden' })
   }
 
@@ -30,9 +32,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid sessionType' })
   }
 
-  const adminSql = getAdminDb()
+  const querySql = isAdmin ? getAdminDb() : sql
 
-  const rows = await adminSql`SELECT id, session_type, duration_seconds, notes FROM external_sessions WHERE id = ${sessionId}`
+  const rows = isAdmin
+    ? await querySql`SELECT id, session_type, duration_seconds, notes FROM external_sessions WHERE id = ${sessionId}`
+    : await querySql`SELECT id, session_type, duration_seconds, notes FROM external_sessions WHERE id = ${sessionId} AND user_id = ${authUser.id}`
   if (!rows.length) return res.status(404).json({ error: 'Session not found' })
 
   const existing = rows[0]
@@ -40,7 +44,7 @@ export default async function handler(req, res) {
   const newNotes = notes !== undefined ? (notes ? String(notes).trim().slice(0, 500) : null) : existing.notes
   const newSessionType = sessionType || existing.session_type
 
-  const [updated] = await adminSql`
+  const [updated] = await querySql`
     UPDATE external_sessions SET
       duration_seconds = ${newDurationSeconds},
       notes            = ${newNotes},

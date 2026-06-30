@@ -9,9 +9,8 @@ export default async function handler(req, res) {
 
   const sql = getDb()
   const userRows = await sql`SELECT role FROM users WHERE id = ${authUser.id}`
-  if (!userRows.length || userRows[0].role !== 'admin') {
-    return res.status(403).json({ error: 'Forbidden' })
-  }
+  if (!userRows.length) return res.status(403).json({ error: 'Forbidden' })
+  const isAdmin = userRows[0].role === 'admin'
 
   const { userId, date } = req.query
   if (!userId || !date) return res.status(400).json({ error: 'userId and date required' })
@@ -19,7 +18,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid date format' })
   }
 
-  const adminSql = getAdminDb()
+  // Scholars may only view their own day detail
+  if (!isAdmin && userId !== authUser.id) {
+    return res.status(403).json({ error: 'Forbidden' })
+  }
+
+  const querySql = isAdmin ? getAdminDb() : sql
+  const adminSql = querySql
 
   const [watchRows, externalRows] = await Promise.all([
     adminSql`

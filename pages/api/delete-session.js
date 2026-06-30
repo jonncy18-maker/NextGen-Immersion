@@ -9,7 +9,9 @@ export default async function handler(req, res) {
 
   const sql = getDb()
   const userRows = await sql`SELECT role FROM users WHERE id = ${authUser.id}`
-  if (!userRows.length || userRows[0].role !== 'admin') {
+  if (!userRows.length) return res.status(403).json({ error: 'Forbidden' })
+  const isAdmin = userRows[0].role === 'admin'
+  if (!isAdmin && userRows[0].role !== 'scholar') {
     return res.status(403).json({ error: 'Forbidden' })
   }
 
@@ -24,13 +26,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid sessionId' })
   }
 
-  const adminSql = getAdminDb()
+  const querySql = isAdmin ? getAdminDb() : sql
 
   if (sessionType === 'watch') {
-    const result = await adminSql`DELETE FROM watch_sessions WHERE id = ${sessionId} RETURNING id`
+    const result = isAdmin
+      ? await querySql`DELETE FROM watch_sessions WHERE id = ${sessionId} RETURNING id`
+      : await querySql`DELETE FROM watch_sessions WHERE id = ${sessionId} AND user_id = ${authUser.id} RETURNING id`
     if (!result.length) return res.status(404).json({ error: 'Session not found' })
   } else {
-    const result = await adminSql`DELETE FROM external_sessions WHERE id = ${sessionId} RETURNING id`
+    const result = isAdmin
+      ? await querySql`DELETE FROM external_sessions WHERE id = ${sessionId} RETURNING id`
+      : await querySql`DELETE FROM external_sessions WHERE id = ${sessionId} AND user_id = ${authUser.id} RETURNING id`
     if (!result.length) return res.status(404).json({ error: 'Session not found' })
   }
 

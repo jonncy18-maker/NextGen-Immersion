@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useProgress } from '../hooks/useProgress.js'
 import { useDailyCalendar } from '../hooks/useDailyCalendar.js'
 import HoursCounter from '../components/progress/HoursCounter.jsx'
@@ -10,11 +11,13 @@ import LevelProgressBars from '../components/progress/LevelProgressBars.jsx'
 import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
 import CoachingMessage from '../components/progress/CoachingMessage.jsx'
 import LevelCelebrationBanner from '../components/progress/LevelCelebrationBanner.jsx'
+import DayDetailModal from '../components/admin/DayDetailModal.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 
 export default function Progress() {
   const { data, loading, error, refetch } = useProgress()
   const { data: calData } = useDailyCalendar()
+  const [dayDetailDate, setDayDetailDate] = useState(null)
 
   const pageStyle = {
     backgroundColor: '#F5F0E8',
@@ -223,6 +226,7 @@ export default function Progress() {
                   : null
               }
               startDate={calData.start_date}
+              onDayClick={setDayDetailDate}
             />
           </div>
         )}
@@ -231,6 +235,14 @@ export default function Progress() {
           <ExternalHoursButton userId={data.user_id} onLogged={refetch} />
         </div>
       </div>
+
+      {dayDetailDate && (
+        <DayDetailModal
+          userId={data.user_id}
+          date={dayDetailDate}
+          onClose={() => setDayDetailDate(null)}
+        />
+      )}
     </div>
   )
 }
