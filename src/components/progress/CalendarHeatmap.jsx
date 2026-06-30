@@ -49,7 +49,8 @@ function fmtHours(h) {
   return `${h.toFixed(1)}h`
 }
 
-export default function CalendarHeatmap({ days, dailyGoal, startDate }) {
+// onDayClick(dateStr) — optional; admin-only; called on click of a day with hours
+export default function CalendarHeatmap({ days, dailyGoal, startDate, onDayClick }) {
   const daysMap = {}
   if (days) days.forEach(d => { daysMap[d.date] = d })
 
@@ -151,6 +152,11 @@ export default function CalendarHeatmap({ days, dailyGoal, startDate }) {
             const data = daysMap[cell.date]
             const hoursLabel = data ? fmtHours(data.hours) : null
 
+            const today = new Date().toISOString().slice(0, 10)
+            const hasHours = (daysMap[cell.date]?.hours ?? 0) > 0
+            const isClickable = !!onDayClick && cell.date <= today &&
+              !(startDate && cell.date < startDate) && hasHours
+
             return (
               <div
                 key={cell.date}
@@ -158,7 +164,9 @@ export default function CalendarHeatmap({ days, dailyGoal, startDate }) {
                   ...styles.cell,
                   backgroundColor: color ?? 'transparent',
                   border: color ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                  cursor: isClickable ? 'pointer' : 'default',
                 }}
+                onClick={isClickable ? () => onDayClick(cell.date) : undefined}
                 onMouseEnter={e => {
                   const rect = e.currentTarget.getBoundingClientRect()
                   setTooltip({ x: rect.left + rect.width / 2, y: rect.top, cell, data })

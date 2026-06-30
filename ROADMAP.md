@@ -292,6 +292,20 @@ Status: **DONE** (Jun 2026 — implemented directly per user instruction to writ
 
 ---
 
+## Phase 26 — Calendar Day Detail Modal + Admin Drill-down Persistence
+
+**Loop goal:** "Two improvements to the admin dashboard: (1) clicking a calendar day with hours opens a popup modal showing full session details (video titles, durations, completion status, and optional notes) — admin-only, no new page; (2) fix state loss when admin switches windows from a scholar drill-down — the selected scholar should persist across page reloads."
+
+Deliverables:
+- `pages/api/scholar-day-detail.js` — GET, admin-only, `?userId=X&date=YYYY-MM-DD`; returns `watch_sessions` (title, channel, duration, completed) and `external_sessions` (type, duration, notes)
+- `src/components/admin/DayDetailModal.jsx` — fixed-position overlay modal; fetches day detail on mount; displays Library Video + Other Sessions sections; closes on X / overlay click / Escape
+- `src/components/progress/CalendarHeatmap.jsx` — adds optional `onDayClick(dateStr)` prop; cells with hours show pointer cursor and call handler on click
+- `src/pages/AdminProgress.jsx` — wires `onDayClick={setDayDetailDate}` on admin CalendarHeatmap; renders `DayDetailModal` when a day is selected; persists selected scholar ID in `sessionStorage` so window-switch reloads restore the drill-down view
+
+Status: **DONE** (Jun 2026 — implemented directly per user instruction). `next build` PASS.
+
+---
+
 ## Session Log
 
 | Date | Phase | Goal | Iterations | Notes |
