@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useScholars } from '../hooks/useScholars.js'
 import { useScholarCalendar } from '../hooks/useScholarCalendar.js'
 import ScholarCard from '../components/admin/ScholarCard.jsx'
@@ -10,13 +10,36 @@ import WeekStats from '../components/progress/WeekStats.jsx'
 import CalendarHeatmap from '../components/progress/CalendarHeatmap.jsx'
 import LevelProgressBars from '../components/progress/LevelProgressBars.jsx'
 import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
+import DayDetailModal from '../components/admin/DayDetailModal.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 import { formatHoursShort } from '../utils/timeFormat.js'
 
+const SELECTED_KEY = 'adminProgress_selectedId'
+
 export default function AdminProgress() {
   const { data, loading, error, refetch } = useScholars()
-  const [selected, setSelected] = useState(null)
+  const [selectedId, setSelectedId] = useState(() => sessionStorage.getItem(SELECTED_KEY) || null)
+  const [dayDetailDate, setDayDetailDate] = useState(null)
+
+  const scholars = data || []
+  const selected = scholars.find(s => s.user_id === selectedId) ?? null
+
+  useEffect(() => {
+    if (selectedId) sessionStorage.setItem(SELECTED_KEY, selectedId)
+    else sessionStorage.removeItem(SELECTED_KEY)
+  }, [selectedId])
+
   const { data: calData } = useScholarCalendar(selected?.user_id ?? null)
+
+  function selectScholar(scholar) {
+    setSelectedId(scholar?.user_id ?? null)
+    setDayDetailDate(null)
+  }
+
+  function goBack() {
+    setSelectedId(null)
+    setDayDetailDate(null)
+  }
 
   if (loading) {
     return (
@@ -47,8 +70,6 @@ export default function AdminProgress() {
     )
   }
 
-  const scholars = data || []
-
   // Drill-down: scholar Progress layout, filtered to one scholar.
   if (selected) {
     const currentHours = Number(selected.current_hours ?? 0)
@@ -57,7 +78,7 @@ export default function AdminProgress() {
     return (
       <div style={styles.page}>
         <div style={styles.detailContainer}>
-          <button style={styles.backBtn} onClick={() => setSelected(null)}>
+          <button style={styles.backBtn} onClick={goBack}>
             ← All scholars
           </button>
           <h1 style={styles.title}>{selected.scholar_name || 'Scholar'}</h1>
@@ -120,6 +141,7 @@ export default function AdminProgress() {
                     : null
                 }
                 startDate={calData.start_date}
+                onDayClick={setDayDetailDate}
               />
             </div>
           )}
@@ -128,6 +150,14 @@ export default function AdminProgress() {
             <ExternalHoursButton userId={selected.user_id} onLogged={refetch} />
           </div>
         </div>
+
+        {dayDetailDate && (
+          <DayDetailModal
+            userId={selected.user_id}
+            date={dayDetailDate}
+            onClose={() => setDayDetailDate(null)}
+          />
+        )}
       </div>
     )
   }
@@ -162,7 +192,7 @@ export default function AdminProgress() {
         ) : (
           <div style={styles.grid}>
             {scholars.map((s) => (
-              <ScholarCard key={s.user_id} scholar={s} onSelect={setSelected} />
+              <ScholarCard key={s.user_id} scholar={s} onSelect={selectScholar} />
             ))}
           </div>
         )}
