@@ -8,6 +8,8 @@ import WeekStats from '../components/progress/WeekStats.jsx'
 import CalendarHeatmap from '../components/progress/CalendarHeatmap.jsx'
 import LevelProgressBars from '../components/progress/LevelProgressBars.jsx'
 import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
+import CoachingMessage from '../components/progress/CoachingMessage.jsx'
+import LevelCelebrationBanner from '../components/progress/LevelCelebrationBanner.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 
 export default function Progress() {
@@ -158,6 +160,8 @@ export default function Progress() {
       <div style={innerStyle}>
         <h1 style={titleStyle}>My Progress</h1>
 
+        <LevelCelebrationBanner />
+
         <div style={cardStyle}>
           <HoursCounter
             currentHours={data.current_hours}
@@ -185,6 +189,7 @@ export default function Progress() {
             expectedHours={data.expected_hours}
             targetHours={data.target_hours}
           />
+          <CoachingMessage />
         </div>
 
         <div style={cardStyle}>

@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
   const videos = await sql`
     SELECT v.id, v.youtube_id, v.title, v.channel_name, v.duration_seconds,
-           v.level, v.topic_primary, v.topic_secondary, v.thumbnail_url,
+           v.level, v.topic_primary, v.topic_secondary, v.thumbnail_url, v.oet_relevance,
            COALESCE(vm.watched, uvs.completed, false) AS watched,
            uvs.last_watched_at
     FROM videos v

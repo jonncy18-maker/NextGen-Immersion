@@ -1,6 +1,6 @@
 import { getDb } from '../../lib/api/_db.js'
 import { verifyAdmin } from '../../lib/api/_auth.js'
-import { classifyChannelLevel, classifyVideoTopics, classifyVideo } from '../../lib/api/_tag.js'
+import { classifyChannelLevel, classifyVideoTopicsAndOet, classifyVideo } from '../../lib/api/_tag.js'
 
 // Batch import + per-video Haiku tagging can exceed the default 10s limit.
 export const config = { maxDuration: 30 }
@@ -138,21 +138,23 @@ export default async function handler(req, res) {
     const itemChannelName = snippet.channelTitle || channelName || null
     const durationSeconds = parseDuration(item.contentDetails?.duration)
 
-    let level, topic_primary, topic_secondary, level_source
+    let level, topic_primary, topic_secondary, oet_relevance, level_source
 
     if (channelLevel) {
-      // Channel import: level from channel, topics per-video
+      // Channel import: level from channel, topics + OET per-video
       level = channelLevel
       level_source = 'channel'
-      const topics = await classifyVideoTopics({ title, description })
-      topic_primary = topics.topic_primary
-      topic_secondary = topics.topic_secondary
+      const tags = await classifyVideoTopicsAndOet({ title, description })
+      topic_primary = tags.topic_primary
+      topic_secondary = tags.topic_secondary
+      oet_relevance = tags.oet_relevance
     } else {
       // Channelless import: classify everything per-video
       const tags = await classifyVideo({ title, description, language })
       level = tags.level
       topic_primary = tags.topic_primary
       topic_secondary = tags.topic_secondary
+      oet_relevance = tags.oet_relevance
       level_source = 'ai'
     }
 
@@ -161,11 +163,12 @@ export default async function handler(req, res) {
         INSERT INTO videos
           (youtube_id, title, channel_name, channel_id, description, thumbnail_url,
            duration_seconds, language, level, level_source, topic_primary, topic_secondary,
-           source, added_by)
+           oet_relevance, source, added_by)
         VALUES
           (${ytId}, ${title}, ${itemChannelName}, ${channelDbId || null}, ${description},
            ${thumbUrl}, ${durationSeconds}, ${language}, ${level}, ${level_source},
-           ${topic_primary}, ${topic_secondary || null}, 'library', ${authUser.id})
+           ${topic_primary}, ${topic_secondary || null}, ${oet_relevance || null},
+           'library', ${authUser.id})
         ON CONFLICT (youtube_id) DO NOTHING
         RETURNING id, youtube_id, title, level, topic_primary, topic_secondary
       `

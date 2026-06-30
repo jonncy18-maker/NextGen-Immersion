@@ -20,6 +20,7 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
 
   const [secondsThisSession, setSecondsThisSession] = useState(0)
   const [flushStatus, setFlushStatus] = useState('idle') // idle | flushing | saved | buffered
+  const [videoEnded, setVideoEnded] = useState(false)
 
   // Keep a fresh JWT cached so the beforeunload handler can use it synchronously.
   // Neon Auth JWTs expire in ~15 min; refreshing every 5 min keeps the cached
@@ -47,6 +48,7 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
     }
     setSecondsThisSession(0)
     setFlushStatus('idle')
+    setVideoEnded(false)
 
     return () => {
       // SPA navigation or video switch — flush the segment that was in progress.
@@ -213,6 +215,7 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
           }
           setSecondsThisSession(0)
           setFlushStatus('idle')
+          setVideoEnded(true)
         } else if (state === 2) {
           // PAUSED — flush this segment, then start a fresh segment for the next play.
           // Each segment gets its own clientFlushId so ON CONFLICT DO NOTHING is truly
@@ -230,5 +233,5 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
     [flush, durationSeconds, videoId],
   )
 
-  return { onPlayerStateChange, secondsThisSession, flushStatus }
+  return { onPlayerStateChange, secondsThisSession, flushStatus, videoEnded }
 }

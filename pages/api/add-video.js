@@ -22,6 +22,7 @@ export default async function handler(req, res) {
     level,
     topicPrimary,
     topicSecondary,
+    oetRelevance,
   } = req.body || {}
 
   if (!youtubeId || !title || !level || !topicPrimary) {
@@ -51,6 +52,7 @@ export default async function handler(req, res) {
           level_source = 'ai',
           topic_primary = ${topicPrimary},
           topic_secondary = ${topicSecondary || null},
+          oet_relevance = ${oetRelevance || null},
           added_by = ${authUser.id}
       WHERE youtube_id = ${youtubeId} AND is_available = false
       RETURNING id
@@ -63,12 +65,12 @@ export default async function handler(req, res) {
       INSERT INTO videos
         (youtube_id, title, channel_name, channel_id, description, thumbnail_url,
          duration_seconds, language, level, level_source, topic_primary, topic_secondary,
-         source, added_by)
+         oet_relevance, source, added_by)
       VALUES
         (${youtubeId}, ${title}, ${channelName || null}, ${channelUuid},
          ${description || null}, ${thumbnailUrl || null}, ${durationSeconds || null},
          ${language}, ${level}, 'ai', ${topicPrimary}, ${topicSecondary || null},
-         'library', ${authUser.id})
+         ${oetRelevance || null}, 'library', ${authUser.id})
       ON CONFLICT (youtube_id) DO NOTHING
       RETURNING id
     `
