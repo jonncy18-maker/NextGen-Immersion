@@ -24,6 +24,7 @@ export default async function handler(req, res) {
   const [watchRows, externalRows] = await Promise.all([
     adminSql`
       SELECT
+        ws.id,
         ws.seconds_watched,
         ws.completed,
         ws.started_at,
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
       ORDER BY ws.started_at
     `,
     adminSql`
-      SELECT session_type, duration_seconds, notes
+      SELECT id, session_type, duration_seconds, notes
       FROM external_sessions
       WHERE user_id = ${userId}
         AND session_date = ${date}::date
@@ -48,6 +49,7 @@ export default async function handler(req, res) {
   return res.status(200).json({
     date,
     watch_sessions: watchRows.map(r => ({
+      id:              r.id,
       video_title:     r.video_title,
       channel_name:    r.channel_name,
       youtube_id:      r.youtube_id,
@@ -55,6 +57,7 @@ export default async function handler(req, res) {
       completed:       r.completed,
     })),
     external_sessions: externalRows.map(r => ({
+      id:               r.id,
       session_type:     r.session_type,
       duration_seconds: r.duration_seconds,
       notes:            r.notes || null,

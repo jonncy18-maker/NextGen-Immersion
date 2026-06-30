@@ -212,8 +212,8 @@ function StatCard({ label, value, accent }) {
 
 const styles = {
   page: { minHeight: 'calc(100vh - 56px)', background: 'var(--ngsi-cream)' },
-  container: { maxWidth: 960, margin: '0 auto', padding: 24 },
-  detailContainer: { maxWidth: 640, margin: '0 auto', padding: 24 },
+  container: { maxWidth: 1200, margin: '0 auto', padding: 24 },
+  detailContainer: { maxWidth: 680, margin: '0 auto', padding: 24 },
   title: { margin: '0 0 18px', fontSize: 24, fontWeight: 700, color: 'var(--ngsi-navy)', fontFamily: 'Georgia, serif' },
   statsRow: { display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 24 },
   statCard: {
@@ -235,7 +235,7 @@ const styles = {
   statValue: { margin: 0, fontSize: 28, fontWeight: 700, color: 'var(--ngsi-navy)', fontFamily: 'Georgia, serif' },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
     gap: 16,
   },
   card: {

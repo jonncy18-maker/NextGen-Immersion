@@ -306,6 +306,23 @@ Status: **DONE** (Jun 2026 — implemented directly per user instruction). `next
 
 ---
 
+## Phase 27 — Combined Filters, Mobile Calendar, Desktop Layout, Day Session Edit/Delete
+
+**Loop goal:** "Five targeted polish improvements: (1) Discover & Import filters (Level, Topic, Duration) work simultaneously — selecting level + topic fires one combined YouTube query not three separate ones; (2) Calendar is usable on mobile — horizontally scrollable with tap-tooltip; (3) Admin dashboard uses horizontal space better on desktop — two scholar cards per row; (4) Admin calendar day detail shows Delete and Edit buttons per session so admins can correct bad data; (5) Discover & Import replaces always-visible level chips with compact dropdowns for Level, Topic, and Duration — all combinable with free text."
+
+Deliverables:
+- `pages/api/delete-session.js` (NEW) — admin-only POST; deletes a `watch_session` or `external_session` by id and type; validates UUID format; uses service-role connection
+- `pages/api/edit-external-session.js` (NEW) — admin-only POST; updates `session_type`, `duration_seconds`, `notes` for an `external_session`; fetches existing row and merges provided fields
+- `pages/api/scholar-day-detail.js` (MODIFIED) — added `ws.id` and external `id` to both SELECT queries; both session types now return their `id` so the modal can issue delete/edit calls
+- `src/components/admin/DayDetailModal.jsx` (REWRITE) — added `WatchSessionRow` sub-component with inline confirm-to-delete; added `ExternalSessionRow` sub-component with inline edit form (Type, Duration, Notes) and delete confirm; optimistic local-state updates on success (no refetch); session total calc handles both `seconds_watched` and `duration_seconds` fields
+- `src/components/progress/CalendarHeatmap.jsx` (MODIFIED) — wraps grid in `gridScroll` div (`overflowX: auto`) so calendar scrolls horizontally on narrow phones; `minWidth: 260` on grid, `minWidth: 32` on cells; tap-tooltip pattern (`tapInfo` state + `isTappable` logic) for touch devices where `onMouseEnter` doesn't fire
+- `src/pages/AdminProgress.jsx` (MODIFIED) — `container.maxWidth` 960→1200 to reduce side whitespace on desktop; `grid.gridTemplateColumns` changed to `minmax(380px, 1fr)` which gives 2 columns at ~800px+ content width
+- `src/components/admin/AddVideoPanel.jsx` (REWRITE) — removed always-visible CEFR chip row; added Level dropdown, Topic dropdown (with `<optgroup>` per category), Duration dropdown, and Clear filters button in a compact filter bar; `buildCombinedQuery(text, level, topic)` assembles a single YouTube query from CEFR prefix + topic keywords + free text so all three filters work simultaneously; active filter pills shown below the bar; free-text input remains and contributes to the combined query
+
+Status: **DONE** (Jun 2026 — implemented directly per user instruction). `next build` PASS.
+
+---
+
 ## Session Log
 
 | Date | Phase | Goal | Iterations | Notes |
@@ -344,6 +361,7 @@ Status: **DONE** (Jun 2026 — implemented directly per user instruction). `next
 | Jun 2026 | Phase 17 (cont.) | Multi-select level chips + topic multi-select on Watch tab | — | FilterDropdowns.jsx: level filter refactored into 6 toggle chips (A1/A2/B1/B2/C1/C2) with multi-select; topic filter added as structured dropdown with grouped checkboxes (multi-select). Topic search filter retained as secondary AND filter. `filters.level` changed from string to string[]. Watch.jsx updated for multi-select includes() checks. `next build` PASS. |
 | Jun 2026 | Phase 17 (cont.) | 4-category hours breakdown | — | Added library_hours + video_external_hours + chatgpt_hours + mentor_hours to progress.js and scholars.js responses. CategoryBreakdown.jsx updated to always show all 4 rows (removed guard). Scholar Progress page and Admin drill-down both show hours by category. `next build` PASS. |
 | Jun 2026 | Phase 24 | CEFR level system + admin mobile nav + Discover level chips | — | Replaced DS-style 4-level system (super_beginner/beginner/intermediate/advanced) with 6 CEFR levels (a1–c2) mapped to hours milestones (A1=0h, A2=150h, B1=300h, B2=600h, C1=1000h, C2=1500h). DB migration: dropped and re-added CHECK constraints on videos.level, channels.level, program_goals.target_level, scholar_goals.target_level; data migrated (51 videos preserved, 0 hours deleted). levels.js rewritten with CEFR ids + name field; _tag.js prompt + fallbacks updated; FilterDropdowns.jsx level chips updated to 6 CEFR chips; Watch.jsx super_beginner mapping removed; HoursCounter.jsx uses level.name instead of level.cefr + proper targetLevelLabel lookup; MilestoneBar max-level text updated; VideoLibraryEditor + AddVideoPanel + inventory-check.js LEVEL_COLORS keys updated. Admin BottomNav expanded from 3 tabs (Watch/Progress/Admin) to 5 (Watch/Progress/Dashboard/Videos/Goals). CEFR level chips row added to Discover & Import search area with toggle-to-search behavior. schema.sql updated. `next build` PASS. |
+| Jun 2026 | Phase 27 | Combined filters + mobile calendar + desktop layout + session edit/delete | — | 5 polish improvements: (1) Discover & Import filters now work simultaneously — Level+Topic+free-text build one combined YouTube query via `buildCombinedQuery`; (2) CalendarHeatmap horizontally scrollable on mobile, tap-tooltip for touch devices; (3) AdminProgress wider container + 2-col scholar grid on desktop; (4) DayDetailModal gains per-session Delete (watch+external) and Edit (external only) with inline confirm/form; (5) AddVideoPanel Level/Topic/Duration replaced with compact dropdowns in a filter bar. `next build` PASS. |
 
 ---
 
@@ -716,7 +734,7 @@ Status: **PLANNED**
 
 ---
 
-## Phase 27 — Video Resume Position ("Pick Up Where You Left Off")
+## Phase 28 — Video Resume Position ("Pick Up Where You Left Off")
 
 **Loop goal:** "When a scholar pauses or leaves a video mid-way, save their playback position. When they return to that video later, the player automatically seeks to where they stopped so they can pick up where they left off."
 

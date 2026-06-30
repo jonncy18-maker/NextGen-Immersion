@@ -379,21 +379,29 @@ function fmtDuration(secs) {
   return `${s}s`
 }
 
-const CEFR_LEVEL_CHIPS = [
-  { id: 'a1', label: 'A1', query: 'A1 English listening practice beginner' },
-  { id: 'a2', label: 'A2', query: 'A2 English listening elementary' },
-  { id: 'b1', label: 'B1', query: 'B1 English conversation pre-intermediate' },
-  { id: 'b2', label: 'B2', query: 'B2 English listening upper intermediate' },
-  { id: 'c1', label: 'C1', query: 'C1 advanced English conversation' },
-  { id: 'c2', label: 'C2', query: 'C2 mastery English native speaker' },
-]
+// All topics for the topic dropdown
+const ALL_TOPICS = TOPIC_CATEGORIES.flatMap(cat => cat.topics.map(t => ({ value: t, label: t, catLabel: cat.label })))
+
+// Build combined YouTube search query from free text + level + topic filters
+function buildCombinedQuery(text, level, topic) {
+  const levelPrefix = level ? CEFR_PREFIX[level] : ''
+  const topicKeywords = topic ? (TOPIC_QUERY_KEYWORDS[topic] || topic.toLowerCase()) : ''
+  const parts = []
+  if (levelPrefix) parts.push(levelPrefix)
+  parts.push('English')
+  if (topicKeywords) parts.push(topicKeywords)
+  if (text && text.trim()) parts.push(text.trim())
+  if (!topicKeywords && !text?.trim()) parts.push('listening')
+  return parts.join(' ')
+}
 
 export default function AddVideoPanel() {
   const [query, setQuery] = useState('')
+  const [filterLevel, setFilterLevel] = useState('')
+  const [filterTopic, setFilterTopic] = useState('')
+  const [duration, setDuration] = useState('any')
   const [searchState, setSearchState] = useState('idle') // idle | loading | done | quota | unavailable
   const [results, setResults] = useState([])
-  const [activeLevelChip, setActiveLevelChip] = useState(null)
-  const [duration, setDuration] = useState('any')
 
   const doSearch = useCallback(async (q) => {
     if (!q.trim()) {
@@ -414,88 +422,146 @@ export default function AddVideoPanel() {
 
   const debouncedSearch = useDebounce(doSearch, 500)
 
+  // Re-fire search whenever level or topic filter changes (if there's something to search)
+  function triggerSearch(text, level, topic) {
+    if (!text.trim() && !level && !topic) {
+      setResults([])
+      setSearchState('idle')
+      return
+    }
+    const combined = buildCombinedQuery(text, level, topic)
+    debouncedSearch(combined)
+  }
+
   const handleChange = (e) => {
     const val = e.target.value
     setQuery(val)
-    setActiveLevelChip(null)
-    debouncedSearch(val)
+    triggerSearch(val, filterLevel, filterTopic)
   }
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
-      clearTimeout(undefined)
-      doSearch(query)
+      const combined = buildCombinedQuery(query, filterLevel, filterTopic)
+      if (combined.trim()) doSearch(combined)
     }
   }
 
+  const handleLevelChange = (e) => {
+    const val = e.target.value
+    setFilterLevel(val)
+    triggerSearch(query, val, filterTopic)
+  }
+
+  const handleTopicChange = (e) => {
+    const val = e.target.value
+    setFilterTopic(val)
+    triggerSearch(query, filterLevel, val)
+  }
+
+  // Scholar context chip click: override free-text query directly
   const handleChipClick = useCallback(
     (chip) => {
       setQuery(chip)
-      setActiveLevelChip(null)
       doSearch(chip)
     },
     [doSearch],
   )
 
-  const handleLevelChip = useCallback(
-    (chip) => {
-      const isActive = activeLevelChip === chip.id
-      if (isActive) {
-        setActiveLevelChip(null)
-        setQuery('')
-        setResults([])
-        setSearchState('idle')
-      } else {
-        setActiveLevelChip(chip.id)
-        setQuery(chip.query)
-        doSearch(chip.query)
-      }
-    },
-    [activeLevelChip, doSearch],
-  )
+  const activeFilters = [
+    filterLevel ? `Level: ${filterLevel.toUpperCase()}` : null,
+    filterTopic ? `Topic: ${filterTopic}` : null,
+  ].filter(Boolean)
+
+  function clearFilters() {
+    setFilterLevel('')
+    setFilterTopic('')
+    setQuery('')
+    setResults([])
+    setSearchState('idle')
+  }
 
   return (
     <div style={panelStyles.wrap}>
       <ScholarContext onChipClick={handleChipClick} />
 
-      {/* CEFR level filter chips */}
-      <div style={panelStyles.cefrRow}>
-        <span style={panelStyles.cefrLabel}>Level</span>
-        {CEFR_LEVEL_CHIPS.map((chip) => (
-          <button
-            key={chip.id}
-            style={{
-              ...panelStyles.cefrChip,
-              background: activeLevelChip === chip.id ? LEVEL_COLORS[chip.id] : '#fff',
-              color: activeLevelChip === chip.id ? '#fff' : 'var(--ngsi-navy)',
-              borderColor: LEVEL_COLORS[chip.id],
-            }}
-            onClick={() => handleLevelChip(chip)}
+      {/* ── Filter bar ── */}
+      <div style={panelStyles.filterBar}>
+        {/* Level dropdown */}
+        <div style={panelStyles.filterGroup}>
+          <label style={panelStyles.filterLabel} htmlFor="avp-level">Level</label>
+          <select
+            id="avp-level"
+            value={filterLevel}
+            onChange={handleLevelChange}
+            style={panelStyles.filterSelect}
+            aria-label="Filter by CEFR level"
           >
-            {chip.label}
+            <option value="">Any Level</option>
+            {LEVELS.map(l => (
+              <option key={l.id} value={l.id}>{l.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Topic dropdown */}
+        <div style={panelStyles.filterGroup}>
+          <label style={panelStyles.filterLabel} htmlFor="avp-topic">Topic</label>
+          <select
+            id="avp-topic"
+            value={filterTopic}
+            onChange={handleTopicChange}
+            style={panelStyles.filterSelect}
+            aria-label="Filter by topic"
+          >
+            <option value="">Any Topic</option>
+            {TOPIC_CATEGORIES.map(cat => (
+              <optgroup key={cat.key} label={cat.label}>
+                {cat.topics.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+
+        {/* Duration dropdown */}
+        <div style={panelStyles.filterGroup}>
+          <label style={panelStyles.filterLabel} htmlFor="avp-duration">Duration</label>
+          <select
+            id="avp-duration"
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            style={panelStyles.filterSelect}
+            aria-label="Filter results by duration"
+          >
+            {DURATION_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Clear filters */}
+        {(filterLevel || filterTopic) && (
+          <button style={panelStyles.clearFiltersBtn} onClick={clearFilters}>
+            Clear filters
           </button>
-        ))}
+        )}
       </div>
 
-      {/* Duration filter */}
-      <div style={panelStyles.durationRow}>
-        <span style={panelStyles.cefrLabel}>Duration</span>
-        <select
-          value={duration}
-          onChange={(e) => setDuration(e.target.value)}
-          style={panelStyles.durationSelect}
-          aria-label="Filter results by duration"
-        >
-          {DURATION_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+      {/* Active filter pills */}
+      {activeFilters.length > 0 && (
+        <div style={panelStyles.activePills}>
+          {activeFilters.map(f => (
+            <span key={f} style={panelStyles.activePill}>{f}</span>
           ))}
-        </select>
-      </div>
+        </div>
+      )}
 
+      {/* Free text search (always fires combined query) */}
       <div style={panelStyles.searchRow}>
         <input
           type="search"
-          placeholder="Search YouTube (e.g. English nursing conversation)…"
+          placeholder="Search YouTube (e.g. nursing conversation, hospital scene)…"
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -602,29 +668,28 @@ const ctxStyles = {
 
 const panelStyles = {
   wrap: { display: 'flex', flexDirection: 'column', gap: 12 },
-  cefrRow: { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' },
-  cefrLabel: {
+  filterBar: {
+    display: 'flex',
+    gap: 10,
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+  },
+  filterGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+    flex: '1 1 120px',
+    minWidth: 0,
+  },
+  filterLabel: {
     fontSize: 11,
     fontWeight: 700,
     color: '#8a8f99',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
-    marginRight: 2,
   },
-  cefrChip: {
-    padding: '4px 10px',
-    fontSize: 12,
-    fontWeight: 600,
-    border: '1.5px solid',
-    borderRadius: 5,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    lineHeight: 1.4,
-    transition: 'background 0.12s, color 0.12s',
-  },
-  durationRow: { display: 'flex', alignItems: 'center', gap: 8 },
-  durationSelect: {
-    padding: '5px 10px',
+  filterSelect: {
+    padding: '7px 10px',
     fontSize: 13,
     border: '1.5px solid #d0d5dd',
     borderRadius: 7,
@@ -632,6 +697,35 @@ const panelStyles = {
     color: 'var(--ngsi-navy)',
     fontFamily: 'inherit',
     cursor: 'pointer',
+    width: '100%',
+  },
+  clearFiltersBtn: {
+    padding: '7px 12px',
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#c0524a',
+    background: 'none',
+    border: '1.5px solid #e8b4ae',
+    borderRadius: 7,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+    alignSelf: 'flex-end',
+  },
+  activePills: {
+    display: 'flex',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginTop: -4,
+  },
+  activePill: {
+    padding: '3px 10px',
+    fontSize: 12,
+    fontWeight: 600,
+    background: '#eef2ff',
+    color: '#4338ca',
+    borderRadius: 20,
+    border: '1px solid #c7d2fe',
   },
   searchRow: { display: 'flex', gap: 8 },
   input: {
