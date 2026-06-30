@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   const sql = getDb()
 
-  const [rows, videoRows, externalRows, libraryTotals, externalTotals, categoryTargets] =
+  const [rows, videoRows, externalRows, libraryTotals, externalTotals, categoryTargets, todayRows] =
     await Promise.all([
       sql`
         SELECT
@@ -58,8 +58,17 @@ export default async function handler(req, res) {
         JOIN users u ON sg.user_id = u.id AND sg.language = u.language
         WHERE sg.user_id = ${authUser.id}
       `,
+      // Hours watched today (Manila timezone)
+      sql`
+        SELECT ROUND(SUM(seconds_watched)::numeric / 3600, 2) AS hours_today
+        FROM watch_sessions
+        WHERE user_id = ${authUser.id}
+          AND (started_at AT TIME ZONE 'Asia/Manila')
+              >= date_trunc('day', now() AT TIME ZONE 'Asia/Manila')
+      `,
     ])
 
+  const hoursToday = Number(todayRows[0]?.hours_today ?? 0)
   const videoHoursThisWeek = Number(videoRows[0]?.video_hours_this_week ?? 0)
   const externalHours = Number(externalRows[0]?.external_hours_this_week ?? 0)
 
@@ -96,6 +105,7 @@ export default async function handler(req, res) {
       target_video_hours: targetVideoHours,
       target_chatgpt_hours: targetChatgptHours,
       target_mentor_hours: targetMentorHours,
+      hours_today: hoursToday,
     })
   }
 
@@ -119,5 +129,6 @@ export default async function handler(req, res) {
     target_video_hours: targetVideoHours,
     target_chatgpt_hours: targetChatgptHours,
     target_mentor_hours: targetMentorHours,
+    hours_today: hoursToday,
   })
 }
