@@ -199,6 +199,16 @@ export default function FilterDropdowns({ filters, onChange, style }) {
             All Levels
           </button>
         )}
+        <button
+          style={{
+            ...styles.levelChip,
+            ...(filters.oetOnly ? styles.oetChipActive : styles.oetChip),
+          }}
+          onClick={() => onChange({ ...filters, oetOnly: !filters.oetOnly })}
+          aria-pressed={!!filters.oetOnly}
+        >
+          OET Relevant
+        </button>
       </div>
 
       {/* Topic keyword search — secondary AND filter */}
@@ -296,6 +306,15 @@ const styles = {
     cursor: 'pointer',
     fontFamily: 'inherit',
     textDecoration: 'underline',
+  },
+  oetChip: {
+    borderColor: '#378ADD',
+    color: '#378ADD',
+  },
+  oetChipActive: {
+    background: '#378ADD',
+    color: '#fff',
+    borderColor: '#378ADD',
   },
   topicContainer: {
     position: 'relative',

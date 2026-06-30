@@ -10,6 +10,8 @@ import EmptyState from '../components/video/EmptyState.jsx'
 import { useWatchSession } from '../hooks/useWatchSession.js'
 import { useProgress } from '../hooks/useProgress.js'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
+import ComprehensionPrompt from '../components/player/ComprehensionPrompt.jsx'
+import NextVideoSuggestions from '../components/player/NextVideoSuggestions.jsx'
 
 async function fetchVideos() {
   const token = await getAuthToken()
@@ -34,6 +36,7 @@ export default function Watch() {
     search: '',
     topicSearch: '',
     duration: 'any',
+    oetOnly: false,
   })
   const levelInitialized = useRef(false)
 
@@ -89,6 +92,7 @@ export default function Watch() {
       }
       if (filters.watchedFilter === 'unwatched' && v.watched) return false
       if (filters.watchedFilter === 'watched' && !v.watched) return false
+      if (filters.oetOnly && !(v.oet_relevance >= 4)) return false
       return true
     })
 
@@ -145,11 +149,28 @@ export default function Watch() {
     playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
 
-  const { onPlayerStateChange, secondsThisSession, flushStatus } = useWatchSession(
+  const { onPlayerStateChange, secondsThisSession, flushStatus, videoEnded } = useWatchSession(
     selected?.id ?? null,
     selected?.duration_seconds ?? 0,
     handleComplete,
   )
+
+  const [comprehensionRating, setComprehensionRating] = useState(null)
+  const [showComprehension, setShowComprehension] = useState(false)
+
+  // Show comprehension prompt when video ends
+  useEffect(() => {
+    if (videoEnded) {
+      setShowComprehension(true)
+      setComprehensionRating(null)
+    }
+  }, [videoEnded])
+
+  // Reset comprehension UI when video selection changes
+  useEffect(() => {
+    setShowComprehension(false)
+    setComprehensionRating(null)
+  }, [selected?.id])
 
   return (
     <div style={styles.page}>
@@ -182,6 +203,28 @@ export default function Watch() {
               </div>
               <WatchTimer seconds={secondsThisSession} flushStatus={flushStatus} />
             </div>
+
+            {showComprehension && !comprehensionRating && (
+              <ComprehensionPrompt
+                videoId={selected.id}
+                onRate={rating => {
+                  setComprehensionRating(rating)
+                  setShowComprehension(false)
+                }}
+                onDismiss={() => setShowComprehension(false)}
+              />
+            )}
+
+            {comprehensionRating && (
+              <NextVideoSuggestions
+                videoId={selected.id}
+                comprehensionRating={comprehensionRating}
+                onSelect={video => {
+                  setComprehensionRating(null)
+                  handleSelect(video)
+                }}
+              />
+            )}
           </div>
         )}
 
@@ -200,7 +243,7 @@ export default function Watch() {
               <p style={styles.noResultsText}>No videos match your filters.</p>
               <button
                 style={styles.clearFiltersBtn}
-                onClick={() => setFilters({ topic: [], level: [], watchedFilter: 'all', search: '', topicSearch: '', duration: 'any' })}
+                onClick={() => setFilters({ topic: [], level: [], watchedFilter: 'all', search: '', topicSearch: '', duration: 'any', oetOnly: false })}
               >
                 Clear all filters
               </button>

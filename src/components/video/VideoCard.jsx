@@ -96,6 +96,9 @@ export default function VideoCard({ video, onSelect, active, onMark }) {
           <span style={styles.levelBadge}>
             {LEVEL_LABELS[video.level] ?? video.level}
           </span>
+          {video.oet_relevance >= 4 && (
+            <span style={styles.oetBadge}>OET</span>
+          )}
           {topics.map(t => (
             <span
               key={t}
@@ -236,6 +239,14 @@ const styles = {
     color: 'var(--ngsi-navy)',
     background: 'var(--ngsi-cream)',
     border: '1px solid var(--ngsi-cream-dark)',
+    padding: '2px 7px',
+    borderRadius: 999,
+  },
+  oetBadge: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#fff',
+    background: '#378ADD',
     padding: '2px 7px',
     borderRadius: 999,
   },

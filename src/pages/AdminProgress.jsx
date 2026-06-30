@@ -11,6 +11,7 @@ import CalendarHeatmap from '../components/progress/CalendarHeatmap.jsx'
 import LevelProgressBars from '../components/progress/LevelProgressBars.jsx'
 import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
 import DayDetailModal from '../components/admin/DayDetailModal.jsx'
+import ScholarDigest from '../components/admin/ScholarDigest.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 import { formatHoursShort } from '../utils/timeFormat.js'
 
@@ -130,6 +131,9 @@ export default function AdminProgress() {
               </div>
               <div style={{ marginTop: '0.75rem' }}>
                 <ExternalHoursButton userId={selected.user_id} onLogged={refetch} />
+              </div>
+              <div style={{ ...styles.card, marginTop: '0.75rem' }}>
+                <ScholarDigest userId={selected.user_id} />
               </div>
             </div>
           </div>

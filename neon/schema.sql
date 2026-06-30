@@ -345,6 +345,58 @@ CREATE OR REPLACE VIEW scholar_pace AS
 --   '2026-06-01',   -- admin-set start date
 --   'english');
 
+-- ─── Phase 28: AI Learning Intelligence ──────────────────────────────────────
+-- Applied via Neon MCP on 2026-06-30. All tables use IF NOT EXISTS guards.
+
+-- 28a: OET relevance column on videos (1–5, scored by Haiku at import time)
+ALTER TABLE videos ADD COLUMN IF NOT EXISTS oet_relevance integer
+  CHECK (oet_relevance BETWEEN 1 AND 5);
+
+-- 28b: Post-watch comprehension self-reports (1=struggled, 2=some, 3=well)
+CREATE TABLE IF NOT EXISTS comprehension_ratings (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  video_id   uuid NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  rating     integer NOT NULL CHECK (rating BETWEEN 1 AND 3),
+  rated_at   timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS comp_ratings_user_idx  ON comprehension_ratings (user_id);
+CREATE INDEX IF NOT EXISTS comp_ratings_video_idx ON comprehension_ratings (video_id);
+
+-- 28c: Cached next-video suggestions keyed by (video, comprehension_rating)
+CREATE TABLE IF NOT EXISTS next_video_suggestions (
+  video_id              uuid NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  comprehension_rating  integer NOT NULL CHECK (comprehension_rating BETWEEN 1 AND 3),
+  suggested_video_ids   uuid[] NOT NULL DEFAULT '{}',
+  generated_at          timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (video_id, comprehension_rating)
+);
+
+-- 28d: Cached per-user progress coaching message (refreshed every 24h)
+CREATE TABLE IF NOT EXISTS progress_coaching (
+  user_id      uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  message      text NOT NULL,
+  generated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- 28e: Level-up celebration messages (one per user per level, dismissable)
+CREATE TABLE IF NOT EXISTS level_celebrations (
+  user_id      uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  level        text NOT NULL CHECK (level IN ('a1','a2','b1','b2','c1','c2')),
+  message      text NOT NULL,
+  dismissed    boolean NOT NULL DEFAULT false,
+  generated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, level)
+);
+
+-- 28f: Admin scholar pattern digest (one per scholar, refreshed on demand / 24h)
+CREATE TABLE IF NOT EXISTS scholar_digests (
+  user_id      uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  message      text NOT NULL,
+  generated_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- ─── Data Isolation Note ──────────────────────────────────────────────────────
 -- Neon Auth does NOT expose auth.uid() the way Supabase does. Do NOT rely on
 -- database RLS using auth.uid(). Enforce isolation in the Vercel API layer:
