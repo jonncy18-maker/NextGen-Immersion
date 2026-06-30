@@ -675,7 +675,69 @@ Status: **DONE** (Jun 2026). `next build` PASS.
 
 ---
 
-## Phase 25 — Duration Filter Slider in Admin Video Search
+## Phase 28 — AI Learning Intelligence
+
+**Loop goal:** "Add six AI-powered features that make the app actively assist Claire's learning journey: OET relevance scoring on every video, a post-watch comprehension self-report, a next-video suggestion after each watch, an AI-generated weekly progress coaching message on the Progress page, a level-up celebration narrative when crossing a milestone, and an admin scholar pattern digest."
+
+**Background:** Anthropic's Haiku is already integrated server-side for video tagging. These features extend that investment to the learning experience itself — giving Claire context-aware nudges and feedback, and giving the admin (Jon) synthesized insight into her habits. All calls go through `pages/api/*` (key stays server-side); all results are cached or client-triggered so Haiku runs sparingly.
+
+**Features:**
+
+### 28a — OET Relevance Scoring
+Tag every video with an OET relevance score (1–5) at import time. Score 5 = directly OET-useful (medical, clinical, nurse communication); score 1 = compelling interest only. Cached forever in Neon like level/topic tags. Surfaced as a small "OET" badge on VideoCard when score ≥ 4, and as an "OET-relevant" filter chip in FilterDropdowns.
+
+### 28b — Post-Watch Comprehension Self-Report
+After a video ends (YT ENDED event), show a 3-button prompt below the player: "Understood most", "Understood some", "Understood little". Scholar taps one; it's stored as a `comprehension_rating` (1/2/3) on the `watch_sessions` row. No AI needed for the prompt — pure UI + schema. The comprehension score is used by 28c (next video suggestion) and 28f (admin digest). Admin drill-down shows comprehension trend over time.
+
+### 28c — AI Next-Video Suggestion
+After a video ends and the scholar rates comprehension (28b), Haiku picks 2–3 videos from the existing library to watch next. Input: current video's level/topic/OET score + comprehension rating + the scholar's recent watch history (last 5 videos + their comprehension ratings) + scholar's goal context (B1, targeting OET). Output: up to 3 `youtube_id` values ranked by fit. Rendered as a "Watch next" row below the player. Cached per `(video_id, comprehension_rating)` tuple in a `next_video_suggestions` table so the same context doesn't re-call Haiku.
+
+### 28d — AI Progress Coaching Message
+A short Haiku-generated coaching message rendered on the Progress page, refreshed at most once per day per scholar. Input: current pace (delta, AT RISK / ON TRACK), hours this week vs. target, comprehension trend, recent topics watched. Output: 2–3 sentences of specific, constructive coaching (e.g. "You're 4h behind pace this week. Your comprehension on OET content is trending up — keep targeting Medical & Nursing videos at B1 to maximize OET prep."). Stored in Neon with a `generated_at` timestamp; stale after 24h. Scholar fetches from `/api/progress-coaching`; if stale or absent the endpoint re-generates.
+
+### 28e — Level-Up Celebration Message
+When a scholar's cumulative hours first cross a level boundary (e.g. crosses 300h → reaches B1), Haiku generates a personalized 3–4 sentence celebration + forward-looking message. Input: new level, total hours, scholar goal (OET Grade B). Output: personalized text. Stored in a `level_celebrations` table keyed on `(user_id, level)` and rendered as a dismissible banner on the Progress page. Never re-generated; admin can clear to re-trigger.
+
+### 28f — Admin Scholar Pattern Digest
+A weekly Haiku-generated summary for admins on the AdminProgress page. Per scholar: synthesizes watch frequency, comprehension trends, topic distribution, and pace status into 2–3 observations (e.g. "Claire watched 5.2h this week, all Medical & Nursing. Comprehension is improving — "Understood most" up from 40% to 65% week-over-week. She's back on pace after last week's gap."). Generated on demand (admin clicks "Generate digest") or auto-generated Sunday midnight Manila time. Stored in `scholar_digests` table; displayed in admin drill-down.
+
+---
+
+**Deliverables:**
+
+Schema:
+- Add `oet_relevance` integer (1–5) column to `videos` table
+- Add `comprehension_rating` integer (1/2/3) column to `watch_sessions`
+- New `next_video_suggestions` table: `video_id`, `comprehension_rating`, `suggested_video_ids` (text[]), `generated_at`
+- New `progress_coaching` table: `user_id`, `message`, `generated_at`
+- New `level_celebrations` table: `user_id`, `level`, `message`, `dismissed`, `generated_at`
+- New `scholar_digests` table: `user_id`, `message`, `generated_at`
+
+API:
+- `pages/api/tag-video.js` + `pages/api/tag-channel.js` — add OET relevance scoring to existing Haiku calls; update `lib/api/_tag.js` with the OET 1–5 prompt and taxonomy
+- `pages/api/flush-session.js` — accept optional `comprehension_rating` field; write to `watch_sessions`
+- `pages/api/next-video.js` (new) — POST `{ videoId, comprehensionRating }`; returns up to 3 suggested videos from library; uses cache first, generates via Haiku if stale/absent
+- `pages/api/progress-coaching.js` (new) — GET, JWT-scoped; returns cached message if < 24h old, else generates via Haiku from pace + comprehension data
+- `pages/api/level-celebration.js` (new) — GET checks for uncelebrated level crossings; POST `{ level }` to dismiss; POST `{ action: 'regenerate', level }` to re-generate (admin only)
+- `pages/api/scholar-digest.js` (new) — GET, admin-only, `?userId=`; returns digest for that scholar; POST `{ userId }` to (re)generate
+
+UI:
+- `src/components/player/ComprehensionPrompt.jsx` (new) — shown below player after ENDED event; 3 buttons; calls `/api/flush-session` with `comprehension_rating` appended; on submit calls `onRate` callback
+- `src/components/player/NextVideoSuggestions.jsx` (new) — shown below ComprehensionPrompt after rating; 1–3 VideoCard-style tiles; "Watch next" heading; clicking pre-selects video in Watch page
+- `src/components/progress/CoachingMessage.jsx` (new) — rendered on Progress page below WeekStats; italic navy/gold card; "refreshes daily" footnote; skeleton while loading
+- `src/components/progress/LevelCelebrationBanner.jsx` (new) — dismissible gold banner on Progress page when an uncelebrated level-up exists; shows the Haiku message + "Dismiss" button
+- `src/components/admin/ScholarDigest.jsx` (new) — accordion card in admin drill-down; "Generate digest" button; shows the Haiku narrative when available; timestamp of last generation
+- `src/components/video/VideoCard.jsx` — add OET badge (blue pill "OET ★") when `oet_relevance >= 4`
+- `src/components/video/FilterDropdowns.jsx` — add "OET-relevant" toggle filter (shows only videos with `oet_relevance >= 4`)
+- `src/pages/Watch.jsx` — wire ComprehensionPrompt + NextVideoSuggestions below player; pass `onRate` + current video to both
+- `src/pages/Progress.jsx` — add CoachingMessage + LevelCelebrationBanner above WeekStats
+- `src/pages/AdminProgress.jsx` drill-down — add ScholarDigest accordion
+
+Status: **PLANNED**
+
+---
+
+## Phase 29 — Duration Filter Slider in Admin Video Search
 
 **Loop goal:** "Add a duration range slider to the admin 'Discover & Import' tab so the admin can filter YouTube search results by video length before adding them to the library. Range: < 5 min to > 30 min."
 
@@ -698,7 +760,7 @@ Status: **PLANNED**
 
 ---
 
-## Phase 26 — Watch Later / Library Module
+## Phase 30 — Watch Later / Library Module
 
 **Loop goal:** "Add a 'Watch Later' button below the YouTube video player on the Watch page. Saved videos appear in a new 'Library' module in the left sidebar and bottom nav, so scholars can build a personal queue and come back to it."
 
@@ -734,7 +796,7 @@ Status: **PLANNED**
 
 ---
 
-## Phase 28 — Video Resume Position ("Pick Up Where You Left Off")
+## Phase 31 — Video Resume Position ("Pick Up Where You Left Off")
 
 **Loop goal:** "When a scholar pauses or leaves a video mid-way, save their playback position. When they return to that video later, the player automatically seeks to where they stopped so they can pick up where they left off."
 
@@ -749,7 +811,7 @@ Deliverables:
 - `src/hooks/useWatchSession.js` — on PAUSED and ENDED events, read `player.getCurrentTime()` and include `position_seconds` in the flush payload alongside `duration_seconds`. On ENDED (video finished), send `position_seconds: 0` so it clears on the server (handled by the `completed = true` path).
 - `src/components/player/VideoPlayer.jsx` — accept a `resumeAt` prop (seconds). After the player is ready (`onReady` event), if `resumeAt > 0`, call `player.seekTo(resumeAt, true)` before playback begins. Show a brief dismissible "Resuming from 5:23 →" toast/chip below the player so the scholar knows the seek happened; include a "Start from beginning" link that clears the resume position and seeks to 0.
 - `src/pages/Watch.jsx` — pass `video.resume_position_seconds` as `resumeAt` to `VideoPlayer` when a video is selected.
-- `src/pages/Library.jsx` (Phase 25) — VideoCards for videos with a saved resume position show a small progress bar indicator at the bottom of the thumbnail (similar to Netflix/YouTube's red progress bar) so the scholar can see at a glance which saved videos they've partially watched.
+- `src/pages/Library.jsx` (Phase 30) — VideoCards for videos with a saved resume position show a small progress bar indicator at the bottom of the thumbnail (similar to Netflix/YouTube's red progress bar) so the scholar can see at a glance which saved videos they've partially watched.
 
 **Design note — no resume for completed videos:** Once a video is marked `completed = true` (single session ≥95%), the `video_resume_positions` row is deleted server-side. Re-watching a completed video always starts from the beginning.
 
