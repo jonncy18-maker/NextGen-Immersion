@@ -83,47 +83,55 @@ export default function AdminProgress() {
           </button>
           <h1 style={styles.title}>{selected.scholar_name || 'Scholar'}</h1>
 
-          <div style={styles.card}>
-            <HoursCounter
-              currentHours={currentHours}
-              currentLevel={currentLevel}
-              nextLevel={nextLevel}
-              targetHours={selected.target_hours}
-              targetLevel={selected.target_level}
-              status={selected.status}
-            />
-            <MilestoneBar currentHours={currentHours} />
-            <PaceAnalysis
-              currentHours={currentHours}
-              expectedHours={Number(selected.expected_hours ?? 0)}
-              targetHours={selected.target_hours}
-              status={selected.status}
-              delta={selected.delta ?? 0}
-            />
-            <CategoryBreakdown
-              libraryHours={Number(selected.library_hours ?? 0)}
-              videoExternalHours={Number(selected.video_external_hours ?? 0)}
-              chatgptHours={Number(selected.chatgpt_hours ?? 0)}
-              mentorHours={Number(selected.mentor_hours ?? 0)}
-              targetChatgptHours={selected.target_chatgpt_hours != null ? Number(selected.target_chatgpt_hours) : null}
-              targetMentorHours={selected.target_mentor_hours != null ? Number(selected.target_mentor_hours) : null}
-              expectedHours={Number(selected.expected_hours ?? 0)}
-              targetHours={selected.target_hours}
-            />
-          </div>
+          <div style={styles.detailGrid}>
+            {/* Left column: main progress stats */}
+            <div style={{ ...styles.card, marginBottom: 0 }}>
+              <HoursCounter
+                currentHours={currentHours}
+                currentLevel={currentLevel}
+                nextLevel={nextLevel}
+                targetHours={selected.target_hours}
+                targetLevel={selected.target_level}
+                status={selected.status}
+              />
+              <MilestoneBar currentHours={currentHours} />
+              <PaceAnalysis
+                currentHours={currentHours}
+                expectedHours={Number(selected.expected_hours ?? 0)}
+                targetHours={selected.target_hours}
+                status={selected.status}
+                delta={selected.delta ?? 0}
+              />
+              <CategoryBreakdown
+                libraryHours={Number(selected.library_hours ?? 0)}
+                videoExternalHours={Number(selected.video_external_hours ?? 0)}
+                chatgptHours={Number(selected.chatgpt_hours ?? 0)}
+                mentorHours={Number(selected.mentor_hours ?? 0)}
+                targetChatgptHours={selected.target_chatgpt_hours != null ? Number(selected.target_chatgpt_hours) : null}
+                targetMentorHours={selected.target_mentor_hours != null ? Number(selected.target_mentor_hours) : null}
+                expectedHours={Number(selected.expected_hours ?? 0)}
+                targetHours={selected.target_hours}
+              />
+            </div>
 
-          <div style={styles.card}>
-            <WeekStats
-              hoursThisWeek={Number(selected.hours_this_week ?? 0)}
-              targetHours={selected.target_hours}
-              startDate={selected.start_date}
-              targetDate={selected.target_date}
-              lastSessionAt={selected.last_session_at}
-            />
-          </div>
-
-          <div style={styles.card}>
-            <LevelProgressBars currentHours={Number(selected.current_hours ?? 0)} />
+            {/* Right column: week stats + level bars + log button */}
+            <div>
+              <div style={styles.card}>
+                <WeekStats
+                  hoursThisWeek={Number(selected.hours_this_week ?? 0)}
+                  targetHours={selected.target_hours}
+                  startDate={selected.start_date}
+                  targetDate={selected.target_date}
+                  lastSessionAt={selected.last_session_at}
+                />
+              </div>
+              <div style={styles.card}>
+                <LevelProgressBars currentHours={Number(selected.current_hours ?? 0)} />
+              </div>
+              <div style={{ marginTop: '0.75rem' }}>
+                <ExternalHoursButton userId={selected.user_id} onLogged={refetch} />
+              </div>
+            </div>
           </div>
 
           {calData && (
@@ -145,10 +153,6 @@ export default function AdminProgress() {
               />
             </div>
           )}
-
-          <div style={{ marginTop: '0.75rem' }}>
-            <ExternalHoursButton userId={selected.user_id} onLogged={refetch} />
-          </div>
         </div>
 
         {dayDetailDate && (
@@ -213,7 +217,14 @@ function StatCard({ label, value, accent }) {
 const styles = {
   page: { minHeight: 'calc(100vh - 56px)', background: 'var(--ngsi-cream)' },
   container: { maxWidth: 1200, margin: '0 auto', padding: 24 },
-  detailContainer: { maxWidth: 680, margin: '0 auto', padding: 24 },
+  detailContainer: { maxWidth: 1100, margin: '0 auto', padding: 24 },
+  detailGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(min(420px, 100%), 1fr))',
+    gap: 16,
+    marginBottom: 16,
+    alignItems: 'start',
+  },
   title: { margin: '0 0 18px', fontSize: 24, fontWeight: 700, color: 'var(--ngsi-navy)', fontFamily: 'Georgia, serif' },
   statsRow: { display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 24 },
   statCard: {
