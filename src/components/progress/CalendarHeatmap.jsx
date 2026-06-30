@@ -50,6 +50,7 @@ function fmtHours(h) {
 }
 
 // onDayClick(dateStr) — optional; admin-only; called on click of a day with hours
+// On touch devices, cells with hours also show a tap-tooltip when no onDayClick is set.
 export default function CalendarHeatmap({ days, dailyGoal, startDate, onDayClick }) {
   const daysMap = {}
   if (days) days.forEach(d => { daysMap[d.date] = d })
@@ -73,6 +74,7 @@ export default function CalendarHeatmap({ days, dailyGoal, startDate, onDayClick
   const [viewYear, setViewYear] = useState(maxYear)
   const [viewMonth, setViewMonth] = useState(maxMonth)
   const [tooltip, setTooltip] = useState(null)
+  const [tapInfo, setTapInfo] = useState(null)
 
   const canGoPrev = viewYear > minYear || (viewYear === minYear && viewMonth > minMonth)
   const canGoNext = viewYear < maxYear || (viewYear === maxYear && viewMonth < maxMonth)
@@ -108,7 +110,7 @@ export default function CalendarHeatmap({ days, dailyGoal, startDate, onDayClick
     : 'Daily goal not set'
 
   return (
-    <div style={styles.root}>
+    <div style={styles.root} onClick={tapInfo ? () => setTapInfo(null) : undefined}>
       <div style={styles.topRow}>
         <span style={styles.title}>Activity Calendar</span>
         <span style={styles.goalLabel}>{goalLabel}</span>
@@ -141,52 +143,67 @@ export default function CalendarHeatmap({ days, dailyGoal, startDate, onDayClick
         <LegendDot color={COLOR_GRAY}   label="Not started" />
       </div>
 
-      <div style={styles.grid}>
-        {DAY_HEADERS.map(h => (
-          <div key={h} style={styles.dayHeader}>{h}</div>
-        ))}
-        {weeks.map((week, wi) =>
-          week.map((cell, ci) => {
-            if (!cell) return <div key={`e-${wi}-${ci}`} style={styles.emptyCell} />
-            const color = getCellColor(cell.date, daysMap, dailyGoal, startDate)
-            const data = daysMap[cell.date]
-            const hoursLabel = data ? fmtHours(data.hours) : null
+      <div style={styles.gridScroll}>
+        <div style={styles.grid}>
+          {DAY_HEADERS.map(h => (
+            <div key={h} style={styles.dayHeader}>{h}</div>
+          ))}
+          {weeks.map((week, wi) =>
+            week.map((cell, ci) => {
+              if (!cell) return <div key={`e-${wi}-${ci}`} style={styles.emptyCell} />
+              const color = getCellColor(cell.date, daysMap, dailyGoal, startDate)
+              const cellData = daysMap[cell.date]
+              const hoursLabel = cellData ? fmtHours(cellData.hours) : null
 
-            const today = new Date().toISOString().slice(0, 10)
-            const hasHours = (daysMap[cell.date]?.hours ?? 0) > 0
-            const isClickable = !!onDayClick && cell.date <= today &&
-              !(startDate && cell.date < startDate) && hasHours
+              const today = new Date().toISOString().slice(0, 10)
+              const hasHours = (daysMap[cell.date]?.hours ?? 0) > 0
+              const isClickable = !!onDayClick && cell.date <= today &&
+                !(startDate && cell.date < startDate) && hasHours
+              const isTappable = !onDayClick && hasHours && cell.date <= today &&
+                !(startDate && cell.date < startDate)
 
-            return (
-              <div
-                key={cell.date}
-                style={{
-                  ...styles.cell,
-                  backgroundColor: color ?? 'transparent',
-                  border: color ? '1px solid rgba(0,0,0,0.06)' : 'none',
-                  cursor: isClickable ? 'pointer' : 'default',
-                }}
-                onClick={isClickable ? () => onDayClick(cell.date) : undefined}
-                onMouseEnter={e => {
+              function handleCellClick(e) {
+                if (isClickable) {
+                  onDayClick(cell.date)
+                } else if (isTappable) {
+                  e.stopPropagation()
                   const rect = e.currentTarget.getBoundingClientRect()
-                  setTooltip({ x: rect.left + rect.width / 2, y: rect.top, cell, data })
-                }}
-                onMouseLeave={() => setTooltip(null)}
-              >
-                <span style={styles.dayNum}>{cell.day}</span>
-                {hoursLabel && <span style={styles.cellHours}>{hoursLabel}</span>}
-              </div>
-            )
-          })
-        )}
+                  setTapInfo({ x: rect.left + rect.width / 2, y: rect.top, cell, data: cellData })
+                }
+              }
+
+              return (
+                <div
+                  key={cell.date}
+                  style={{
+                    ...styles.cell,
+                    backgroundColor: color ?? 'transparent',
+                    border: color ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                    cursor: (isClickable || isTappable) ? 'pointer' : 'default',
+                  }}
+                  onClick={handleCellClick}
+                  onMouseEnter={e => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    setTooltip({ x: rect.left + rect.width / 2, y: rect.top, cell, data: cellData })
+                  }}
+                  onMouseLeave={() => setTooltip(null)}
+                >
+                  <span style={styles.dayNum}>{cell.day}</span>
+                  {hoursLabel && <span style={styles.cellHours}>{hoursLabel}</span>}
+                </div>
+              )
+            })
+          )}
+        </div>
       </div>
 
       {tooltip && <CalTooltip tooltip={tooltip} startDate={startDate} />}
+      {tapInfo && <CalTooltip tooltip={tapInfo} startDate={startDate} tap />}
     </div>
   )
 }
 
-function CalTooltip({ tooltip, startDate }) {
+function CalTooltip({ tooltip, startDate, tap }) {
   const { x, y, cell, data } = tooltip
   const today = new Date().toISOString().slice(0, 10)
   const isFuture = cell.date > today
@@ -258,7 +275,15 @@ function LegendDot({ color, label }) {
 }
 
 const styles = {
-  root: { padding: '16px 20px 18px' },
+  root: { padding: '16px 20px 18px', WebkitOverflowScrolling: 'touch' },
+  gridScroll: {
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    marginLeft: -4,
+    marginRight: -4,
+    paddingLeft: 4,
+    paddingRight: 4,
+  },
   topRow: {
     display: 'flex',
     alignItems: 'baseline',
@@ -306,8 +331,9 @@ const styles = {
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(7, 1fr)',
+    gridTemplateColumns: 'repeat(7, minmax(32px, 1fr))',
     gap: '3px',
+    minWidth: 260,
   },
   dayHeader: {
     fontSize: 10,
@@ -325,10 +351,11 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'default',
-    minWidth: 0,
+    minWidth: 32,
     gap: 1,
+    WebkitTapHighlightColor: 'transparent',
   },
-  emptyCell: { aspectRatio: '1', minWidth: 0 },
+  emptyCell: { aspectRatio: '1', minWidth: 32 },
   dayNum: {
     fontSize: 12,
     fontWeight: 500,

@@ -11,6 +11,11 @@ const TYPE_ICONS = {
   chatgpt_conversation: '💬',
   mentor_call:          '👩‍🏫',
 }
+const TYPE_OPTIONS = [
+  { value: 'chatgpt_conversation', label: 'ChatGPT Practice' },
+  { value: 'mentor_call',          label: 'Mentor Call' },
+  { value: 'video_external',       label: 'External Video' },
+]
 
 function fmtDuration(seconds) {
   const h = Math.floor(seconds / 3600)
@@ -24,11 +29,230 @@ function fmtDuration(seconds) {
 }
 
 function fmtDate(dateStr) {
-  // Parse as local date to avoid UTC offset shifting the day
   const [y, mo, d] = dateStr.split('-').map(Number)
   return new Date(y, mo - 1, d).toLocaleDateString('en-US', {
     month: 'long', day: 'numeric', year: 'numeric',
   })
+}
+
+async function deleteSession(sessionType, sessionId) {
+  const token = await getAuthToken()
+  const res = await fetch('/api/delete-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ sessionType, sessionId }),
+  })
+  if (!res.ok) throw new Error(`Delete failed: ${res.status}`)
+  return res.json()
+}
+
+async function editExternalSession(sessionId, durationMinutes, notes, sessionType) {
+  const token = await getAuthToken()
+  const res = await fetch('/api/edit-external-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ sessionId, durationMinutes, notes, sessionType }),
+  })
+  if (!res.ok) throw new Error(`Edit failed: ${res.status}`)
+  return res.json()
+}
+
+function WatchSessionRow({ session, onDeleted }) {
+  const [deleting, setDeleting] = useState(false)
+  const [confirm, setConfirm] = useState(false)
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      await deleteSession('watch', session.id)
+      onDeleted(session.id)
+    } catch {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div style={styles.row}>
+      <div style={styles.rowIcon}>▶</div>
+      <div style={styles.rowBody}>
+        <div style={styles.rowTitle}>{session.video_title}</div>
+        {session.channel_name && (
+          <div style={styles.rowMeta}>{session.channel_name}</div>
+        )}
+        <div style={styles.rowMeta}>
+          {fmtDuration(session.seconds_watched)}
+          {session.completed && (
+            <span style={styles.completedTag}> ✓ Completed</span>
+          )}
+        </div>
+      </div>
+      <div style={styles.rowActions}>
+        {!confirm ? (
+          <button
+            style={{ ...styles.actionBtn, ...styles.deleteBtn }}
+            onClick={() => setConfirm(true)}
+            title="Delete session"
+          >
+            ✕
+          </button>
+        ) : (
+          <div style={styles.confirmRow}>
+            <span style={styles.confirmText}>Delete?</span>
+            <button
+              style={{ ...styles.actionBtn, ...styles.deleteConfirmBtn }}
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? '…' : 'Yes'}
+            </button>
+            <button
+              style={{ ...styles.actionBtn, ...styles.cancelBtn }}
+              onClick={() => setConfirm(false)}
+            >
+              No
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ExternalSessionRow({ session, onDeleted, onEdited }) {
+  const [deleting, setDeleting] = useState(false)
+  const [confirm, setConfirm] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editDuration, setEditDuration] = useState(String(Math.round(session.duration_seconds / 60)))
+  const [editNotes, setEditNotes] = useState(session.notes || '')
+  const [editType, setEditType] = useState(session.session_type)
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      await deleteSession('external', session.id)
+      onDeleted(session.id)
+    } catch {
+      setDeleting(false)
+    }
+  }
+
+  async function handleSave() {
+    const mins = Number(editDuration)
+    if (!mins || mins <= 0) return
+    setSaving(true)
+    try {
+      const updated = await editExternalSession(session.id, mins, editNotes, editType)
+      onEdited(session.id, updated)
+      setEditing(false)
+    } catch {
+      setSaving(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <div style={{ ...styles.row, flexDirection: 'column', gap: 10 }}>
+        <div style={styles.editHeader}>
+          <span style={styles.editTitle}>Edit Session</span>
+          <button style={{ ...styles.actionBtn, ...styles.cancelBtn }} onClick={() => setEditing(false)}>
+            Cancel
+          </button>
+        </div>
+        <div style={styles.editGrid}>
+          <label style={styles.editLabel}>
+            Type
+            <select
+              value={editType}
+              onChange={e => setEditType(e.target.value)}
+              style={styles.editSelect}
+            >
+              {TYPE_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </label>
+          <label style={styles.editLabel}>
+            Duration (min)
+            <input
+              type="number"
+              min="1"
+              value={editDuration}
+              onChange={e => setEditDuration(e.target.value)}
+              style={styles.editInput}
+            />
+          </label>
+        </div>
+        <label style={styles.editLabel}>
+          Notes
+          <textarea
+            value={editNotes}
+            onChange={e => setEditNotes(e.target.value)}
+            rows={2}
+            placeholder="Optional notes…"
+            style={styles.editTextarea}
+          />
+        </label>
+        <button
+          style={{ ...styles.saveBtn, ...(saving ? { opacity: 0.6 } : {}) }}
+          onClick={handleSave}
+          disabled={saving || !editDuration || Number(editDuration) <= 0}
+        >
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div style={styles.row}>
+      <div style={styles.rowIcon}>{TYPE_ICONS[session.session_type] || '📌'}</div>
+      <div style={styles.rowBody}>
+        <div style={styles.rowTitle}>{TYPE_LABELS[session.session_type] || session.session_type}</div>
+        <div style={styles.rowMeta}>{fmtDuration(session.duration_seconds)}</div>
+        {session.notes && (
+          <div style={styles.rowNotes}>{session.notes}</div>
+        )}
+      </div>
+      <div style={styles.rowActions}>
+        {!confirm ? (
+          <>
+            <button
+              style={{ ...styles.actionBtn, ...styles.editActionBtn }}
+              onClick={() => setEditing(true)}
+              title="Edit session"
+            >
+              ✎
+            </button>
+            <button
+              style={{ ...styles.actionBtn, ...styles.deleteBtn }}
+              onClick={() => setConfirm(true)}
+              title="Delete session"
+            >
+              ✕
+            </button>
+          </>
+        ) : (
+          <div style={styles.confirmRow}>
+            <span style={styles.confirmText}>Delete?</span>
+            <button
+              style={{ ...styles.actionBtn, ...styles.deleteConfirmBtn }}
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? '…' : 'Yes'}
+            </button>
+            <button
+              style={{ ...styles.actionBtn, ...styles.cancelBtn }}
+              onClick={() => setConfirm(false)}
+            >
+              No
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function DayDetailModal({ userId, date, onClose }) {
@@ -63,16 +287,41 @@ export default function DayDetailModal({ userId, date, onClose }) {
     return () => document.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const totalSeconds = data
-    ? data.watch_sessions.reduce((s, r) => s + r.seconds_watched, 0) +
-      data.external_sessions.reduce((s, r) => s + r.duration_seconds, 0)
-    : 0
+  function handleWatchDeleted(sessionId) {
+    setData(prev => prev ? {
+      ...prev,
+      watch_sessions: prev.watch_sessions.filter(s => s.id !== sessionId)
+    } : prev)
+  }
+
+  function handleExternalDeleted(sessionId) {
+    setData(prev => prev ? {
+      ...prev,
+      external_sessions: prev.external_sessions.filter(s => s.id !== sessionId)
+    } : prev)
+  }
+
+  function handleExternalEdited(sessionId, updated) {
+    setData(prev => prev ? {
+      ...prev,
+      external_sessions: prev.external_sessions.map(s =>
+        s.id === sessionId
+          ? { ...s, session_type: updated.session_type, duration_seconds: updated.duration_seconds, notes: updated.notes }
+          : s
+      )
+    } : prev)
+  }
+
+  const sessions = data
+    ? [...data.watch_sessions, ...data.external_sessions]
+    : []
+  const totalSeconds = sessions.reduce((sum, s) =>
+    sum + (s.seconds_watched ?? s.duration_seconds ?? 0), 0)
 
   return (
     <div style={styles.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div style={styles.modal} role="dialog" aria-modal="true">
 
-        {/* Header */}
         <div style={styles.header}>
           <div>
             <div style={styles.dateLabel}>{fmtDate(date)}</div>
@@ -85,7 +334,6 @@ export default function DayDetailModal({ userId, date, onClose }) {
           <button style={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        {/* Body */}
         <div style={styles.body}>
           {loading && (
             <div style={styles.center}>
@@ -94,9 +342,7 @@ export default function DayDetailModal({ userId, date, onClose }) {
             </div>
           )}
 
-          {error && (
-            <p style={styles.errorMsg}>Couldn&apos;t load session details.</p>
-          )}
+          {error && <p style={styles.errorMsg}>Couldn&apos;t load session details.</p>}
 
           {!loading && data && (
             <>
@@ -106,43 +352,25 @@ export default function DayDetailModal({ userId, date, onClose }) {
                 <>
                   {data.watch_sessions.length > 0 && (
                     <Section title="Library Video">
-                      {data.watch_sessions.map((s, i) => (
-                        <div key={i} style={styles.row}>
-                          <div style={styles.rowIcon}>▶</div>
-                          <div style={styles.rowBody}>
-                            <div style={styles.rowTitle}>{s.video_title}</div>
-                            {s.channel_name && (
-                              <div style={styles.rowMeta}>{s.channel_name}</div>
-                            )}
-                            <div style={styles.rowMeta}>
-                              {fmtDuration(s.seconds_watched)}
-                              {s.completed && (
-                                <span style={styles.completedTag}> ✓ Completed</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                      {data.watch_sessions.map(s => (
+                        <WatchSessionRow
+                          key={s.id}
+                          session={s}
+                          onDeleted={handleWatchDeleted}
+                        />
                       ))}
                     </Section>
                   )}
 
                   {data.external_sessions.length > 0 && (
                     <Section title="Other Sessions">
-                      {data.external_sessions.map((s, i) => (
-                        <div key={i} style={styles.row}>
-                          <div style={styles.rowIcon}>
-                            {TYPE_ICONS[s.session_type] || '📌'}
-                          </div>
-                          <div style={styles.rowBody}>
-                            <div style={styles.rowTitle}>
-                              {TYPE_LABELS[s.session_type] || s.session_type}
-                            </div>
-                            <div style={styles.rowMeta}>{fmtDuration(s.duration_seconds)}</div>
-                            {s.notes && (
-                              <div style={styles.rowNotes}>{s.notes}</div>
-                            )}
-                          </div>
-                        </div>
+                      {data.external_sessions.map(s => (
+                        <ExternalSessionRow
+                          key={s.id}
+                          session={s}
+                          onDeleted={handleExternalDeleted}
+                          onEdited={handleExternalEdited}
+                        />
                       ))}
                     </Section>
                   )}
@@ -181,8 +409,8 @@ const styles = {
     borderRadius: 14,
     boxShadow: '0 8px 32px rgba(22,32,64,0.22)',
     width: '100%',
-    maxWidth: 480,
-    maxHeight: '80vh',
+    maxWidth: 520,
+    maxHeight: '85vh',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
@@ -235,11 +463,12 @@ const styles = {
   },
   row: {
     display: 'flex',
-    gap: 12,
-    padding: '10px 14px',
+    gap: 10,
+    padding: '10px 12px',
     backgroundColor: '#faf9f6',
     borderRadius: 8,
     border: '1px solid #f0ece2',
+    alignItems: 'flex-start',
   },
   rowIcon: { fontSize: 15, flexShrink: 0, marginTop: 1 },
   rowBody: { flex: 1, minWidth: 0 },
@@ -259,4 +488,121 @@ const styles = {
     fontStyle: 'italic',
   },
   completedTag: { color: '#1D9E75', fontWeight: 700 },
+  rowActions: {
+    display: 'flex',
+    gap: 4,
+    flexShrink: 0,
+    alignItems: 'flex-start',
+    paddingTop: 1,
+  },
+  confirmRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  confirmText: {
+    fontSize: 11,
+    color: '#c0524a',
+    fontWeight: 600,
+  },
+  actionBtn: {
+    padding: '3px 7px',
+    fontSize: 12,
+    border: 'none',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    lineHeight: 1.4,
+    fontWeight: 600,
+  },
+  editActionBtn: {
+    background: '#f0ece2',
+    color: '#5a6070',
+  },
+  deleteBtn: {
+    background: '#fef2f2',
+    color: '#c0524a',
+  },
+  deleteConfirmBtn: {
+    background: '#c0524a',
+    color: '#fff',
+  },
+  cancelBtn: {
+    background: '#f0ece2',
+    color: '#5a6070',
+  },
+  editHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  editTitle: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#162040',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
+  editGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 10,
+  },
+  editLabel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#8a8f99',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
+  editSelect: {
+    padding: '6px 8px',
+    fontSize: 12,
+    border: '1.5px solid #d0d5dd',
+    borderRadius: 6,
+    background: '#fff',
+    color: '#162040',
+    fontFamily: 'inherit',
+    cursor: 'pointer',
+  },
+  editInput: {
+    padding: '6px 8px',
+    fontSize: 12,
+    border: '1.5px solid #d0d5dd',
+    borderRadius: 6,
+    background: '#fff',
+    color: '#162040',
+    fontFamily: 'inherit',
+    width: '100%',
+    boxSizing: 'border-box',
+  },
+  editTextarea: {
+    padding: '6px 8px',
+    fontSize: 12,
+    border: '1.5px solid #d0d5dd',
+    borderRadius: 6,
+    background: '#fff',
+    color: '#162040',
+    fontFamily: 'inherit',
+    resize: 'vertical',
+    width: '100%',
+    boxSizing: 'border-box',
+  },
+  saveBtn: {
+    padding: '7px 14px',
+    fontSize: 12,
+    fontWeight: 600,
+    border: 'none',
+    borderRadius: 6,
+    background: '#162040',
+    color: '#fff',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    alignSelf: 'flex-end',
+    display: 'block',
+    width: '100%',
+  },
 }
