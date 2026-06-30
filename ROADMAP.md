@@ -273,6 +273,25 @@ Status: **DONE** (Jun 2026 — approach #1, Next.js migration; verified in produ
 
 ---
 
+## Phase 15 — Calendar View + Level Progress Bars
+
+**Loop goal:** "Add two visual progress displays to both the scholar Progress tab and the admin scholar drill-down: (1) a 3-month activity calendar heatmap coloring each day green/yellow/red based on daily goal achievement, and (2) DS-style horizontal level progress bars showing fill per CEFR level."
+
+Deliverables:
+- `pages/api/daily-calendar.js` — GET, scholar's per-day hours (last 4 months), plus pace context (start_date, target_hours, target_date)
+- `pages/api/scholar-calendar.js` — GET, admin-only; same data for any scholar via `?userId=`; uses service-role connection
+- `src/hooks/useDailyCalendar.js` — fetches `/api/daily-calendar` with auth token
+- `src/hooks/useScholarCalendar.js` — fetches `/api/scholar-calendar?userId=` (admin); re-fetches when userId changes
+- `src/components/progress/CalendarHeatmap.jsx` — 3-month mini-calendar grid; green = daily goal met, yellow = partial hours, red = no hours logged on an active past day, gray = before start_date or future
+- `src/components/progress/LevelProgressBars.jsx` — one horizontal bar per CEFR level (A1→C2); navy = completed, gold = current level, cream-gray = upcoming; hours label right-aligned
+- `src/pages/Progress.jsx` — adds LevelProgressBars + CalendarHeatmap cards after WeekStats
+- `src/pages/AdminProgress.jsx` — adds LevelProgressBars + CalendarHeatmap in scholar drill-down view; calendar data fetched via useScholarCalendar keyed on selected scholar
+- No changes to existing data, numbers, or hour-counting logic — visual layer only
+
+Status: **DONE** (Jun 2026 — implemented directly per user instruction to write-and-implement simultaneously). `next build` PASS.
+
+---
+
 ## Session Log
 
 | Date | Phase | Goal | Iterations | Notes |

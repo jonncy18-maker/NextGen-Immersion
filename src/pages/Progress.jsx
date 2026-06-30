@@ -1,14 +1,18 @@
 import { useProgress } from '../hooks/useProgress.js'
+import { useDailyCalendar } from '../hooks/useDailyCalendar.js'
 import HoursCounter from '../components/progress/HoursCounter.jsx'
 import MilestoneBar from '../components/progress/MilestoneBar.jsx'
 import PaceAnalysis from '../components/progress/PaceAnalysis.jsx'
 import CategoryBreakdown from '../components/progress/CategoryBreakdown.jsx'
 import WeekStats from '../components/progress/WeekStats.jsx'
+import CalendarHeatmap from '../components/progress/CalendarHeatmap.jsx'
+import LevelProgressBars from '../components/progress/LevelProgressBars.jsx'
 import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 
 export default function Progress() {
   const { data, loading, error, refetch } = useProgress()
+  const { data: calData } = useDailyCalendar()
 
   const pageStyle = {
     backgroundColor: '#F5F0E8',
@@ -194,6 +198,29 @@ export default function Progress() {
             externalHoursThisWeek={data.external_hours_this_week}
           />
         </div>
+
+        <div style={cardStyle}>
+          <LevelProgressBars currentHours={data.current_hours} />
+        </div>
+
+        {calData && (
+          <div style={cardStyle}>
+            <CalendarHeatmap
+              days={calData.days}
+              dailyGoal={
+                calData.target_hours && calData.start_date && calData.target_date
+                  ? calData.target_hours /
+                    Math.max(
+                      1,
+                      (new Date(calData.target_date) - new Date(calData.start_date)) /
+                        86400000
+                    )
+                  : null
+              }
+              startDate={calData.start_date}
+            />
+          </div>
+        )}
 
         <div style={{ marginTop: '0.75rem' }}>
           <ExternalHoursButton userId={data.user_id} onLogged={refetch} />
