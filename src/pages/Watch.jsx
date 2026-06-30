@@ -45,6 +45,12 @@ export default function Watch() {
   const scholarLevelId = rawLevelId
   const nextLevelId = scholarLevelId ? getNextLevel(scholarLevelId)?.id ?? null : null
 
+  // Daily target = total program hours ÷ program duration in days
+  const dailyTargetHours = progress?.target_hours && progress?.start_date && progress?.target_date
+    ? progress.target_hours / Math.max(1, (new Date(progress.target_date) - new Date(progress.start_date)) / 86400000)
+    : null
+  const hoursToday = progress?.hours_today ?? 0
+
   // Default level filter to scholar's current level on first load
   useEffect(() => {
     if (scholarLevelId && !levelInitialized.current) {
@@ -204,6 +210,10 @@ export default function Watch() {
               <WatchTimer seconds={secondsThisSession} flushStatus={flushStatus} />
             </div>
 
+            {dailyTargetHours != null && (
+              <DailyBar hoursToday={hoursToday} dailyTarget={dailyTargetHours} />
+            )}
+
             {showComprehension && !comprehensionRating && (
               <ComprehensionPrompt
                 videoId={selected.id}
@@ -335,5 +345,71 @@ const styles = {
   },
   library: {
     marginTop: 8,
+  },
+}
+
+function DailyBar({ hoursToday, dailyTarget }) {
+  const pct = Math.min(hoursToday / dailyTarget, 1)
+  const done = pct >= 1
+  const todayMins = Math.round(hoursToday * 60)
+  const targetMins = Math.round(dailyTarget * 60)
+
+  return (
+    <div style={barStyles.wrap}>
+      <div style={barStyles.labelRow}>
+        <span style={barStyles.label}>Today</span>
+        <span style={{ ...barStyles.value, ...(done ? barStyles.valueDone : {}) }}>
+          {todayMins} / {targetMins} min
+        </span>
+      </div>
+      <div style={barStyles.track}>
+        <div
+          style={{
+            ...barStyles.fill,
+            width: `${pct * 100}%`,
+            background: done ? '#1D9E75' : 'var(--ngsi-navy)',
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+const barStyles = {
+  wrap: {
+    marginTop: 10,
+    padding: '0 4px',
+  },
+  labelRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 5,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#8a8f99',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  value: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: 'var(--ngsi-navy)',
+  },
+  valueDone: {
+    color: '#1D9E75',
+  },
+  track: {
+    height: 6,
+    background: '#e8e3da',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 999,
+    transition: 'width 0.4s ease',
   },
 }
