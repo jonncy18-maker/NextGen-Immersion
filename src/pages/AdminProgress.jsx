@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useScholars } from '../hooks/useScholars.js'
+import { useScholarCalendar } from '../hooks/useScholarCalendar.js'
 import ScholarCard from '../components/admin/ScholarCard.jsx'
 import HoursCounter from '../components/progress/HoursCounter.jsx'
 import MilestoneBar from '../components/progress/MilestoneBar.jsx'
 import PaceAnalysis from '../components/progress/PaceAnalysis.jsx'
 import CategoryBreakdown from '../components/progress/CategoryBreakdown.jsx'
 import WeekStats from '../components/progress/WeekStats.jsx'
+import CalendarHeatmap from '../components/progress/CalendarHeatmap.jsx'
+import LevelProgressBars from '../components/progress/LevelProgressBars.jsx'
 import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 import { formatHoursShort } from '../utils/timeFormat.js'
@@ -13,6 +16,7 @@ import { formatHoursShort } from '../utils/timeFormat.js'
 export default function AdminProgress() {
   const { data, loading, error, refetch } = useScholars()
   const [selected, setSelected] = useState(null)
+  const { data: calData } = useScholarCalendar(selected?.user_id ?? null)
 
   if (loading) {
     return (
@@ -96,6 +100,29 @@ export default function AdminProgress() {
               lastSessionAt={selected.last_session_at}
             />
           </div>
+
+          <div style={styles.card}>
+            <LevelProgressBars currentHours={Number(selected.current_hours ?? 0)} />
+          </div>
+
+          {calData && (
+            <div style={styles.card}>
+              <CalendarHeatmap
+                days={calData.days}
+                dailyGoal={
+                  calData.target_hours && calData.start_date && calData.target_date
+                    ? calData.target_hours /
+                      Math.max(
+                        1,
+                        (new Date(calData.target_date) - new Date(calData.start_date)) /
+                          86400000
+                      )
+                    : null
+                }
+                startDate={calData.start_date}
+              />
+            </div>
+          )}
 
           <div style={{ marginTop: '0.75rem' }}>
             <ExternalHoursButton userId={selected.user_id} onLogged={refetch} />
