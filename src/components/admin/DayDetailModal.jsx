@@ -57,7 +57,7 @@ async function editExternalSession(sessionId, durationMinutes, notes, sessionTyp
   return res.json()
 }
 
-function WatchSessionRow({ session, onDeleted }) {
+function WatchSessionRow({ session, onDeleted, readOnly }) {
   const [deleting, setDeleting] = useState(false)
   const [confirm, setConfirm] = useState(false)
 
@@ -86,39 +86,41 @@ function WatchSessionRow({ session, onDeleted }) {
           )}
         </div>
       </div>
-      <div style={styles.rowActions}>
-        {!confirm ? (
-          <button
-            style={{ ...styles.actionBtn, ...styles.deleteBtn }}
-            onClick={() => setConfirm(true)}
-            title="Delete session"
-          >
-            ✕
-          </button>
-        ) : (
-          <div style={styles.confirmRow}>
-            <span style={styles.confirmText}>Delete?</span>
+      {!readOnly && (
+        <div style={styles.rowActions}>
+          {!confirm ? (
             <button
-              style={{ ...styles.actionBtn, ...styles.deleteConfirmBtn }}
-              onClick={handleDelete}
-              disabled={deleting}
+              style={{ ...styles.actionBtn, ...styles.deleteBtn }}
+              onClick={() => setConfirm(true)}
+              title="Delete session"
             >
-              {deleting ? '…' : 'Yes'}
+              ✕
             </button>
-            <button
-              style={{ ...styles.actionBtn, ...styles.cancelBtn }}
-              onClick={() => setConfirm(false)}
-            >
-              No
-            </button>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div style={styles.confirmRow}>
+              <span style={styles.confirmText}>Delete?</span>
+              <button
+                style={{ ...styles.actionBtn, ...styles.deleteConfirmBtn }}
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? '…' : 'Yes'}
+              </button>
+              <button
+                style={{ ...styles.actionBtn, ...styles.cancelBtn }}
+                onClick={() => setConfirm(false)}
+              >
+                No
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
-function ExternalSessionRow({ session, onDeleted, onEdited }) {
+function ExternalSessionRow({ session, onDeleted, onEdited, readOnly }) {
   const [deleting, setDeleting] = useState(false)
   const [confirm, setConfirm] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -214,48 +216,50 @@ function ExternalSessionRow({ session, onDeleted, onEdited }) {
           <div style={styles.rowNotes}>{session.notes}</div>
         )}
       </div>
-      <div style={styles.rowActions}>
-        {!confirm ? (
-          <>
-            <button
-              style={{ ...styles.actionBtn, ...styles.editActionBtn }}
-              onClick={() => setEditing(true)}
-              title="Edit session"
-            >
-              ✎
-            </button>
-            <button
-              style={{ ...styles.actionBtn, ...styles.deleteBtn }}
-              onClick={() => setConfirm(true)}
-              title="Delete session"
-            >
-              ✕
-            </button>
-          </>
-        ) : (
-          <div style={styles.confirmRow}>
-            <span style={styles.confirmText}>Delete?</span>
-            <button
-              style={{ ...styles.actionBtn, ...styles.deleteConfirmBtn }}
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? '…' : 'Yes'}
-            </button>
-            <button
-              style={{ ...styles.actionBtn, ...styles.cancelBtn }}
-              onClick={() => setConfirm(false)}
-            >
-              No
-            </button>
-          </div>
-        )}
-      </div>
+      {!readOnly && (
+        <div style={styles.rowActions}>
+          {!confirm ? (
+            <>
+              <button
+                style={{ ...styles.actionBtn, ...styles.editActionBtn }}
+                onClick={() => setEditing(true)}
+                title="Edit session"
+              >
+                ✎
+              </button>
+              <button
+                style={{ ...styles.actionBtn, ...styles.deleteBtn }}
+                onClick={() => setConfirm(true)}
+                title="Delete session"
+              >
+                ✕
+              </button>
+            </>
+          ) : (
+            <div style={styles.confirmRow}>
+              <span style={styles.confirmText}>Delete?</span>
+              <button
+                style={{ ...styles.actionBtn, ...styles.deleteConfirmBtn }}
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? '…' : 'Yes'}
+              </button>
+              <button
+                style={{ ...styles.actionBtn, ...styles.cancelBtn }}
+                onClick={() => setConfirm(false)}
+              >
+                No
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
-export default function DayDetailModal({ userId, date, onClose }) {
+export default function DayDetailModal({ userId, date, onClose, readOnly }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -357,6 +361,7 @@ export default function DayDetailModal({ userId, date, onClose }) {
                           key={s.id}
                           session={s}
                           onDeleted={handleWatchDeleted}
+                          readOnly={readOnly}
                         />
                       ))}
                     </Section>
@@ -370,6 +375,7 @@ export default function DayDetailModal({ userId, date, onClose }) {
                           session={s}
                           onDeleted={handleExternalDeleted}
                           onEdited={handleExternalEdited}
+                          readOnly={readOnly}
                         />
                       ))}
                     </Section>
