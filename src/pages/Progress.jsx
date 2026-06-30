@@ -26,7 +26,7 @@ export default function Progress() {
   }
 
   const innerStyle = {
-    maxWidth: '640px',
+    maxWidth: 1100,
     margin: '0 auto',
   }
 
@@ -165,54 +165,62 @@ export default function Progress() {
 
         <LevelCelebrationBanner />
 
-        <div style={cardStyle}>
-          <HoursCounter
-            currentHours={data.current_hours}
-            currentLevel={currentLevel}
-            nextLevel={nextLevel}
-            targetHours={data.target_hours}
-            targetLevel={data.target_level}
-            status={data.status}
-          />
-          <MilestoneBar currentHours={data.current_hours} />
-          <PaceAnalysis
-            currentHours={data.current_hours}
-            expectedHours={data.expected_hours}
-            targetHours={data.target_hours}
-            status={data.status}
-            delta={data.delta ?? 0}
-          />
-          <CategoryBreakdown
-            libraryHours={data.library_hours}
-            videoExternalHours={data.video_external_hours}
-            chatgptHours={data.chatgpt_hours}
-            mentorHours={data.mentor_hours}
-            targetChatgptHours={data.target_chatgpt_hours}
-            targetMentorHours={data.target_mentor_hours}
-            expectedHours={data.expected_hours}
-            targetHours={data.target_hours}
-          />
-          <CoachingMessage />
-        </div>
+        <div style={detailGridStyle}>
+          {/* Left column */}
+          <div style={{ ...cardStyle, marginBottom: 0 }}>
+            <HoursCounter
+              currentHours={data.current_hours}
+              currentLevel={currentLevel}
+              nextLevel={nextLevel}
+              targetHours={data.target_hours}
+              targetLevel={data.target_level}
+              status={data.status}
+            />
+            <MilestoneBar currentHours={data.current_hours} />
+            <PaceAnalysis
+              currentHours={data.current_hours}
+              expectedHours={data.expected_hours}
+              targetHours={data.target_hours}
+              status={data.status}
+              delta={data.delta ?? 0}
+            />
+            <CategoryBreakdown
+              libraryHours={data.library_hours}
+              videoExternalHours={data.video_external_hours}
+              chatgptHours={data.chatgpt_hours}
+              mentorHours={data.mentor_hours}
+              targetChatgptHours={data.target_chatgpt_hours}
+              targetMentorHours={data.target_mentor_hours}
+              expectedHours={data.expected_hours}
+              targetHours={data.target_hours}
+            />
+            <CoachingMessage />
+          </div>
 
-        <div style={cardStyle}>
-          <WeekStats
-            hoursThisWeek={data.hours_this_week}
-            targetHours={data.target_hours}
-            startDate={data.start_date}
-            targetDate={data.target_date}
-            lastSessionAt={data.last_session_at}
-            videoHoursThisWeek={data.video_hours_this_week}
-            externalHoursThisWeek={data.external_hours_this_week}
-          />
-        </div>
-
-        <div style={cardStyle}>
-          <LevelProgressBars currentHours={data.current_hours} />
+          {/* Right column */}
+          <div>
+            <div style={cardStyle}>
+              <WeekStats
+                hoursThisWeek={data.hours_this_week}
+                targetHours={data.target_hours}
+                startDate={data.start_date}
+                targetDate={data.target_date}
+                lastSessionAt={data.last_session_at}
+                videoHoursThisWeek={data.video_hours_this_week}
+                externalHoursThisWeek={data.external_hours_this_week}
+              />
+            </div>
+            <div style={cardStyle}>
+              <LevelProgressBars currentHours={data.current_hours} />
+            </div>
+            <div style={{ marginTop: '0.75rem' }}>
+              <ExternalHoursButton userId={data.user_id} onLogged={refetch} />
+            </div>
+          </div>
         </div>
 
         {calData && (
-          <div style={cardStyle}>
+          <div style={{ ...cardStyle, marginTop: 16 }}>
             <CalendarHeatmap
               days={calData.days}
               dailyGoal={
@@ -230,10 +238,6 @@ export default function Progress() {
             />
           </div>
         )}
-
-        <div style={{ marginTop: '0.75rem' }}>
-          <ExternalHoursButton userId={data.user_id} onLogged={refetch} />
-        </div>
       </div>
 
       {dayDetailDate && (
@@ -241,8 +245,17 @@ export default function Progress() {
           userId={data.user_id}
           date={dayDetailDate}
           onClose={() => setDayDetailDate(null)}
+          readOnly
         />
       )}
     </div>
   )
+}
+
+const detailGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(min(420px, 100%), 1fr))',
+  gap: 16,
+  marginBottom: 0,
+  alignItems: 'start',
 }
