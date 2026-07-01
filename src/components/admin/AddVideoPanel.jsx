@@ -131,7 +131,11 @@ function useDebounce(fn, delay) {
 
 async function searchYouTube(q) {
   const token = await getAuthToken()
-  const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(q)}&maxResults=10`, {
+  // relevanceLanguage=en biases YouTube's ranking toward English-language
+  // content WITHOUT adding an "English" keyword to the query text itself —
+  // that's the mechanism that keeps native-mode search language-constrained
+  // without reintroducing the "learn English" bias the mode exists to avoid.
+  const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(q)}&maxResults=20&language=en`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (res.status === 429) throw new Error('quota')
