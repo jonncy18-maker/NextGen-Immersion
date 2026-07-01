@@ -14,6 +14,17 @@ const LEVEL_COLORS = {
 
 const LEVEL_LABELS = Object.fromEntries(LEVELS.map(l => [l.id, l.label]))
 
+// Title heuristic distinguishing ESL/practice-channel content ("B1 English
+// Listening Practice", "Learn English...") from native-audience content
+// (vlogs, storytime, podcasts). Same pattern used to prune the library —
+// no stored column, computed on the fly so it's never stale.
+const ESL_TITLE_PATTERN =
+  /english (listening|conversation|podcast|practice|lesson)|learn english|speak english|english vocabulary|english story|english skills|listening practice|\boet\b/i
+
+function isEslStyle(video) {
+  return ESL_TITLE_PATTERN.test(video.title || '')
+}
+
 async function apiFetch(path, options = {}) {
   const token = await getAuthToken()
   const res = await fetch(path, {
@@ -160,6 +171,14 @@ function AdminCard({ video, isSelected, anySelected, onToggle, menuOpenId, onOpe
               {video.topic_primary}
             </span>
           )}
+          {isEslStyle(video) && (
+            <span
+              style={{ ...chip.base, background: '#f0ece2', color: '#8a8f99' }}
+              title="Title suggests an ESL/practice channel, not native-audience content"
+            >
+              ESL
+            </span>
+          )}
         </div>
       </div>
 
@@ -200,12 +219,15 @@ export default function VideoLibraryEditor() {
   const [search, setSearch] = useState('')
   const [levelFilter, setLevelFilter] = useState('')
   const [topicFilter, setTopicFilter] = useState('')
+  const [contentFilter, setContentFilter] = useState('') // '' | 'native' | 'esl'
 
   const filteredVideos = videos.filter(v => {
     if (search && !v.title.toLowerCase().includes(search.toLowerCase()) &&
         !(v.channel_name || '').toLowerCase().includes(search.toLowerCase())) return false
     if (levelFilter && v.level !== levelFilter) return false
     if (topicFilter && v.topic_primary !== topicFilter && v.topic_secondary !== topicFilter) return false
+    if (contentFilter === 'esl' && !isEslStyle(v)) return false
+    if (contentFilter === 'native' && isEslStyle(v)) return false
     return true
   })
 
@@ -306,6 +328,17 @@ export default function VideoLibraryEditor() {
               {cat.topics.map(t => <option key={t} value={t}>{t}</option>)}
             </optgroup>
           ))}
+        </select>
+        <select
+          value={contentFilter}
+          onChange={e => setContentFilter(e.target.value)}
+          style={s.filterSelect}
+          aria-label="Filter by content style"
+          title="Based on title wording — not a stored tag, may misclassify occasionally"
+        >
+          <option value="">All Content</option>
+          <option value="native">Native only</option>
+          <option value="esl">ESL / practice only</option>
         </select>
       </div>
 
