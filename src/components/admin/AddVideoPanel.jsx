@@ -69,7 +69,7 @@ const LEVEL_QUERY_CHIPS = {
   ],
 }
 
-// YouTube-optimised keywords per topic tag.
+// YouTube-optimised keywords per topic tag — ESL/practice-content mode.
 const TOPIC_QUERY_KEYWORDS = {
   'Medical & Nursing': 'medical nursing',
   'Work & Career': 'work career professional',
@@ -83,7 +83,36 @@ const TOPIC_QUERY_KEYWORDS = {
   'News & Events': 'news current events',
 }
 
-function buildTopicQuery(topic, level) {
+// Same topics, but phrased to surface content made FOR native audiences
+// (vlogs, storytime, podcasts) rather than "learn English" teaching channels.
+// No "English" or CEFR code in these — native content doesn't self-label by
+// level, so Haiku tags it from what comes back instead of the search terms.
+const NATIVE_TOPIC_KEYWORDS = {
+  'Medical & Nursing': 'nurse day in the life',
+  'Work & Career': 'day in my life at work',
+  'Academic & Study': 'college life documentary',
+  'Daily Life': 'daily vlog',
+  'Travel & Places': 'travel vlog',
+  'Social & Relationships': 'friends hangout vlog',
+  'Food & Cooking': 'cooking vlog recipe',
+  'Culture & Entertainment': 'reaction video',
+  'Sports & Fitness': 'workout vlog',
+  'News & Events': 'news commentary',
+}
+
+const NATIVE_CONTENT_TYPES = [
+  { value: 'vlog', label: 'Vlog' },
+  { value: 'storytime', label: 'Storytime' },
+  { value: 'podcast interview', label: 'Podcast / Interview' },
+  { value: 'documentary', label: 'Documentary' },
+  { value: 'explains', label: 'Explainer' },
+]
+
+function buildTopicQuery(topic, level, mode = 'practice') {
+  if (mode === 'native') {
+    const keywords = NATIVE_TOPIC_KEYWORDS[topic] || topic.toLowerCase()
+    return keywords
+  }
   const keywords = TOPIC_QUERY_KEYWORDS[topic] || topic.toLowerCase()
   const prefix = level ? CEFR_PREFIX[level.id] + ' ' : ''
   return `${prefix}English ${keywords} listening`
@@ -143,7 +172,7 @@ async function addVideo(video, tags) {
   return res.json()
 }
 
-function ScholarContext({ onChipClick }) {
+function ScholarContext({ onChipClick, mode }) {
   const { data: scholars } = useScholars()
   const [selectedId, setSelectedId] = useState('')
 
@@ -151,7 +180,10 @@ function ScholarContext({ onChipClick }) {
 
   const scholar = scholars.find((s) => s.user_id === selectedId) || null
   const level = scholar ? getLevelForHours(parseFloat(scholar.current_hours || 0)) : null
-  const levelChips = level ? LEVEL_QUERY_CHIPS[level.id] || [] : []
+  // ESL-phrased level chips ("A1 English for beginners") only make sense when
+  // searching for practice content — native content doesn't self-describe by
+  // CEFR level, so showing them in native mode would just reintroduce the bias.
+  const levelChips = mode === 'practice' && level ? LEVEL_QUERY_CHIPS[level.id] || [] : []
 
   return (
     <div style={ctxStyles.wrap}>
@@ -200,9 +232,11 @@ function ScholarContext({ onChipClick }) {
         </>
       )}
 
-      {/* Topic chips — always shown; query includes CEFR prefix when scholar is selected */}
+      {/* Topic chips — always shown; query includes CEFR prefix when scholar is
+          selected AND mode is practice (native mode never inserts a CEFR code) */}
       <p style={ctxStyles.sectionLabel}>
-        Topics{level ? ` · combined with ${CEFR_PREFIX[level.id] || level.label}` : ' · click to search'}
+        Topics
+        {mode === 'practice' && level ? ` · combined with ${CEFR_PREFIX[level.id] || level.label}` : ' · click to search'}
       </p>
       {TOPIC_CATEGORIES.map((cat) => (
         <div key={cat.key} style={ctxStyles.topicGroup}>
@@ -212,7 +246,7 @@ function ScholarContext({ onChipClick }) {
               <button
                 key={topic}
                 style={{ ...ctxStyles.topicChipBtn, borderColor: cat.color, color: cat.color }}
-                onClick={() => onChipClick(buildTopicQuery(topic, level))}
+                onClick={() => onChipClick(buildTopicQuery(topic, level, mode))}
               >
                 {topic}
               </button>
@@ -382,8 +416,19 @@ function fmtDuration(secs) {
 // All topics for the topic dropdown
 const ALL_TOPICS = TOPIC_CATEGORIES.flatMap(cat => cat.topics.map(t => ({ value: t, label: t, catLabel: cat.label })))
 
-// Build combined YouTube search query from free text + level + topic filters
-function buildCombinedQuery(text, level, topic) {
+// Build combined YouTube search query from free text + level + topic filters.
+// mode 'practice' = the original ESL-teaching-channel search (CEFR code +
+// "English" + "listening"). mode 'native' = native-audience content search
+// (no "English"/CEFR terms at all — Haiku tags level from what comes back).
+function buildCombinedQuery(text, level, topic, mode = 'practice', nativeContentType = 'vlog') {
+  if (mode === 'native') {
+    const topicKeywords = topic ? (NATIVE_TOPIC_KEYWORDS[topic] || topic.toLowerCase()) : ''
+    const parts = []
+    if (topicKeywords) parts.push(topicKeywords)
+    if (text && text.trim()) parts.push(text.trim())
+    if (nativeContentType) parts.push(nativeContentType)
+    return parts.join(' ')
+  }
   const levelPrefix = level ? CEFR_PREFIX[level] : ''
   const topicKeywords = topic ? (TOPIC_QUERY_KEYWORDS[topic] || topic.toLowerCase()) : ''
   const parts = []
@@ -402,6 +447,12 @@ export default function AddVideoPanel() {
   const [duration, setDuration] = useState('any')
   const [searchState, setSearchState] = useState('idle') // idle | loading | done | quota | unavailable
   const [results, setResults] = useState([])
+  // 'native' surfaces content made for native audiences (vlogs, storytime,
+  // podcasts) instead of ESL-teaching channels — default, since that's the
+  // library's known gap. 'practice' keeps the original CEFR-coded ESL search
+  // for when structured practice/OET material is actually wanted.
+  const [contentMode, setContentMode] = useState('native')
+  const [nativeContentType, setNativeContentType] = useState('vlog')
 
   const doSearch = useCallback(async (q) => {
     if (!q.trim()) {
@@ -423,13 +474,13 @@ export default function AddVideoPanel() {
   const debouncedSearch = useDebounce(doSearch, 500)
 
   // Re-fire search whenever level or topic filter changes (if there's something to search)
-  function triggerSearch(text, level, topic) {
+  function triggerSearch(text, level, topic, mode = contentMode, nativeType = nativeContentType) {
     if (!text.trim() && !level && !topic) {
       setResults([])
       setSearchState('idle')
       return
     }
-    const combined = buildCombinedQuery(text, level, topic)
+    const combined = buildCombinedQuery(text, level, topic, mode, nativeType)
     debouncedSearch(combined)
   }
 
@@ -441,7 +492,7 @@ export default function AddVideoPanel() {
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
-      const combined = buildCombinedQuery(query, filterLevel, filterTopic)
+      const combined = buildCombinedQuery(query, filterLevel, filterTopic, contentMode, nativeContentType)
       if (combined.trim()) doSearch(combined)
     }
   }
@@ -458,6 +509,17 @@ export default function AddVideoPanel() {
     triggerSearch(query, filterLevel, val)
   }
 
+  const handleModeChange = (mode) => {
+    setContentMode(mode)
+    triggerSearch(query, filterLevel, filterTopic, mode, nativeContentType)
+  }
+
+  const handleNativeTypeChange = (e) => {
+    const val = e.target.value
+    setNativeContentType(val)
+    triggerSearch(query, filterLevel, filterTopic, contentMode, val)
+  }
+
   // Scholar context chip click: override free-text query directly
   const handleChipClick = useCallback(
     (chip) => {
@@ -468,7 +530,9 @@ export default function AddVideoPanel() {
   )
 
   const activeFilters = [
-    filterLevel ? `Level: ${filterLevel.toUpperCase()}` : null,
+    // Level has no effect in native mode (dropped from the query entirely) —
+    // don't show a pill implying it's still filtering anything.
+    contentMode === 'practice' && filterLevel ? `Level: ${filterLevel.toUpperCase()}` : null,
     filterTopic ? `Topic: ${filterTopic}` : null,
   ].filter(Boolean)
 
@@ -482,26 +546,75 @@ export default function AddVideoPanel() {
 
   return (
     <div style={panelStyles.wrap}>
-      <ScholarContext onChipClick={handleChipClick} />
+      {/* ── Content mode toggle ── */}
+      <div style={panelStyles.modeRow}>
+        <div style={panelStyles.modeToggle} role="tablist" aria-label="Search mode">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={contentMode === 'native'}
+            style={{ ...panelStyles.modeBtn, ...(contentMode === 'native' ? panelStyles.modeBtnActive : {}) }}
+            onClick={() => handleModeChange('native')}
+          >
+            Native content
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={contentMode === 'practice'}
+            style={{ ...panelStyles.modeBtn, ...(contentMode === 'practice' ? panelStyles.modeBtnActive : {}) }}
+            onClick={() => handleModeChange('practice')}
+          >
+            ESL / practice content
+          </button>
+        </div>
+        <p style={panelStyles.modeHint}>
+          {contentMode === 'native'
+            ? 'Searches for vlogs, storytime, podcasts, and documentaries — not "learn English" teaching channels.'
+            : 'Searches CEFR-coded ESL practice channels (listening drills, OET prep, structured lessons).'}
+        </p>
+      </div>
+
+      <ScholarContext onChipClick={handleChipClick} mode={contentMode} />
 
       {/* ── Filter bar ── */}
       <div style={panelStyles.filterBar}>
-        {/* Level dropdown */}
-        <div style={panelStyles.filterGroup}>
-          <label style={panelStyles.filterLabel} htmlFor="avp-level">Level</label>
-          <select
-            id="avp-level"
-            value={filterLevel}
-            onChange={handleLevelChange}
-            style={panelStyles.filterSelect}
-            aria-label="Filter by CEFR level"
-          >
-            <option value="">Any Level</option>
-            {LEVELS.map(l => (
-              <option key={l.id} value={l.id}>{l.label}</option>
-            ))}
-          </select>
-        </div>
+        {/* Level dropdown — practice mode only; native content doesn't self-label by CEFR */}
+        {contentMode === 'practice' && (
+          <div style={panelStyles.filterGroup}>
+            <label style={panelStyles.filterLabel} htmlFor="avp-level">Level</label>
+            <select
+              id="avp-level"
+              value={filterLevel}
+              onChange={handleLevelChange}
+              style={panelStyles.filterSelect}
+              aria-label="Filter by CEFR level"
+            >
+              <option value="">Any Level</option>
+              {LEVELS.map(l => (
+                <option key={l.id} value={l.id}>{l.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Content type dropdown — native mode only */}
+        {contentMode === 'native' && (
+          <div style={panelStyles.filterGroup}>
+            <label style={panelStyles.filterLabel} htmlFor="avp-native-type">Content type</label>
+            <select
+              id="avp-native-type"
+              value={nativeContentType}
+              onChange={handleNativeTypeChange}
+              style={panelStyles.filterSelect}
+              aria-label="Filter by native content type"
+            >
+              {NATIVE_CONTENT_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Topic dropdown */}
         <div style={panelStyles.filterGroup}>
@@ -668,6 +781,37 @@ const ctxStyles = {
 
 const panelStyles = {
   wrap: { display: 'flex', flexDirection: 'column', gap: 12 },
+  modeRow: { display: 'flex', flexDirection: 'column', gap: 6 },
+  modeToggle: {
+    display: 'inline-flex',
+    background: '#f0ece2',
+    borderRadius: 8,
+    padding: 3,
+    gap: 3,
+    alignSelf: 'flex-start',
+  },
+  modeBtn: {
+    padding: '6px 12px',
+    fontSize: 12,
+    fontWeight: 600,
+    border: 'none',
+    borderRadius: 6,
+    background: 'transparent',
+    color: '#8a8f99',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+  },
+  modeBtnActive: {
+    background: '#fff',
+    color: 'var(--ngsi-navy)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+  },
+  modeHint: {
+    margin: 0,
+    fontSize: 12,
+    color: '#8a8f99',
+  },
   filterBar: {
     display: 'flex',
     gap: 10,
