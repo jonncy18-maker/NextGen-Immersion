@@ -457,6 +457,8 @@ export default function AddVideoPanel() {
   // for when structured practice/OET material is actually wanted.
   const [contentMode, setContentMode] = useState('native')
   const [nativeContentType, setNativeContentType] = useState('vlog')
+  const [topicSuggestions, setTopicSuggestions] = useState([])
+  const [suggestState, setSuggestState] = useState('idle') // idle | loading | done | error
 
   const doSearch = useCallback(async (q) => {
     if (!q.trim()) {
@@ -533,6 +535,31 @@ export default function AddVideoPanel() {
     [doSearch],
   )
 
+  const handleSuggestTopics = useCallback(async () => {
+    setSuggestState('loading')
+    try {
+      const token = await getAuthToken()
+      const res = await fetch('/api/suggest-topics', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('failed')
+      const data = await res.json()
+      setTopicSuggestions(data.suggestions || [])
+      setSuggestState('done')
+    } catch {
+      setSuggestState('error')
+    }
+  }, [])
+
+  const handleSuggestionClick = useCallback(
+    (suggestion) => {
+      setQuery(suggestion.query)
+      setFilterTopic(suggestion.topic)
+      doSearch(suggestion.query)
+    },
+    [doSearch],
+  )
+
   const activeFilters = [
     // Level has no effect in native mode (dropped from the query entirely) —
     // don't show a pill implying it's still filtering anything.
@@ -578,6 +605,35 @@ export default function AddVideoPanel() {
             : 'Searches CEFR-coded ESL practice channels (listening drills, OET prep, structured lessons).'}
         </p>
       </div>
+
+      {/* ── Topic variety suggestions ── */}
+      <div style={panelStyles.suggestRow}>
+        <button
+          type="button"
+          style={panelStyles.suggestBtn}
+          onClick={handleSuggestTopics}
+          disabled={suggestState === 'loading'}
+        >
+          {suggestState === 'loading' ? 'Finding gaps…' : '✨ Suggest fresh topics'}
+        </button>
+        {suggestState === 'error' && (
+          <span style={panelStyles.hint}>Couldn't load suggestions — try again.</span>
+        )}
+      </div>
+      {topicSuggestions.length > 0 && (
+        <div style={ctxStyles.chips}>
+          {topicSuggestions.map((s, i) => (
+            <button
+              key={`${s.topic}-${s.level}-${i}`}
+              style={ctxStyles.chipBtn}
+              onClick={() => handleSuggestionClick(s)}
+              title={`${s.count} video${s.count === 1 ? '' : 's'} currently at this topic/level`}
+            >
+              {s.label}: "{s.query}"
+            </button>
+          ))}
+        </div>
+      )}
 
       <ScholarContext onChipClick={handleChipClick} mode={contentMode} />
 
@@ -815,6 +871,23 @@ const panelStyles = {
     margin: 0,
     fontSize: 12,
     color: '#8a8f99',
+  },
+  suggestRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+  suggestBtn: {
+    padding: '7px 14px',
+    fontSize: 13,
+    fontWeight: 600,
+    border: '1.5px solid var(--ngsi-gold)',
+    borderRadius: 7,
+    background: '#fff',
+    color: 'var(--ngsi-navy)',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    alignSelf: 'flex-start',
   },
   filterBar: {
     display: 'flex',
