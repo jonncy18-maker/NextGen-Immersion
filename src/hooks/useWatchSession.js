@@ -11,6 +11,19 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
   const tokenRef = useRef(null)
   const intervalRef = useRef(null)
   const sessionRef = useRef(null)
+  const playerRef = useRef(null)
+
+  // Best-effort: player.getCurrentTime() is only meaningful while the YT
+  // player is alive. Failures (e.g. player torn down mid-cleanup) just omit
+  // positionSeconds from the flush rather than blocking it.
+  function getPosition() {
+    try {
+      const t = playerRef.current?.getCurrentTime?.()
+      return typeof t === 'number' && Number.isFinite(t) ? Math.floor(t) : null
+    } catch {
+      return null
+    }
+  }
 
   // Held in a ref so the latest callback is used without re-creating handlers
   const onCompleteRef = useRef(onComplete)
@@ -65,6 +78,7 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
           startedAt: session.startedAt,
           endedAt: new Date().toISOString(),
           language: 'english',
+          positionSeconds: getPosition(),
         }
         bufferFlush(payload) // Synchronous — survives even if fetch is cancelled
         const token = tokenRef.current
@@ -99,7 +113,7 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
   }
 
   const flush = useCallback(
-    async (isCompleted = false) => {
+    async (isCompleted = false, positionSeconds = null) => {
       const session = sessionRef.current
       if (!session || !videoId || session.secondsWatched < 10) return
 
@@ -111,6 +125,7 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
         startedAt: session.startedAt,
         endedAt: new Date().toISOString(),
         language: 'english',
+        positionSeconds,
       }
 
       bufferFlush(payload) // Persist to localStorage immediately before network call
@@ -155,6 +170,7 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
         startedAt: session.startedAt,
         endedAt: new Date().toISOString(),
         language: 'english',
+        positionSeconds: getPosition(),
       }
 
       bufferFlush(payload) // Always write to localStorage first — survives even if fetch fails
@@ -182,7 +198,8 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
   }, [videoId])
 
   const onPlayerStateChange = useCallback(
-    state => {
+    (state, player) => {
+      if (player) playerRef.current = player
       // YT.PlayerState: ENDED=0, PLAYING=1, PAUSED=2, BUFFERING=3
       if (state === 1) {
         // PLAYING — start the interval for this segment
@@ -206,7 +223,9 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
           const s = sessionRef.current
           const isCompleted =
             durationSeconds > 0 && s.secondsWatched / durationSeconds >= 0.95
-          flush(isCompleted)
+          // Video reached its end — nothing left to resume, regardless of
+          // whether this segment alone crossed the 95% completion threshold.
+          flush(isCompleted, 0)
           if (isCompleted) onCompleteRef.current?.(videoId)
           sessionRef.current = {
             clientFlushId: crypto.randomUUID(),
@@ -220,7 +239,7 @@ export function useWatchSession(videoId, durationSeconds, onComplete) {
           // PAUSED — flush this segment, then start a fresh segment for the next play.
           // Each segment gets its own clientFlushId so ON CONFLICT DO NOTHING is truly
           // idempotent (dedupes retries) rather than silently dropping resumed-play seconds.
-          flush(false)
+          flush(false, getPosition())
           sessionRef.current = {
             clientFlushId: crypto.randomUUID(),
             startedAt: null,

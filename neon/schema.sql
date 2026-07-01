@@ -397,6 +397,35 @@ CREATE TABLE IF NOT EXISTS scholar_digests (
   generated_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- ─── Phase 30: Watch Later ────────────────────────────────────────────────────
+-- Applied via Neon MCP on 2026-07-01. Personal scholar bookmarking; admins do
+-- not manage other scholars' lists (a logged-in admin sees only their own).
+
+CREATE TABLE IF NOT EXISTS watch_later (
+  id         bigserial PRIMARY KEY,
+  user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  video_id   uuid NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  added_at   timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, video_id)
+);
+
+CREATE INDEX IF NOT EXISTS watch_later_user_idx ON watch_later (user_id);
+
+-- ─── Phase 31: Video Resume Position ─────────────────────────────────────────
+-- Applied via Neon MCP on 2026-07-01. position_seconds = player.getCurrentTime()
+-- at pause/stop — distinct from watch_sessions.seconds_watched (actively
+-- watched time, used for hours counting; a scholar can rewatch the same
+-- segment, which does not change position). Row is deleted server-side when a
+-- video is completed (>=95% single session) — no point resuming a finished video.
+
+CREATE TABLE IF NOT EXISTS video_resume_positions (
+  user_id          uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  video_id         uuid NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+  position_seconds integer NOT NULL CHECK (position_seconds >= 0),
+  updated_at       timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, video_id)
+);
+
 -- ─── Data Isolation Note ──────────────────────────────────────────────────────
 -- Neon Auth does NOT expose auth.uid() the way Supabase does. Do NOT rely on
 -- database RLS using auth.uid(). Enforce isolation in the Vercel API layer:

@@ -1,6 +1,6 @@
 # NGS Immersion — Roadmap
 
-*Last updated: June 2026 · Design session + audit v2*
+*Last updated: July 2026 · Phase 28 doc-sync + Phase 30/31 shipped, Phase 29 skipped (see notes)*
 
 ---
 
@@ -733,7 +733,7 @@ UI:
 - `src/pages/Progress.jsx` — add CoachingMessage + LevelCelebrationBanner above WeekStats
 - `src/pages/AdminProgress.jsx` drill-down — add ScholarDigest accordion
 
-Status: **PLANNED**
+Status: **DONE** (Jun 2026 — implemented directly per user instruction; this doc entry was never flipped from PLANNED at the time). All six features shipped: OET relevance scoring, comprehension self-report, AI next-video suggestions, progress coaching message, level-up celebration banner, and the admin scholar digest. `next build` PASS.
 
 ---
 
@@ -756,7 +756,7 @@ Deliverables:
 
 **Design note:** The slider filters search results, not the existing library. It has no effect on the scholar-facing library or the Manage Library tab — those don't surface duration and the existing library content is already curated.
 
-Status: **PLANNED**
+Status: **SKIPPED** (Jul 2026 — audited before building). `pages/api/youtube-search.js` already parses `contentDetails.duration` (ISO 8601 → seconds) for every result and returns `duration_seconds`; `AddVideoPanel.jsx` already ships a working duration-bucket dropdown (`< 5 min` … `> 30 min`) that filters results client-side, plus a duration label on each result card. Functionally equivalent to this spec's goal. Rebuilding it as a dual-handle slider filtering server-side would duplicate existing, working functionality with no user-facing gain — revisit only if the dropdown proves too coarse in practice.
 
 ---
 
@@ -792,7 +792,7 @@ Deliverables:
 
 **Design note — optimistic updates:** `add` and `remove` in `useWatchLater` update local state immediately without waiting for the API response, so the button toggles instantly. On API error, revert the local state and show a brief error toast.
 
-Status: **PLANNED**
+Status: **DONE** (Jul 2026 — via agentic loop, independent audit PASS). Schema applied live via Neon MCP. Deviates from the original spec in two places: (1) `Library.jsx` navigates via a new `?videoId=` query param that `Watch.jsx` resolves once the library loads (rather than relying on a pre-existing deep-link pattern, which didn't actually exist yet); (2) card removal uses the existing `VideoCard`'s ⋯ menu (extended with an optional `onRemove` item) rather than a separate ✕ icon, for reuse over duplication. `next build` PASS.
 
 ---
 
@@ -817,7 +817,7 @@ Deliverables:
 
 **Design note — flush on video switch:** `useWatchSession.js` already flushes when the user switches videos within the SPA (cleanup effect). That flush should also include the current `player.getCurrentTime()` as `position_seconds`.
 
-Status: **PLANNED**
+Status: **DONE** (Jul 2026 — via agentic loop, independent audit PASS). Schema applied live via Neon MCP. `position_seconds` is threaded through a `playerRef` inside `useWatchSession` (captured via an extended `onStateChange(state, player)` signature from `VideoPlayer`), kept strictly separate from `seconds_watched`/hours counting per the audit's explicit check. `VideoCard` reads `resume_position_seconds` directly off the video object (no new prop plumbing needed) to render the thumbnail progress bar, so it works on both the Watch grid and the Library page automatically. `next build` PASS.
 
 ---
 
