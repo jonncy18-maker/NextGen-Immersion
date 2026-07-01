@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { getAuthToken } from '../lib/authToken.js'
 import VideoPlayer from '../components/player/VideoPlayer.jsx'
 import WatchTimer from '../components/player/WatchTimer.jsx'
+import WatchLaterButton from '../components/player/WatchLaterButton.jsx'
 import IosPlaybackNotice from '../components/player/IosPlaybackNotice.jsx'
 import FilterDropdowns from '../components/video/FilterDropdowns.jsx'
 import VideoGrid from '../components/video/VideoGrid.jsx'
@@ -9,6 +11,7 @@ import VideoGridSkeleton from '../components/video/VideoGridSkeleton.jsx'
 import EmptyState from '../components/video/EmptyState.jsx'
 import { useWatchSession } from '../hooks/useWatchSession.js'
 import { useProgress } from '../hooks/useProgress.js'
+import { useWatchLater } from '../hooks/useWatchLater.js'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 import ComprehensionPrompt from '../components/player/ComprehensionPrompt.jsx'
 import NextVideoSuggestions from '../components/player/NextVideoSuggestions.jsx'
@@ -39,8 +42,11 @@ export default function Watch() {
     oetOnly: false,
   })
   const levelInitialized = useRef(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const deepLinkHandled = useRef(false)
 
   const { data: progress } = useProgress()
+  const { isAdded, add: addToWatchLater, remove: removeFromWatchLater } = useWatchLater()
   const rawLevelId = progress ? getLevelForHours(progress.current_hours).id : null
   const scholarLevelId = rawLevelId
   const nextLevelId = scholarLevelId ? getNextLevel(scholarLevelId)?.id ?? null : null
@@ -117,11 +123,25 @@ export default function Watch() {
     return list
   }, [videos, filters, scholarLevelId, nextLevelId])
 
+  // Deep link from Library ("#/watch?videoId=...") — pre-select a specific
+  // video once the library loads, overriding the default filtered selection.
   useEffect(() => {
-    if (!selected && visibleVideos.length > 0) {
+    if (deepLinkHandled.current) return
+    const qid = searchParams.get('videoId')
+    if (!qid || videos.length === 0) return
+    deepLinkHandled.current = true
+    const found = videos.find(v => v.id === qid)
+    if (found) setSelected(found)
+    const next = new URLSearchParams(searchParams)
+    next.delete('videoId')
+    setSearchParams(next, { replace: true })
+  }, [videos, searchParams, setSearchParams])
+
+  useEffect(() => {
+    if (!selected && visibleVideos.length > 0 && !searchParams.get('videoId')) {
       setSelected(visibleVideos[0])
     }
-  }, [selected, visibleVideos])
+  }, [selected, visibleVideos, searchParams])
 
   const handleComplete = useCallback(completedId => {
     setVideos(vs =>
@@ -199,6 +219,7 @@ export default function Watch() {
             <VideoPlayer
               youtubeId={selected.youtube_id}
               onStateChange={onPlayerStateChange}
+              resumeAt={selected.resume_position_seconds}
             />
             <div style={styles.meta}>
               <div>
@@ -207,7 +228,16 @@ export default function Watch() {
                   <p style={styles.channelName}>{selected.channel_name}</p>
                 )}
               </div>
-              <WatchTimer seconds={secondsThisSession} flushStatus={flushStatus} />
+              <div style={styles.metaActions}>
+                <WatchLaterButton
+                  videoId={selected.id}
+                  video={selected}
+                  isAdded={isAdded}
+                  onAdd={addToWatchLater}
+                  onRemove={removeFromWatchLater}
+                />
+                <WatchTimer seconds={secondsThisSession} flushStatus={flushStatus} />
+              </div>
             </div>
 
             {dailyTargetHours != null && (
@@ -310,6 +340,12 @@ const styles = {
     marginTop: 12,
     padding: '0 4px',
     gap: 12,
+    flexWrap: 'wrap',
+  },
+  metaActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
     flexWrap: 'wrap',
   },
   videoTitleLarge: {

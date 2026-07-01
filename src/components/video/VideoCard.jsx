@@ -10,15 +10,29 @@ const LEVEL_LABELS = {
   c2: 'C2',
 }
 
-export default function VideoCard({ video, onSelect, active, onMark }) {
+export default function VideoCard({ video, onSelect, active, onMark, onRemove }) {
   const topics = [video.topic_primary, video.topic_secondary].filter(Boolean)
   const [menuOpen, setMenuOpen] = useState(false)
+  const showMenu = Boolean(onMark || onRemove)
 
   const handleMark = (e, watched) => {
     e.stopPropagation()
     setMenuOpen(false)
     onMark(video, watched)
   }
+
+  const handleRemove = e => {
+    e.stopPropagation()
+    setMenuOpen(false)
+    onRemove(video)
+  }
+
+  // Netflix-style resume indicator — only meaningful while a video is partway
+  // through and not yet completed (completed rows are deleted server-side).
+  const resumeProgress =
+    video.duration_seconds > 0 && video.resume_position_seconds > 0
+      ? Math.min(video.resume_position_seconds / video.duration_seconds, 0.98)
+      : 0
 
   return (
     <div
@@ -44,7 +58,7 @@ export default function VideoCard({ video, onSelect, active, onMark }) {
         )}
         {video.watched && <span style={styles.watchedBadge}>✓ Watched</span>}
 
-        {onMark && (
+        {showMenu && (
           <>
             <button
               type="button"
@@ -67,24 +81,39 @@ export default function VideoCard({ video, onSelect, active, onMark }) {
                   style={styles.backdrop}
                 />
                 <div style={styles.menu}>
-                  <div
-                    role="button"
-                    onClick={e => handleMark(e, true)}
-                    style={styles.menuItem}
-                  >
-                    Mark as watched
-                  </div>
-                  <div
-                    role="button"
-                    onClick={e => handleMark(e, false)}
-                    style={styles.menuItem}
-                  >
-                    Mark as unwatched
-                  </div>
+                  {onMark && (
+                    <>
+                      <div
+                        role="button"
+                        onClick={e => handleMark(e, true)}
+                        style={styles.menuItem}
+                      >
+                        Mark as watched
+                      </div>
+                      <div
+                        role="button"
+                        onClick={e => handleMark(e, false)}
+                        style={styles.menuItem}
+                      >
+                        Mark as unwatched
+                      </div>
+                    </>
+                  )}
+                  {onRemove && (
+                    <div role="button" onClick={handleRemove} style={styles.menuItem}>
+                      Remove from Watch Later
+                    </div>
+                  )}
                 </div>
               </>
             )}
           </>
+        )}
+
+        {resumeProgress > 0.02 && (
+          <div style={styles.resumeTrack}>
+            <div style={{ ...styles.resumeFill, width: `${resumeProgress * 100}%` }} />
+          </div>
         )}
       </div>
 
@@ -256,5 +285,17 @@ const styles = {
     color: '#fff',
     padding: '2px 8px',
     borderRadius: 999,
+  },
+  resumeTrack: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    background: 'rgba(0,0,0,0.35)',
+  },
+  resumeFill: {
+    height: '100%',
+    background: 'var(--ngsi-gold)',
   },
 }

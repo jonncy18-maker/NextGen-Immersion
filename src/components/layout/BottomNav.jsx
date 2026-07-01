@@ -4,11 +4,13 @@ import { useAuth } from '../../context/AuthContext.jsx'
 const scholarTabs = [
   { to: '/watch', icon: '▶', label: 'Watch' },
   { to: '/progress', icon: '◎', label: 'Progress' },
+  { to: '/library', icon: '🔖', label: 'Library' },
 ]
 
 const adminTabs = [
   { to: '/watch', icon: '▶', label: 'Watch' },
   { to: '/progress', icon: '◎', label: 'Progress' },
+  { to: '/library', icon: '🔖', label: 'Library' },
   { to: '/admin/progress', icon: '⊞', label: 'Dashboard' },
   { to: '/admin/videos', icon: '▤', label: 'Videos' },
   { to: '/admin/goals', icon: '◈', label: 'Goals' },

@@ -1,6 +1,6 @@
 import VideoCard from './VideoCard.jsx'
 
-export default function VideoGrid({ videos, onSelect, selectedId, onMark }) {
+export default function VideoGrid({ videos, onSelect, selectedId, onMark, onRemove }) {
   if (!videos || videos.length === 0) {
     return <div style={styles.empty}>No videos match these filters.</div>
   }
@@ -14,6 +14,7 @@ export default function VideoGrid({ videos, onSelect, selectedId, onMark }) {
           onSelect={onSelect}
           active={v.id === selectedId}
           onMark={onMark}
+          onRemove={onRemove}
         />
       ))}
     </div>

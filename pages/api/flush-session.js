@@ -15,7 +15,10 @@ export default async function handler(req, res) {
     try { body = JSON.parse(body) } catch { return res.status(400).json({ error: 'Invalid body' }) }
   }
 
-  const { videoId, clientFlushId, secondsWatched, completed, startedAt, endedAt, language = 'english' } = body || {}
+  const {
+    videoId, clientFlushId, secondsWatched, completed, startedAt, endedAt,
+    language = 'english', positionSeconds,
+  } = body || {}
 
   if (!videoId || !clientFlushId || typeof secondsWatched !== 'number') {
     return res.status(400).json({ error: 'Missing required fields' })
@@ -36,6 +39,23 @@ export default async function handler(req, res) {
        ${language}, ${startedAt || new Date().toISOString()}, ${endedAt || null})
     ON CONFLICT (client_flush_id) DO NOTHING
   `
+
+  // position_seconds is distinct from seconds_watched: it's the absolute
+  // playback timestamp at pause/stop (for resume), not seconds actively
+  // watched (for hours). A completed video (>=95% single session) has nothing
+  // to resume, so its position row is deleted rather than upserted.
+  if (completed) {
+    await sql`
+      DELETE FROM video_resume_positions WHERE user_id = ${authUser.id} AND video_id = ${videoId}
+    `
+  } else if (typeof positionSeconds === 'number' && positionSeconds >= 0) {
+    await sql`
+      INSERT INTO video_resume_positions (user_id, video_id, position_seconds, updated_at)
+      VALUES (${authUser.id}, ${videoId}, ${Math.floor(positionSeconds)}, now())
+      ON CONFLICT (user_id, video_id)
+      DO UPDATE SET position_seconds = EXCLUDED.position_seconds, updated_at = now()
+    `
+  }
 
   return res.status(200).json({ ok: true })
 }

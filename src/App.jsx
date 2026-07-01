@@ -6,6 +6,7 @@ import Sidebar from './components/layout/Sidebar.jsx';
 import BottomNav from './components/layout/BottomNav.jsx';
 import Watch from './pages/Watch.jsx';
 import Progress from './pages/Progress.jsx';
+import Library from './pages/Library.jsx';
 import Login from './pages/Login.jsx';
 import Admin from './pages/Admin.jsx';
 import AdminProgress from './pages/AdminProgress.jsx';
@@ -101,6 +102,16 @@ export default function App() {
           <Route
             path="/browse"
             element={<Navigate to="/watch" replace />}
+          />
+          <Route
+            path="/library"
+            element={
+              <RequireAuth>
+                <AuthLayout>
+                  <Library />
+                </AuthLayout>
+              </RequireAuth>
+            }
           />
           <Route
             path="/admin"

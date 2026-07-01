@@ -36,6 +36,7 @@ export default function Sidebar() {
         <span style={styles.sectionLabel}>Scholar</span>
         <SidebarLink to="/watch" icon="▶">Watch</SidebarLink>
         <SidebarLink to="/progress" icon="◎">Progress</SidebarLink>
+        <SidebarLink to="/library" icon="🔖">Library</SidebarLink>
       </div>
       {role === 'admin' && (
         <>
