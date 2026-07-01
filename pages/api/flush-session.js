@@ -28,11 +28,22 @@ export default async function handler(req, res) {
 
   const sql = getDb()
 
+  // Cap seconds_watched at the video's own duration (plus buffering slack) so a
+  // single session can't inflate cumulative hours past what the video allows.
+  const FALLBACK_MAX_SECONDS = 4 * 3600
+  const BUFFER_SECONDS = 60
+  const [video] = await sql`SELECT duration_seconds FROM videos WHERE id = ${videoId}`
+  if (!video) return res.status(404).json({ error: 'Video not found' })
+  const maxSeconds = video.duration_seconds
+    ? video.duration_seconds + BUFFER_SECONDS
+    : FALLBACK_MAX_SECONDS
+  const cappedSecondsWatched = Math.min(secondsWatched, maxSeconds)
+
   await sql`
     INSERT INTO watch_sessions
       (user_id, video_id, client_flush_id, seconds_watched, completed, language, started_at, ended_at)
     VALUES
-      (${authUser.id}, ${videoId}, ${clientFlushId}, ${secondsWatched}, ${!!completed},
+      (${authUser.id}, ${videoId}, ${clientFlushId}, ${cappedSecondsWatched}, ${!!completed},
        ${language}, ${startedAt || new Date().toISOString()}, ${endedAt || null})
     ON CONFLICT (client_flush_id) DO NOTHING
   `
