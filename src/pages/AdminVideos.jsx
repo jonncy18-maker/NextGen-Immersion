@@ -36,6 +36,9 @@ export default function AdminVideos() {
   const [staleState, setStaleState] = useState('idle') // idle|loading|done|error
   const [staleResult, setStaleResult] = useState(null)
 
+  const [durationState, setDurationState] = useState('idle') // idle|loading|done|error
+  const [durationResult, setDurationResult] = useState(null)
+
   async function handleImport() {
     const parsed = parseYouTubeUrl(importUrl)
     if (!parsed) {
@@ -82,6 +85,24 @@ export default function AdminVideos() {
       setStaleState('done')
     } catch {
       setStaleState('error')
+    }
+  }
+
+  async function handleDurationBackfill() {
+    setDurationState('loading')
+    setDurationResult(null)
+    try {
+      const token = await getAuthToken()
+      const res = await fetch('/api/backfill-durations', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Backfill failed')
+      const data = await res.json()
+      setDurationResult(data)
+      setDurationState('done')
+    } catch {
+      setDurationState('error')
     }
   }
 
@@ -182,6 +203,32 @@ export default function AdminVideos() {
               )}
               {staleState === 'error' && (
                 <p style={styles.error}>Stale check failed. Try again.</p>
+              )}
+
+              <p style={{ ...styles.sub, marginTop: 18 }}>
+                Fix videos missing a known length. This also retroactively marks past sessions as
+                watched wherever a scholar&apos;s single sitting actually reached 95% of the video —
+                cumulative hours are never changed, only the watched flag.
+              </p>
+              <button
+                onClick={handleDurationBackfill}
+                disabled={durationState === 'loading'}
+                style={{
+                  ...styles.outlineBtn,
+                  ...(durationState === 'loading' ? styles.btnDisabled : {}),
+                }}
+              >
+                {durationState === 'loading' ? 'Fixing…' : 'Fix missing video durations'}
+              </button>
+              {durationState === 'done' && durationResult && (
+                <p style={styles.success}>
+                  {durationResult.checked === 0
+                    ? 'All videos already have a known duration.'
+                    : `Checked ${durationResult.checked} — fixed duration for ${durationResult.updated}, retroactively marked ${durationResult.sessionsFixed} session${durationResult.sessionsFixed !== 1 ? 's' : ''} as watched.`}
+                </p>
+              )}
+              {durationState === 'error' && (
+                <p style={styles.error}>Duration backfill failed. Try again.</p>
               )}
             </div>
           </>
