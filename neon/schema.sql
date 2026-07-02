@@ -397,6 +397,16 @@ CREATE TABLE IF NOT EXISTS scholar_digests (
   generated_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- ─── Phase 31: Admin per-scholar topic-trend AI narrative ────────────────────
+-- Applied via Neon MCP. One cached narrative per scholar (24h TTL, same
+-- pattern as scholar_digests), summarizing topic interest trends and
+-- replenishment gaps from pages/api/scholar-topic-trends.js.
+CREATE TABLE IF NOT EXISTS scholar_topic_insights (
+  user_id      uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  message      text NOT NULL,
+  generated_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- ─── Phase 30: Watch Later ────────────────────────────────────────────────────
 -- Applied via Neon MCP on 2026-07-01. Personal scholar bookmarking; admins do
 -- not manage other scholars' lists (a logged-in admin sees only their own).
