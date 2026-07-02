@@ -35,7 +35,8 @@ export default async function handler(req, res) {
         ws.started_at,
         v.title   AS video_title,
         v.channel_name,
-        v.youtube_id
+        v.youtube_id,
+        v.level
       FROM watch_sessions ws
       JOIN videos v ON v.id = ws.video_id
       WHERE ws.user_id = ${userId}
@@ -58,6 +59,7 @@ export default async function handler(req, res) {
       video_title:     r.video_title,
       channel_name:    r.channel_name,
       youtube_id:      r.youtube_id,
+      level:           r.level,
       seconds_watched: r.seconds_watched,
       completed:       r.completed,
     })),

@@ -16,6 +16,14 @@ const TYPE_OPTIONS = [
   { value: 'mentor_call',          label: 'Mentor Call' },
   { value: 'video_external',       label: 'External Video' },
 ]
+const LEVEL_LABELS = {
+  a1: 'A1',
+  a2: 'A2',
+  b1: 'B1',
+  b2: 'B2',
+  c1: 'C1',
+  c2: 'C2',
+}
 
 function fmtDuration(seconds) {
   const h = Math.floor(seconds / 3600)
@@ -75,7 +83,14 @@ function WatchSessionRow({ session, onDeleted, readOnly }) {
     <div style={styles.row}>
       <div style={styles.rowIcon}>▶</div>
       <div style={styles.rowBody}>
-        <div style={styles.rowTitle}>{session.video_title}</div>
+        <div style={styles.rowTitleRow}>
+          <div style={styles.rowTitle}>{session.video_title}</div>
+          {session.level && (
+            <span style={styles.levelBadge}>
+              {LEVEL_LABELS[session.level] ?? session.level}
+            </span>
+          )}
+        </div>
         {session.channel_name && (
           <div style={styles.rowMeta}>{session.channel_name}</div>
         )}
@@ -478,12 +493,29 @@ const styles = {
   },
   rowIcon: { fontSize: 15, flexShrink: 0, marginTop: 1 },
   rowBody: { flex: 1, minWidth: 0 },
+  rowTitleRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 2,
+  },
   rowTitle: {
     fontSize: 13,
     fontWeight: 600,
     color: '#162040',
     lineHeight: 1.3,
-    marginBottom: 2,
+  },
+  levelBadge: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#162040',
+    background: '#F5F0E8',
+    border: '1px solid #ede7d9',
+    padding: '2px 8px',
+    borderRadius: 999,
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
   },
   rowMeta: { fontSize: 12, color: '#8a8f99', lineHeight: 1.5 },
   rowNotes: {
