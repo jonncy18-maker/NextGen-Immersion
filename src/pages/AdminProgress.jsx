@@ -12,15 +12,23 @@ import LevelProgressBars from '../components/progress/LevelProgressBars.jsx'
 import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
 import DayDetailModal from '../components/admin/DayDetailModal.jsx'
 import ScholarDigest from '../components/admin/ScholarDigest.jsx'
+import ScholarVideoList from '../components/admin/ScholarVideoList.jsx'
+import TopicTrends from '../components/admin/TopicTrends.jsx'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 import { formatHoursShort } from '../utils/timeFormat.js'
 
 const SELECTED_KEY = 'adminProgress_selectedId'
+const TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'videos', label: 'Videos' },
+  { id: 'topics', label: 'Topics' },
+]
 
 export default function AdminProgress() {
   const { data, loading, error, refetch } = useScholars()
   const [selectedId, setSelectedId] = useState(() => sessionStorage.getItem(SELECTED_KEY) || null)
   const [dayDetailDate, setDayDetailDate] = useState(null)
+  const [activeTab, setActiveTab] = useState('overview')
 
   const scholars = data || []
   const selected = scholars.find(s => s.user_id === selectedId) ?? null
@@ -35,11 +43,13 @@ export default function AdminProgress() {
   function selectScholar(scholar) {
     setSelectedId(scholar?.user_id ?? null)
     setDayDetailDate(null)
+    setActiveTab('overview')
   }
 
   function goBack() {
     setSelectedId(null)
     setDayDetailDate(null)
+    setActiveTab('overview')
   }
 
   if (loading) {
@@ -84,79 +94,102 @@ export default function AdminProgress() {
           </button>
           <h1 style={styles.title}>{selected.scholar_name || 'Scholar'}</h1>
 
-          <div style={styles.detailGrid}>
-            {/* Left column: main progress stats */}
-            <div style={{ ...styles.card, marginBottom: 0 }}>
-              <HoursCounter
-                currentHours={currentHours}
-                currentLevel={currentLevel}
-                nextLevel={nextLevel}
-                targetHours={selected.target_hours}
-                targetLevel={selected.target_level}
-                status={selected.status}
-              />
-              <MilestoneBar currentHours={currentHours} />
-              <PaceAnalysis
-                currentHours={currentHours}
-                expectedHours={Number(selected.expected_hours ?? 0)}
-                targetHours={selected.target_hours}
-                status={selected.status}
-                delta={selected.delta ?? 0}
-              />
-              <CategoryBreakdown
-                libraryHours={Number(selected.library_hours ?? 0)}
-                videoExternalHours={Number(selected.video_external_hours ?? 0)}
-                chatgptHours={Number(selected.chatgpt_hours ?? 0)}
-                mentorHours={Number(selected.mentor_hours ?? 0)}
-                targetChatgptHours={selected.target_chatgpt_hours != null ? Number(selected.target_chatgpt_hours) : null}
-                targetMentorHours={selected.target_mentor_hours != null ? Number(selected.target_mentor_hours) : null}
-                expectedHours={Number(selected.expected_hours ?? 0)}
-                targetHours={selected.target_hours}
-              />
-            </div>
-
-            {/* Right column: week stats + level bars + log button */}
-            <div>
-              <div style={styles.card}>
-                <WeekStats
-                  hoursThisWeek={Number(selected.hours_this_week ?? 0)}
-                  targetHours={selected.target_hours}
-                  startDate={selected.start_date}
-                  targetDate={selected.target_date}
-                  lastSessionAt={selected.last_session_at}
-                />
-              </div>
-              <div style={styles.card}>
-                <LevelProgressBars currentHours={Number(selected.current_hours ?? 0)} />
-              </div>
-              <div style={{ marginTop: '0.75rem' }}>
-                <ExternalHoursButton userId={selected.user_id} onLogged={refetch} />
-              </div>
-              <div style={{ ...styles.card, marginTop: '0.75rem' }}>
-                <ScholarDigest userId={selected.user_id} />
-              </div>
-            </div>
+          <div style={styles.tabStrip}>
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                style={{
+                  ...styles.tabBtn,
+                  ...(activeTab === tab.id ? styles.tabBtnActive : {}),
+                }}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {calData && (
-            <div style={styles.card}>
-              <CalendarHeatmap
-                days={calData.days}
-                dailyGoal={
-                  calData.target_hours && calData.start_date && calData.target_date
-                    ? calData.target_hours /
-                      Math.max(
-                        1,
-                        (new Date(calData.target_date) - new Date(calData.start_date)) /
-                          86400000
-                      )
-                    : null
-                }
-                startDate={calData.start_date}
-                onDayClick={setDayDetailDate}
-              />
-            </div>
+          {activeTab === 'overview' && (
+            <>
+              <div style={styles.detailGrid}>
+                {/* Left column: main progress stats */}
+                <div style={{ ...styles.card, marginBottom: 0 }}>
+                  <HoursCounter
+                    currentHours={currentHours}
+                    currentLevel={currentLevel}
+                    nextLevel={nextLevel}
+                    targetHours={selected.target_hours}
+                    targetLevel={selected.target_level}
+                    status={selected.status}
+                  />
+                  <MilestoneBar currentHours={currentHours} />
+                  <PaceAnalysis
+                    currentHours={currentHours}
+                    expectedHours={Number(selected.expected_hours ?? 0)}
+                    targetHours={selected.target_hours}
+                    status={selected.status}
+                    delta={selected.delta ?? 0}
+                  />
+                  <CategoryBreakdown
+                    libraryHours={Number(selected.library_hours ?? 0)}
+                    videoExternalHours={Number(selected.video_external_hours ?? 0)}
+                    chatgptHours={Number(selected.chatgpt_hours ?? 0)}
+                    mentorHours={Number(selected.mentor_hours ?? 0)}
+                    targetChatgptHours={selected.target_chatgpt_hours != null ? Number(selected.target_chatgpt_hours) : null}
+                    targetMentorHours={selected.target_mentor_hours != null ? Number(selected.target_mentor_hours) : null}
+                    expectedHours={Number(selected.expected_hours ?? 0)}
+                    targetHours={selected.target_hours}
+                  />
+                </div>
+
+                {/* Right column: week stats + level bars + log button */}
+                <div>
+                  <div style={styles.card}>
+                    <WeekStats
+                      hoursThisWeek={Number(selected.hours_this_week ?? 0)}
+                      targetHours={selected.target_hours}
+                      startDate={selected.start_date}
+                      targetDate={selected.target_date}
+                      lastSessionAt={selected.last_session_at}
+                    />
+                  </div>
+                  <div style={styles.card}>
+                    <LevelProgressBars currentHours={Number(selected.current_hours ?? 0)} />
+                  </div>
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <ExternalHoursButton userId={selected.user_id} onLogged={refetch} />
+                  </div>
+                  <div style={{ ...styles.card, marginTop: '0.75rem' }}>
+                    <ScholarDigest userId={selected.user_id} />
+                  </div>
+                </div>
+              </div>
+
+              {calData && (
+                <div style={styles.card}>
+                  <CalendarHeatmap
+                    days={calData.days}
+                    dailyGoal={
+                      calData.target_hours && calData.start_date && calData.target_date
+                        ? calData.target_hours /
+                          Math.max(
+                            1,
+                            (new Date(calData.target_date) - new Date(calData.start_date)) /
+                              86400000
+                          )
+                        : null
+                    }
+                    startDate={calData.start_date}
+                    onDayClick={setDayDetailDate}
+                  />
+                </div>
+              )}
+            </>
           )}
+
+          {activeTab === 'videos' && <ScholarVideoList userId={selected.user_id} />}
+
+          {activeTab === 'topics' && <TopicTrends userId={selected.user_id} />}
         </div>
 
         {dayDetailDate && (
@@ -230,6 +263,27 @@ const styles = {
     alignItems: 'start',
   },
   title: { margin: '0 0 18px', fontSize: 24, fontWeight: 700, color: 'var(--ngsi-navy)', fontFamily: 'Georgia, serif' },
+  tabStrip: {
+    display: 'flex',
+    gap: 6,
+    marginBottom: 16,
+    borderBottom: '1px solid #e8e3da',
+  },
+  tabBtn: {
+    padding: '8px 16px',
+    fontSize: 13,
+    fontWeight: 600,
+    color: '#8a8f99',
+    background: 'none',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  tabBtnActive: {
+    color: 'var(--ngsi-navy)',
+    borderBottom: '2px solid var(--ngsi-gold)',
+  },
   statsRow: { display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 24 },
   statCard: {
     flex: '1 1 140px',
