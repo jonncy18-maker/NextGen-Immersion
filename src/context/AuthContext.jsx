@@ -7,26 +7,39 @@ const AuthContext = createContext({ user: null, role: null, loading: true, signO
 export function AuthProvider({ children }) {
   const { data: sessionData, isPending } = authClient.useSession();
   const [role, setRole] = useState(null);
-  // Start true: when useSession resolves a valid session, isPending flips to
-  // false one render BEFORE the effect below runs (effects run after render).
-  // If roleLoading were false in that gap, `loading` would be false with user
-  // still null, and RequireAuth would redirect to /login before /api/me
-  // resolves — stranding an authenticated user on the login page after refresh.
-  const [roleLoading, setRoleLoading] = useState(true);
   const [user, setUser] = useState(null);
+  // `loading` gates the UI ONLY until auth is resolved the first time. It starts
+  // true and, once we've resolved the session (with or without a user), it is
+  // never flipped back to true. This is deliberate:
+  //
+  // Better Auth's useSession() refetches the session whenever the tab/window
+  // regains focus. Each refetch hands back a NEW sessionData object (same signed-
+  // in user), and previously that (a) re-ran the effect and (b) flipped loading
+  // back to true — which made RequireAuth/RequireAdmin render null and UNMOUNT
+  // the whole page tree. When /api/me resolved the page remounted fresh, wiping
+  // all screen state (selected video, filters, scroll). i.e. "moving away from
+  // the screen refreshed it to its initial state." Keeping loading latched-false
+  // after the first resolution keeps the page mounted across those background
+  // revalidations. We also key the effect on the stable user id, not the
+  // sessionData object reference, so an unchanged user never re-triggers it.
+  const [loading, setLoading] = useState(true);
+
+  const sessionUserId = sessionData?.user?.id ?? null;
 
   useEffect(() => {
+    // Wait for the FIRST session determination only. During a later background
+    // refetch isPending may blip, but `loading` is already latched false so the
+    // tree stays mounted regardless.
     if (isPending) return;
 
-    if (!sessionData) {
+    if (!sessionUserId) {
       setUser(null);
       setRole(null);
-      setRoleLoading(false);
+      setLoading(false);
       return;
     }
 
     // Session available — fetch a JWT, then look up role from our API
-    setRoleLoading(true);
     let cancelled = false;
 
     (async () => {
@@ -63,22 +76,23 @@ export function AuthProvider({ children }) {
           setRole(null);
         }
       } finally {
-        if (!cancelled) setRoleLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [isPending, sessionData]);
+    // Keyed on the stable user id so a focus-triggered session refetch with an
+    // unchanged user does not re-run role resolution or remount the app.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPending, sessionUserId]);
 
   async function signOut() {
     await authClient.signOut();
     setUser(null);
     setRole(null);
   }
-
-  const loading = isPending || roleLoading;
 
   return (
     <AuthContext.Provider value={{ user, role, loading, signOut }}>
