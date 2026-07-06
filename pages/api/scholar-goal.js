@@ -96,6 +96,13 @@ export default async function handler(req, res) {
     tDate = targetDate
   }
 
+  // A same-day (or inverted) start/target date makes the scholar_pace pace
+  // math divide by zero (NULLIF(target_date - start_date, 0)), leaving the
+  // scholar stuck at PENDING/AT_RISK with a null expected_hours.
+  if (start && tDate && Date.parse(tDate) <= Date.parse(start)) {
+    return res.status(400).json({ error: 'Target date must be after start date' })
+  }
+
   // Validate category hours if provided
   const parseOptInt = (v, name) => {
     if (v === undefined || v === null || v === '') return null
