@@ -226,6 +226,26 @@ Then: `UPDATE neon_auth.account SET password = '<output>', "updatedAt" = now() W
 
 ---
 
+## Native app (PWA → Play Store) — PLANNED
+
+This app is the **pilot** for shipping the NGS apps as installable Android apps
+via a PWA wrapped in a Trusted Web Activity (TWA), distributed on the Play
+**Internal Testing** track (private — scholars install from Play by email
+allowlist, not a public listing). Nothing is built yet. Full runbooks:
+
+- **`docs/PWA.md`** — installable-PWA groundwork (manifest, service worker,
+  icons). Prerequisite for the TWA. Key rule: the service worker must keep
+  `/api/**` and `/api/auth/*` **network-only** (never cache authed responses)
+  and must not interfere with the existing `offlineBuffer.js` / `sendBeacon`
+  hours-flush path.
+- **`docs/PLAY-STORE.md`** — TWA packaging (Bubblewrap/PWABuilder), Digital
+  Asset Links, and the Internal Testing rollout. #1 risk to verify early:
+  the first-party session cookie (Phase 14) persisting inside the TWA.
+
+See `ROADMAP.md` for status/phase tracking.
+
+---
+
 ## Neon MCP Setup (Claude Code)
 
 ```bash
