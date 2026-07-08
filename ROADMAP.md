@@ -822,6 +822,42 @@ Status: **DONE** (Jul 2026 — via agentic loop, independent audit PASS). Schema
 
 ---
 
+## Phase 32 — Native Android app (PWA → TWA → Play Internal Testing)
+
+**Status: PLANNED (pilot for the NGS native rollout).** Not started. Goal:
+ship Immersion as an installable Android app so scholars — who are used to
+installing apps, not "Add to Home Screen" from a browser — get it from the
+Play Store. Private distribution via the **Internal Testing** track (email
+allowlist, up to 100 testers), not a public production listing.
+
+**Why Immersion first:** highest native benefit (offline hour-tracking already
+half-built via `offlineBuffer.js`; future push pace-nudges), and it already
+solved the first-party-cookie session problem (Phase 14) that the TWA depends
+on.
+
+Runbooks (written; work not begun): `docs/PWA.md` (installable-PWA groundwork)
+and `docs/PLAY-STORE.md` (TWA packaging + Internal Testing rollout).
+
+Deliverables (planned):
+- [ ] PWA foundation — web manifest (`app/manifest.js`), service worker
+      (Serwist or hand-rolled), 192/512 + maskable icons. Passes Lighthouse
+      "Installable". SW keeps `/api/**` + `/api/auth/*` network-only; does not
+      touch the `sendBeacon`/`offlineBuffer.js` hours path.
+- [ ] TWA package (Bubblewrap/PWABuilder), stable package id
+      (e.g. `com.nextgenscholars.immersion`), `public/.well-known/assetlinks.json`.
+- [ ] **Verify early:** session cookie persists inside the installed TWA on a
+      real Android device (the #1 risk).
+- [ ] Play Console (John's account, $25) → Internal Testing release → scholar
+      email allowlist → opt-in link.
+
+Owner split: Claude Code does the code (PWA, asset-links, config); John owns
+the Play Console account, signing, upload, tester list, and device testing.
+
+Deferred: push notifications; public production listing (would trigger the
+12-tester/14-day gate + content review — not planned for Immersion).
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
