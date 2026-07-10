@@ -819,6 +819,7 @@ Deliverables:
 
 Status: **DONE** (Jul 2026 — via agentic loop, independent audit PASS). Schema applied live via Neon MCP. `position_seconds` is threaded through a `playerRef` inside `useWatchSession` (captured via an extended `onStateChange(state, player)` signature from `VideoPlayer`), kept strictly separate from `seconds_watched`/hours counting per the audit's explicit check. `VideoCard` reads `resume_position_seconds` directly off the video object (no new prop plumbing needed) to render the thumbnail progress bar, so it works on both the Watch grid and the Library page automatically. `next build` PASS.
 | Jun 2026 | Phase 9 | Provisioning descoped | — | Decided NOT to build the deferred inline account-creation flow (`provision-scholar.js` + `AddScholarPanel.jsx`). The launch accounts already exist and are fully provisioned manually (admin John + scholar Claire: `public.users` rows + Claire's `scholar_goals` start_date linked to the active program goal), so the auth-touching create-scholar UI adds no value for the single-scholar launch and isn't worth the auth-regression risk. Future scholars added manually (Neon Auth login + `public.users` row + `/api/scholar-goal`); revisit with a "link existing account" panel if onboarding cadence grows. Phase 9 marked DONE (dashboard + goal editor shipped earlier; provisioning intentionally not built). Docs-only. |
+| Jul 2026 | Phase 32 (PWA groundwork) | Installable PWA foundation | 2 | `app/manifest.js` (name/icons/theme per `docs/PWA.md`), `public/icons/*` (192/512 + maskable placeholders), `ServiceWorkerRegistration.jsx`. First build attempt used Serwist but required forcing the app off Turbopack onto webpack app-wide (Serwist doesn't support Turbopack) — flagged by audit as exceeding "wrapping exercise" scope and reworked to `docs/PWA.md`'s hand-rolled fallback (`public/sw.js`), restoring Turbopack. `next.config.js` SPA rewrite extended to exclude manifest/sw/icons. SW confirmed network-only for `/api/**` (all methods, including POST/sendBeacon) via code trace + curl. Build PASS (Turbopack); independent audit PASS. TWA/asset-links/Bubblewrap steps not started — Play Console account creation in progress (John). |
 
 ---
 
@@ -839,16 +840,25 @@ Runbooks (written; work not begun): `docs/PWA.md` (installable-PWA groundwork)
 and `docs/PLAY-STORE.md` (TWA packaging + Internal Testing rollout).
 
 Deliverables (planned):
-- [ ] PWA foundation — web manifest (`app/manifest.js`), service worker
-      (Serwist or hand-rolled), 192/512 + maskable icons. Passes Lighthouse
-      "Installable". SW keeps `/api/**` + `/api/auth/*` network-only; does not
-      touch the `sendBeacon`/`offlineBuffer.js` hours path.
+- [x] PWA foundation — web manifest (`app/manifest.js`), service worker
+      (hand-rolled — Serwist was tried first but required forcing the whole
+      app off Turbopack onto webpack, exceeding this pass's "wrapping
+      exercise, not a redesign" scope; reverted in favor of `docs/PWA.md`'s
+      documented zero-dependency fallback at `public/sw.js`), 192/512 +
+      maskable icons (placeholder navy/gold mark, pending real brand assets).
+      Verified via build + curl: manifest/SW/icons resolve correctly and
+      aren't swallowed by the SPA rewrite; `/api/**` (including POST, e.g.
+      `sendBeacon`) confirmed untouched by the SW. Not yet run through actual
+      Lighthouse (no GUI browser in the build environment) — recommend a
+      manual Chrome/Android installability pass before considering this
+      fully closed.
 - [ ] TWA package (Bubblewrap/PWABuilder), stable package id
       (e.g. `com.nextgenscholars.immersion`), `public/.well-known/assetlinks.json`.
 - [ ] **Verify early:** session cookie persists inside the installed TWA on a
       real Android device (the #1 risk).
 - [ ] Play Console (John's account, $25) → Internal Testing release → scholar
-      email allowlist → opt-in link.
+      email allowlist → opt-in link. Account creation started Jul 2026
+      (identity verification in progress).
 
 Owner split: Claude Code does the code (PWA, asset-links, config); John owns
 the Play Console account, signing, upload, tester list, and device testing.
