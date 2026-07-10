@@ -854,6 +854,14 @@ Deliverables (planned):
       fully closed.
 - [ ] TWA package (Bubblewrap/PWABuilder), stable package id
       (e.g. `com.nextgenscholars.immersion`), `public/.well-known/assetlinks.json`.
+      Not checked off yet — the real Play App Signing SHA-256 fingerprint
+      doesn't exist (requires a Play Console app + first upload, not done).
+      Groundwork done: package id `com.nextgenscholars.immersion` locked in;
+      `public/.well-known/assetlinks.json` scaffold committed with an obvious
+      placeholder fingerprint (`REPLACE_WITH_PLAY_APP_SIGNING_SHA256_FINGERPRINT`);
+      `next.config.js` SPA rewrite extended to exclude `.well-known/`. Pending:
+      Play Console app signing key to swap in the real fingerprint, then
+      Bubblewrap build (Phase 3).
 - [ ] **Verify early:** session cookie persists inside the installed TWA on a
       real Android device (the #1 risk).
 - [ ] Play Console (John's account, $25) → Internal Testing release → scholar

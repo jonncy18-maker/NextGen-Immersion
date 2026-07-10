@@ -10,11 +10,14 @@ const nextConfig = {
   //   - manifest.webmanifest  (app/manifest.js Next metadata route)
   //   - sw.js                 (static hand-rolled service worker in public/)
   //   - icons/                (public/icons/*.png referenced by the manifest)
+  //   - .well-known/          (public/.well-known/assetlinks.json — TWA Digital
+  //                            Asset Links, must be served as real JSON, never
+  //                            the SPA shell, see docs/PLAY-STORE.md)
   async rewrites() {
     return [
       {
         source:
-          '/((?!api|_next|favicon.ico|manifest.webmanifest|sw.js|icons/).*)',
+          '/((?!api|_next|favicon.ico|manifest.webmanifest|sw.js|icons/|\\.well-known/).*)',
         destination: '/',
       },
     ]

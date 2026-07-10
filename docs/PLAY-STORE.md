@@ -80,9 +80,8 @@ Two tool options; either is fine:
 
 Key inputs both need:
 - **Host/origin** = the production Vercel domain the PWA is served from.
-- **App name / package id** — pick a stable reverse-DNS id, e.g.
-  `com.nextgenscholars.immersion`. **This id can never change** once published;
-  choose deliberately.
+- **App name / package id** — locked in as `com.nextgenscholars.immersion`
+  (reverse-DNS, stable). **This id can never change** once published.
 - **Launcher icon** = the 512 maskable icon from `docs/PWA.md`.
 - **Theme/splash colors** = navy `#162040` (match the manifest).
 
