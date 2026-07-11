@@ -854,19 +854,24 @@ Deliverables (planned):
       fully closed.
 - [ ] TWA package (Bubblewrap/PWABuilder), stable package id
       (e.g. `com.nextgenscholars.immersion`), `public/.well-known/assetlinks.json`.
-      Not checked off yet — the real Play App Signing SHA-256 fingerprint
-      doesn't exist (requires a Play Console app + first upload, not done).
-      Groundwork done: package id `com.nextgenscholars.immersion` locked in;
-      `public/.well-known/assetlinks.json` scaffold committed with an obvious
-      placeholder fingerprint (`REPLACE_WITH_PLAY_APP_SIGNING_SHA256_FINGERPRINT`);
-      `next.config.js` SPA rewrite extended to exclude `.well-known/`. Pending:
-      Play Console app signing key to swap in the real fingerprint, then
-      Bubblewrap build (Phase 3).
+      Not checked off yet — the fingerprint currently in `assetlinks.json` is
+      PWABuilder's locally-generated **upload key** fingerprint
+      (`DA:62:70:...`), not the **Play App Signing key** fingerprint, which
+      only exists after the AAB is uploaded to Play Console and the app
+      enrolls in Play App Signing. Per `docs/PLAY-STORE.md`'s gotcha, mixing
+      these up is the most common cause of the URL bar still showing in the
+      installed app — once the real app-signing fingerprint is available,
+      add it alongside (not replacing) the upload-key one during the testing
+      period, per the doc's guidance. Package id `com.nextgenscholars.immersion`
+      locked in and correctly baked into the generated `.aab`/`.apk`
+      (verified — an earlier PWABuilder export used an auto-derived package
+      id and was regenerated). `next.config.js` SPA rewrite excludes
+      `.well-known/`.
 - [ ] **Verify early:** session cookie persists inside the installed TWA on a
       real Android device (the #1 risk).
-- [ ] Play Console (John's account, $25) → Internal Testing release → scholar
-      email allowlist → opt-in link. Account creation started Jul 2026
-      (identity verification in progress).
+- [ ] Play Console (John's account, $25, verified Jul 2026) → Internal
+      Testing release → upload the `.aab` → scholar email allowlist →
+      opt-in link.
 
 Owner split: Claude Code does the code (PWA, asset-links, config); John owns
 the Play Console account, signing, upload, tester list, and device testing.

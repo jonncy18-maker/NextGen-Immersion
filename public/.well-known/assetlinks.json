@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.nextgenscholars.immersion",
-    "sha256_cert_fingerprints": ["REPLACE_WITH_PLAY_APP_SIGNING_SHA256_FINGERPRINT"]
+    "sha256_cert_fingerprints": ["DA:62:70:A4:FF:C0:22:84:96:5C:CF:87:5A:05:E9:03:0C:BC:1E:06:EA:3F:0C:D7:53:09:3F:8C:58:B1:C8:E7"]
   }
 }]
