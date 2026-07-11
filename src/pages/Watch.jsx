@@ -45,7 +45,7 @@ export default function Watch() {
   const [searchParams, setSearchParams] = useSearchParams()
   const deepLinkHandled = useRef(false)
 
-  const { data: progress } = useProgress()
+  const { data: progress, loading: progressLoading } = useProgress()
   const { isAdded, add: addToWatchLater, remove: removeFromWatchLater } = useWatchLater()
   const rawLevelId = progress ? getLevelForHours(progress.current_hours).id : null
   const scholarLevelId = rawLevelId
@@ -137,11 +137,14 @@ export default function Watch() {
     setSearchParams(next, { replace: true })
   }, [videos, searchParams, setSearchParams])
 
+  // Wait for progress to resolve so the level filter (set above) is already
+  // applied before we auto-pick — otherwise this can fire on an unfiltered
+  // list and lock in a video from the wrong level before the filter lands.
   useEffect(() => {
-    if (!selected && visibleVideos.length > 0 && !searchParams.get('videoId')) {
+    if (!selected && !progressLoading && visibleVideos.length > 0 && !searchParams.get('videoId')) {
       setSelected(visibleVideos[0])
     }
-  }, [selected, visibleVideos, searchParams])
+  }, [selected, progressLoading, visibleVideos, searchParams])
 
   const handleComplete = useCallback(completedId => {
     setVideos(vs =>
