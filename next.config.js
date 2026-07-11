@@ -13,11 +13,15 @@ const nextConfig = {
   //   - .well-known/          (public/.well-known/assetlinks.json — TWA Digital
   //                            Asset Links, must be served as real JSON, never
   //                            the SPA shell, see docs/PLAY-STORE.md)
+  //   - legal/                (app/legal/* — static Privacy Policy / data
+  //                            deletion pages required by Play Console's Data
+  //                            safety section; must be crawlable server-rendered
+  //                            HTML, not the client-only SPA shell)
   async rewrites() {
     return [
       {
         source:
-          '/((?!api|_next|favicon.ico|manifest.webmanifest|sw.js|icons/|\\.well-known/).*)',
+          '/((?!api|_next|favicon.ico|manifest.webmanifest|sw.js|icons/|\\.well-known/|legal/).*)',
         destination: '/',
       },
     ]
