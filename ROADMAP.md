@@ -852,21 +852,19 @@ Deliverables (planned):
       Lighthouse (no GUI browser in the build environment) — recommend a
       manual Chrome/Android installability pass before considering this
       fully closed.
-- [ ] TWA package (Bubblewrap/PWABuilder), stable package id
-      (e.g. `com.nextgenscholars.immersion`), `public/.well-known/assetlinks.json`.
-      Not checked off yet — the fingerprint currently in `assetlinks.json` is
-      PWABuilder's locally-generated **upload key** fingerprint
-      (`DA:62:70:...`), not the **Play App Signing key** fingerprint, which
-      only exists after the AAB is uploaded to Play Console and the app
-      enrolls in Play App Signing. Per `docs/PLAY-STORE.md`'s gotcha, mixing
-      these up is the most common cause of the URL bar still showing in the
-      installed app — once the real app-signing fingerprint is available,
-      add it alongside (not replacing) the upload-key one during the testing
-      period, per the doc's guidance. Package id `com.nextgenscholars.immersion`
-      locked in and correctly baked into the generated `.aab`/`.apk`
-      (verified — an earlier PWABuilder export used an auto-derived package
-      id and was regenerated). `next.config.js` SPA rewrite excludes
-      `.well-known/`.
+- [x] TWA package (PWABuilder), stable package id
+      (`com.nextgenscholars.immersion`), `public/.well-known/assetlinks.json`.
+      Package id verified correctly baked into the generated `.aab`/`.apk`
+      (an earlier PWABuilder export had defaulted to an auto-derived package
+      id and was caught and regenerated). `next.config.js` SPA rewrite
+      excludes `.well-known/`. `assetlinks.json` now carries **both**
+      fingerprints per `docs/PLAY-STORE.md`'s guidance: the **Play App
+      Signing key** (`CC:D4:3F:...`, from Play Console → Protected with Play
+      → App signing, after the first AAB upload and enrollment) and the
+      locally-generated **upload key** (`DA:62:70:...`, from PWABuilder) —
+      the app-signing key is what matters for the Play-installed app; the
+      upload key covers sideloaded test builds signed with the same local
+      keystore.
 - [ ] **Verify early:** session cookie persists inside the installed TWA on a
       real Android device (the #1 risk).
 - [ ] Play Console (John's account, $25, verified Jul 2026) → Internal
