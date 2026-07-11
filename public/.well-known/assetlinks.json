@@ -3,6 +3,9 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.nextgenscholars.immersion",
-    "sha256_cert_fingerprints": ["DA:62:70:A4:FF:C0:22:84:96:5C:CF:87:5A:05:E9:03:0C:BC:1E:06:EA:3F:0C:D7:53:09:3F:8C:58:B1:C8:E7"]
+    "sha256_cert_fingerprints": [
+      "CC:D4:3F:15:0C:E8:F3:E7:E1:55:92:C7:5E:C2:70:22:76:35:69:14:26:34:F2:32:BC:EF:5A:20:0E:DA:B0:9D",
+      "DA:62:70:A4:FF:C0:22:84:96:5C:CF:87:5A:05:E9:03:0C:BC:1E:06:EA:3F:0C:D7:53:09:3F:8C:58:B1:C8:E7"
+    ]
   }
 }]
