@@ -845,7 +845,10 @@ Deliverables (planned):
       app off Turbopack onto webpack, exceeding this pass's "wrapping
       exercise, not a redesign" scope; reverted in favor of `docs/PWA.md`'s
       documented zero-dependency fallback at `public/sw.js`), 192/512 +
-      maskable icons (placeholder navy/gold mark, pending real brand assets).
+      maskable icons (real brand mark as of Jul 2026 — a globe/speech-bubble
+      "Talk" icon generated for the Play Store listing, swapped in to
+      replace the original placeholder navy/gold "N" glyph so the installed
+      app icon matches the Play Store listing icon).
       Verified via build + curl: manifest/SW/icons resolve correctly and
       aren't swallowed by the SPA rewrite; `/api/**` (including POST, e.g.
       `sendBeacon`) confirmed untouched by the SW. Not yet run through actual
