@@ -1,55 +1,59 @@
-import { useState, useEffect } from 'react'
-import { useScholars } from '../hooks/useScholars.js'
-import { useScholarCalendar } from '../hooks/useScholarCalendar.js'
-import ScholarCard from '../components/admin/ScholarCard.jsx'
-import HoursCounter from '../components/progress/HoursCounter.jsx'
-import MilestoneBar from '../components/progress/MilestoneBar.jsx'
-import PaceAnalysis from '../components/progress/PaceAnalysis.jsx'
-import CategoryBreakdown from '../components/progress/CategoryBreakdown.jsx'
-import WeekStats from '../components/progress/WeekStats.jsx'
-import CalendarHeatmap from '../components/progress/CalendarHeatmap.jsx'
-import LevelProgressBars from '../components/progress/LevelProgressBars.jsx'
-import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx'
-import DayDetailModal from '../components/admin/DayDetailModal.jsx'
-import ScholarDigest from '../components/admin/ScholarDigest.jsx'
-import ScholarVideoList from '../components/admin/ScholarVideoList.jsx'
-import TopicTrends from '../components/admin/TopicTrends.jsx'
-import { getLevelForHours, getNextLevel } from '../utils/levels.js'
-import { formatHoursShort } from '../utils/timeFormat.js'
+import { useState, useEffect } from 'react';
+import { useScholars } from '../hooks/useScholars.js';
+import { useScholarCalendar } from '../hooks/useScholarCalendar.js';
+import ScholarCard from '../components/admin/ScholarCard.jsx';
+import HoursCounter from '../components/progress/HoursCounter.jsx';
+import MilestoneBar from '../components/progress/MilestoneBar.jsx';
+import PaceAnalysis from '../components/progress/PaceAnalysis.jsx';
+import CategoryBreakdown from '../components/progress/CategoryBreakdown.jsx';
+import WeekStats from '../components/progress/WeekStats.jsx';
+import CalendarHeatmap from '../components/progress/CalendarHeatmap.jsx';
+import LevelProgressBars from '../components/progress/LevelProgressBars.jsx';
+import ExternalHoursButton from '../components/progress/ExternalHoursButton.jsx';
+import DayDetailModal from '../components/admin/DayDetailModal.jsx';
+import ScholarDigest from '../components/admin/ScholarDigest.jsx';
+import ScholarVideoList from '../components/admin/ScholarVideoList.jsx';
+import TopicTrends from '../components/admin/TopicTrends.jsx';
+import VideoAnalysis from '../components/admin/VideoAnalysis.jsx';
+import { getLevelForHours, getNextLevel } from '../utils/levels.js';
+import { formatHoursShort } from '../utils/timeFormat.js';
 
-const SELECTED_KEY = 'adminProgress_selectedId'
+const SELECTED_KEY = 'adminProgress_selectedId';
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'videos', label: 'Videos' },
   { id: 'topics', label: 'Topics' },
-]
+  { id: 'analysis', label: 'Analysis' },
+];
 
 export default function AdminProgress() {
-  const { data, loading, error, refetch } = useScholars()
-  const [selectedId, setSelectedId] = useState(() => sessionStorage.getItem(SELECTED_KEY) || null)
-  const [dayDetailDate, setDayDetailDate] = useState(null)
-  const [activeTab, setActiveTab] = useState('overview')
+  const { data, loading, error, refetch } = useScholars();
+  const [selectedId, setSelectedId] = useState(
+    () => sessionStorage.getItem(SELECTED_KEY) || null
+  );
+  const [dayDetailDate, setDayDetailDate] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
-  const scholars = data || []
-  const selected = scholars.find(s => s.user_id === selectedId) ?? null
+  const scholars = data || [];
+  const selected = scholars.find((s) => s.user_id === selectedId) ?? null;
 
   useEffect(() => {
-    if (selectedId) sessionStorage.setItem(SELECTED_KEY, selectedId)
-    else sessionStorage.removeItem(SELECTED_KEY)
-  }, [selectedId])
+    if (selectedId) sessionStorage.setItem(SELECTED_KEY, selectedId);
+    else sessionStorage.removeItem(SELECTED_KEY);
+  }, [selectedId]);
 
-  const { data: calData } = useScholarCalendar(selected?.user_id ?? null)
+  const { data: calData } = useScholarCalendar(selected?.user_id ?? null);
 
   function selectScholar(scholar) {
-    setSelectedId(scholar?.user_id ?? null)
-    setDayDetailDate(null)
-    setActiveTab('overview')
+    setSelectedId(scholar?.user_id ?? null);
+    setDayDetailDate(null);
+    setActiveTab('overview');
   }
 
   function goBack() {
-    setSelectedId(null)
-    setDayDetailDate(null)
-    setActiveTab('overview')
+    setSelectedId(null);
+    setDayDetailDate(null);
+    setActiveTab('overview');
   }
 
   if (loading) {
@@ -63,7 +67,7 @@ export default function AdminProgress() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -78,14 +82,14 @@ export default function AdminProgress() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // Drill-down: scholar Progress layout, filtered to one scholar.
   if (selected) {
-    const currentHours = Number(selected.current_hours ?? 0)
-    const currentLevel = getLevelForHours(currentHours)
-    const nextLevel = getNextLevel(currentLevel.id)
+    const currentHours = Number(selected.current_hours ?? 0);
+    const currentLevel = getLevelForHours(currentHours);
+    const nextLevel = getNextLevel(currentLevel.id);
     return (
       <div style={styles.page}>
         <div style={styles.detailContainer}>
@@ -95,7 +99,7 @@ export default function AdminProgress() {
           <h1 style={styles.title}>{selected.scholar_name || 'Scholar'}</h1>
 
           <div style={styles.tabStrip}>
-            {TABS.map(tab => (
+            {TABS.map((tab) => (
               <button
                 key={tab.id}
                 style={{
@@ -132,11 +136,21 @@ export default function AdminProgress() {
                   />
                   <CategoryBreakdown
                     libraryHours={Number(selected.library_hours ?? 0)}
-                    videoExternalHours={Number(selected.video_external_hours ?? 0)}
+                    videoExternalHours={Number(
+                      selected.video_external_hours ?? 0
+                    )}
                     chatgptHours={Number(selected.chatgpt_hours ?? 0)}
                     mentorHours={Number(selected.mentor_hours ?? 0)}
-                    targetChatgptHours={selected.target_chatgpt_hours != null ? Number(selected.target_chatgpt_hours) : null}
-                    targetMentorHours={selected.target_mentor_hours != null ? Number(selected.target_mentor_hours) : null}
+                    targetChatgptHours={
+                      selected.target_chatgpt_hours != null
+                        ? Number(selected.target_chatgpt_hours)
+                        : null
+                    }
+                    targetMentorHours={
+                      selected.target_mentor_hours != null
+                        ? Number(selected.target_mentor_hours)
+                        : null
+                    }
                     expectedHours={Number(selected.expected_hours ?? 0)}
                     targetHours={selected.target_hours}
                   />
@@ -154,10 +168,15 @@ export default function AdminProgress() {
                     />
                   </div>
                   <div style={styles.card}>
-                    <LevelProgressBars currentHours={Number(selected.current_hours ?? 0)} />
+                    <LevelProgressBars
+                      currentHours={Number(selected.current_hours ?? 0)}
+                    />
                   </div>
                   <div style={{ marginTop: '0.75rem' }}>
-                    <ExternalHoursButton userId={selected.user_id} onLogged={refetch} />
+                    <ExternalHoursButton
+                      userId={selected.user_id}
+                      onLogged={refetch}
+                    />
                   </div>
                   <div style={{ ...styles.card, marginTop: '0.75rem' }}>
                     <ScholarDigest userId={selected.user_id} />
@@ -170,11 +189,14 @@ export default function AdminProgress() {
                   <CalendarHeatmap
                     days={calData.days}
                     dailyGoal={
-                      calData.target_hours && calData.start_date && calData.target_date
+                      calData.target_hours &&
+                      calData.start_date &&
+                      calData.target_date
                         ? calData.target_hours /
                           Math.max(
                             1,
-                            (new Date(calData.target_date) - new Date(calData.start_date)) /
+                            (new Date(calData.target_date) -
+                              new Date(calData.start_date)) /
                               86400000
                           )
                         : null
@@ -187,9 +209,15 @@ export default function AdminProgress() {
             </>
           )}
 
-          {activeTab === 'videos' && <ScholarVideoList userId={selected.user_id} />}
+          {activeTab === 'videos' && (
+            <ScholarVideoList userId={selected.user_id} />
+          )}
 
           {activeTab === 'topics' && <TopicTrends userId={selected.user_id} />}
+
+          {activeTab === 'analysis' && (
+            <VideoAnalysis userId={selected.user_id} />
+          )}
         </div>
 
         {dayDetailDate && (
@@ -200,13 +228,16 @@ export default function AdminProgress() {
           />
         )}
       </div>
-    )
+    );
   }
 
   // Overview stats
-  const totalScholars = scholars.length
-  const totalHours = scholars.reduce((sum, s) => sum + Number(s.current_hours ?? 0), 0)
-  const atRisk = scholars.filter((s) => s.status === 'AT_RISK').length
+  const totalScholars = scholars.length;
+  const totalHours = scholars.reduce(
+    (sum, s) => sum + Number(s.current_hours ?? 0),
+    0
+  );
+  const atRisk = scholars.filter((s) => s.status === 'AT_RISK').length;
 
   return (
     <div style={styles.page}>
@@ -227,28 +258,35 @@ export default function AdminProgress() {
           <div style={styles.empty}>
             <p style={styles.emptyText}>No scholars yet.</p>
             <p style={styles.emptySub}>
-              Scholars appear here once they&apos;re provisioned and assigned the program goal.
+              Scholars appear here once they&apos;re provisioned and assigned
+              the program goal.
             </p>
           </div>
         ) : (
           <div style={styles.grid}>
             {scholars.map((s) => (
-              <ScholarCard key={s.user_id} scholar={s} onSelect={selectScholar} />
+              <ScholarCard
+                key={s.user_id}
+                scholar={s}
+                onSelect={selectScholar}
+              />
             ))}
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function StatCard({ label, value, accent }) {
   return (
     <div style={styles.statCard}>
       <p style={styles.statLabel}>{label}</p>
-      <p style={{ ...styles.statValue, ...(accent ? { color: accent } : {}) }}>{value}</p>
+      <p style={{ ...styles.statValue, ...(accent ? { color: accent } : {}) }}>
+        {value}
+      </p>
     </div>
-  )
+  );
 }
 
 const styles = {
@@ -262,7 +300,13 @@ const styles = {
     marginBottom: 16,
     alignItems: 'start',
   },
-  title: { margin: '0 0 18px', fontSize: 24, fontWeight: 700, color: 'var(--ngsi-navy)', fontFamily: 'Georgia, serif' },
+  title: {
+    margin: '0 0 18px',
+    fontSize: 24,
+    fontWeight: 700,
+    color: 'var(--ngsi-navy)',
+    fontFamily: 'Georgia, serif',
+  },
   tabStrip: {
     display: 'flex',
     gap: 6,
@@ -301,7 +345,13 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
-  statValue: { margin: 0, fontSize: 28, fontWeight: 700, color: 'var(--ngsi-navy)', fontFamily: 'Georgia, serif' },
+  statValue: {
+    margin: 0,
+    fontSize: 28,
+    fontWeight: 700,
+    color: 'var(--ngsi-navy)',
+    fontFamily: 'Georgia, serif',
+  },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
@@ -326,7 +376,12 @@ const styles = {
     fontFamily: 'inherit',
   },
   empty: { textAlign: 'center', padding: '48px 24px' },
-  emptyText: { margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--ngsi-navy)' },
+  emptyText: {
+    margin: '0 0 6px',
+    fontSize: 16,
+    fontWeight: 600,
+    color: 'var(--ngsi-navy)',
+  },
   emptySub: { margin: 0, fontSize: 13, color: '#8a8f99' },
   center: {
     display: 'flex',
@@ -355,4 +410,4 @@ const styles = {
     color: '#fff',
     cursor: 'pointer',
   },
-}
+};
