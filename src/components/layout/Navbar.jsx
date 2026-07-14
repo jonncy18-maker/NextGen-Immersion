@@ -55,8 +55,13 @@ export default function Navbar() {
 
 const styles = {
   nav: {
-    position: 'sticky',
+    // Fixed (not sticky): position:sticky silently fails to pin on some mobile
+    // browsers, letting the bar scroll away. Fixed pins reliably; the layout
+    // reserves 56px below it via shellStyles.body's marginTop in App.jsx.
+    position: 'fixed',
     top: 0,
+    left: 0,
+    right: 0,
     zIndex: 100,
     width: '100%',
     height: '56px',
