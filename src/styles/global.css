@@ -59,8 +59,19 @@ a {
   100% { background-position: calc(120px + 100%) 0; }
 }
 
+/* Spinner for the "Refresh app" button (src/components/layout/UpdateButton.jsx)
+   while it purges caches and reloads. */
+@keyframes ngsi-spin {
+  to { transform: rotate(360deg); }
+}
+.ngsi-spin {
+  display: inline-block;
+  animation: ngsi-spin 0.7s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ngsi-skeleton { animation: none; }
+  .ngsi-spin { animation: none; }
 }
 
 /* Responsive layout helpers */

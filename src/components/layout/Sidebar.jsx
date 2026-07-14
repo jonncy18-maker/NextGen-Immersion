@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { getAuthToken } from '../../lib/authToken.js'
+import UpdateButton from './UpdateButton.jsx'
 
 export default function Sidebar() {
   const { role } = useAuth()
@@ -52,6 +53,9 @@ export default function Sidebar() {
           </div>
         </>
       )}
+      <div style={styles.footer}>
+        <UpdateButton variant="sidebar" />
+      </div>
     </aside>
   )
 }
@@ -129,5 +133,11 @@ const styles = {
     height: 1,
     background: '#d5cfc5',
     margin: '12px 16px',
+  },
+  footer: {
+    marginTop: 'auto',
+    borderTop: '1px solid #d5cfc5',
+    paddingTop: 8,
+    paddingBottom: 8,
   },
 }
