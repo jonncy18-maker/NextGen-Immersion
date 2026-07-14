@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import ConnectionPill from './ConnectionPill.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
+import UpdateButton from './UpdateButton.jsx'
 
 export default function Navbar() {
   const { user, role, signOut } = useAuth()
@@ -23,6 +24,9 @@ export default function Navbar() {
       </div>
 
       <div style={styles.right}>
+        <span className="ngsi-hide-desktop" style={styles.mobileUpdate}>
+          <UpdateButton variant="navbar" />
+        </span>
         <ThemeToggle />
         <ConnectionPill />
 
@@ -86,6 +90,10 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
+  },
+  mobileUpdate: {
+    display: 'flex',
+    alignItems: 'center',
   },
   adminPill: {
     fontSize: '11px',
