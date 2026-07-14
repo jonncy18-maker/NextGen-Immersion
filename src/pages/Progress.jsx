@@ -20,7 +20,7 @@ export default function Progress() {
   const [dayDetailDate, setDayDetailDate] = useState(null)
 
   const pageStyle = {
-    backgroundColor: '#F5F0E8',
+    backgroundColor: 'var(--ngsi-cream)',
     minHeight: '100vh',
     padding: '1.5rem 1rem',
   }
@@ -34,13 +34,13 @@ export default function Progress() {
     fontFamily: 'Georgia, serif',
     fontSize: '1.75rem',
     fontWeight: '700',
-    color: '#162040',
+    color: 'var(--ngsi-navy)',
     marginBottom: '1.25rem',
     marginTop: 0,
   }
 
   const cardStyle = {
-    backgroundColor: '#fff',
+    backgroundColor: 'var(--ngsi-surface)',
     borderRadius: '12px',
     boxShadow: '0 1px 4px rgba(22,32,64,0.08)',
     marginBottom: '1rem',
@@ -66,14 +66,14 @@ export default function Progress() {
               style={{
                 width: '40px',
                 height: '40px',
-                border: '4px solid #ede7d9',
-                borderTop: '4px solid #162040',
+                border: '4px solid var(--ngsi-cream-dark)',
+                borderTop: '4px solid var(--ngsi-navy)',
                 borderRadius: '50%',
                 animation: 'spin 0.8s linear infinite',
               }}
             />
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            <p style={{ color: '#162040', fontSize: '0.95rem', margin: 0 }}>
+            <p style={{ color: 'var(--ngsi-navy)', fontSize: '0.95rem', margin: 0 }}>
               Loading your progress...
             </p>
           </div>
@@ -98,14 +98,14 @@ export default function Progress() {
               textAlign: 'center',
             }}
           >
-            <p style={{ color: '#162040', fontSize: '1rem', margin: 0 }}>
+            <p style={{ color: 'var(--ngsi-navy)', fontSize: '1rem', margin: 0 }}>
               Couldn&apos;t load your progress.
             </p>
             <button
               onClick={refetch}
               style={{
-                backgroundColor: '#162040',
-                color: '#F5F0E8',
+                backgroundColor: 'var(--ngsi-navy)',
+                color: 'var(--ngsi-cream)',
                 border: 'none',
                 borderRadius: '6px',
                 padding: '0.6rem 1.25rem',
@@ -142,7 +142,7 @@ export default function Progress() {
           <p
             style={{
               textAlign: 'center',
-              color: '#8a8f99',
+              color: 'var(--ngsi-text-muted)',
               fontSize: '0.9rem',
               marginTop: '0.5rem',
             }}
