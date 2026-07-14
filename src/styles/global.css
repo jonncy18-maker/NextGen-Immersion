@@ -82,6 +82,12 @@ a {
 @media (max-width: 639px) {
   .ngsi-hide-mobile { display: none !important; }
   .ngsi-main-content { padding-bottom: 64px; }
+  /* Tighten the top bar on phones so the right-hand cluster (refresh, theme,
+     status pill, admin pill, avatar, sign-out) doesn't clip off-screen. The
+     display name is hidden via .ngsi-hide-mobile above; these override the
+     inline padding/gap set in Navbar.jsx (hence !important). */
+  .ngsi-navbar { padding-left: 12px !important; padding-right: 12px !important; }
+  .ngsi-navbar-right { gap: 8px !important; }
 }
 
 /* Home dashboard (src/pages/Home.jsx) — the hero + "Today's Goal" pairing is

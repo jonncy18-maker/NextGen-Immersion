@@ -16,6 +16,32 @@ import { useState } from 'react'
 // Two visual modes via `variant`:
 //   "sidebar" — full-width row styled like the sidebar's nav items (desktop)
 //   "navbar"  — icon-only round button mirroring ThemeToggle (mobile)
+// Inline SVG so the icon renders identically on every platform. The bare
+// `↻` character we used first was nearly invisible on some Android system
+// fonts (it fell back to a plain circle), so users couldn't tell it was a
+// refresh control. This is the Feather "refresh-cw" glyph; it inherits the
+// button's text color via `currentColor`.
+function RefreshIcon({ size = 16 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={{ display: 'block' }}
+    >
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </svg>
+  )
+}
+
 export default function UpdateButton({ variant = 'navbar' }) {
   const [busy, setBusy] = useState(false)
 
@@ -67,7 +93,7 @@ export default function UpdateButton({ variant = 'navbar' }) {
         }}
       >
         <span style={styles.sidebarIcon} className={busy ? 'ngsi-spin' : undefined}>
-          ↻
+          <RefreshIcon size={16} />
         </span>
         {busy ? 'Refreshing…' : 'Refresh app'}
       </button>
@@ -83,8 +109,8 @@ export default function UpdateButton({ variant = 'navbar' }) {
       title="Refresh app"
       style={styles.navbarBtn}
     >
-      <span className={busy ? 'ngsi-spin' : undefined} style={{ lineHeight: 1 }}>
-        ↻
+      <span className={busy ? 'ngsi-spin' : undefined} style={{ lineHeight: 1, display: 'flex' }}>
+        <RefreshIcon size={16} />
       </span>
     </button>
   )
@@ -125,9 +151,10 @@ const styles = {
     transition: 'background 0.12s',
   },
   sidebarIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     width: 16,
-    textAlign: 'center',
-    fontSize: 14,
     flexShrink: 0,
   },
 }
