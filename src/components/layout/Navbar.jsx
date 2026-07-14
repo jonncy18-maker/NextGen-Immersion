@@ -17,13 +17,13 @@ export default function Navbar() {
   }
 
   return (
-    <nav style={styles.nav}>
+    <nav className="ngsi-navbar" style={styles.nav}>
       <div style={styles.brand}>
         <img src="/icons/icon-512.png" alt="" style={styles.brandIcon} />
         <span style={styles.wordmark}>NGS Immersion</span>
       </div>
 
-      <div style={styles.right}>
+      <div className="ngsi-navbar-right" style={styles.right}>
         <span className="ngsi-hide-desktop" style={styles.mobileUpdate}>
           <UpdateButton variant="navbar" />
         </span>
@@ -36,7 +36,9 @@ export default function Navbar() {
           {initial}
         </div>
 
-        <span style={styles.displayName}>{displayName}</span>
+        <span className="ngsi-hide-mobile" style={styles.displayName}>
+          {displayName}
+        </span>
 
         <button
           onClick={handleSignOut}
