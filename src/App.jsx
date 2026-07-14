@@ -54,6 +54,11 @@ const shellStyles = {
   body: {
     flex: 1,
     display: 'flex',
+    // Reserve space for the fixed 56px Navbar (Navbar.jsx uses position:fixed,
+    // so it's out of flow and would otherwise overlap the content). The
+    // Sidebar's own sticky top:56 and the Watch filter strip's top:56 line up
+    // with the bottom edge of the fixed bar.
+    marginTop: 56,
   },
 };
 
