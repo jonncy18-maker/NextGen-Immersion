@@ -208,7 +208,10 @@ export default function Watch() {
         </div>
       )}
 
-      <div style={styles.container}>
+      <div
+        className={selected ? 'ngsi-watch-split' : undefined}
+        style={styles.container}
+      >
         {selected && (
           <div ref={playerRef} style={styles.playerArea}>
             <IosPlaybackNotice />
@@ -264,7 +267,7 @@ export default function Watch() {
           </div>
         )}
 
-        <div style={styles.library}>
+        <div style={selected ? { ...styles.library, ...styles.libraryColumn } : styles.library}>
           {error ? (
             <p style={styles.hint}>{error}</p>
           ) : loading ? (
@@ -328,6 +331,10 @@ const styles = {
   playerArea: {
     marginBottom: 24,
     scrollMarginTop: 130, // navbar (56px) + sticky filter strip (~64px) + breathing room
+    // Left column when the two-column split is active (≥1024px, via
+    // .ngsi-watch-split). Ignored below 1024px where the parent is display:block.
+    flex: '1 1 auto',
+    minWidth: 0,
   },
   meta: {
     display: 'flex',
@@ -377,6 +384,16 @@ const styles = {
   },
   library: {
     marginTop: 8,
+  },
+  // Right column when a video is selected and the two-column split is active
+  // (≥1024px, via .ngsi-watch-split). flex-basis fixes the list to ~380px so
+  // VideoGrid's auto-fill columns collapse to a single vertical column of cards.
+  // Below 1024px the parent is display:block, so these flex props are ignored
+  // and the list renders full-width as the normal responsive grid.
+  libraryColumn: {
+    flex: '0 0 380px',
+    minWidth: 0,
+    marginTop: 0,
   },
 }
 

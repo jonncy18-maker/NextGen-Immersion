@@ -108,6 +108,10 @@ const styles = {
     flexDirection: 'column',
     paddingTop: 16,
     overflowY: 'auto',
+    position: 'sticky',
+    top: 56,
+    alignSelf: 'flex-start',
+    height: 'calc(100vh - 56px)',
   },
   section: {
     display: 'flex',

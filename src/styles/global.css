@@ -101,3 +101,20 @@ a {
   padding-bottom: 4px;
   scrollbar-width: thin;
 }
+
+/* Watch page (src/pages/Watch.jsx) — when a video is selected, the player and
+   the video list sit side by side on desktop (player left, list right). Below
+   1024px they stack vertically (player on top, list as the normal responsive
+   grid). Only applied to the container when a video is selected; with no
+   selection the list renders full-width as a plain grid. */
+.ngsi-watch-split {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .ngsi-watch-split {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+}
