@@ -14,13 +14,13 @@ export default function Login() {
   // Navigate only once auth state actually reflects the signed-in user. Doing
   // this here (instead of right after signIn resolves) avoids a race: signIn
   // sets the session, but useSession + /api/me haven't propagated yet, so an
-  // immediate navigate to /watch hit the guard with user still null and bounced
-  // back to /login — which is why the FIRST sign-in attempt failed and only the
-  // second (session already present) worked. This also redirects an already
-  // authenticated user away from /login.
+  // immediate navigate hit the guard with user still null and bounced back to
+  // /login — which is why the FIRST sign-in attempt failed and only the second
+  // (session already present) worked. This also redirects an already
+  // authenticated user away from /login. Land on Home ("/"), not Watch.
   useEffect(() => {
     if (!loading && user) {
-      navigate('/watch', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [user, loading, navigate]);
 
