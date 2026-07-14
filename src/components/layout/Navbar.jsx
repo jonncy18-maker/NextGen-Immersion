@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext.jsx'
 import ConnectionPill from './ConnectionPill.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
 import UpdateButton from './UpdateButton.jsx'
+import AvatarMenu from './AvatarMenu.jsx'
 
 export default function Navbar() {
   const { user, role, signOut } = useAuth()
@@ -32,22 +33,11 @@ export default function Navbar() {
 
         {role === 'admin' && <span style={styles.adminPill}>Admin</span>}
 
-        <div aria-hidden="true" style={styles.avatar}>
-          {initial}
-        </div>
-
         <span className="ngsi-hide-mobile" style={styles.displayName}>
           {displayName}
         </span>
 
-        <button
-          onClick={handleSignOut}
-          style={styles.signOutBtn}
-          onMouseEnter={(e) => (e.target.style.color = 'var(--ngsi-cream)')}
-          onMouseLeave={(e) => (e.target.style.color = '#8a8f99')}
-        >
-          Sign out
-        </button>
+        <AvatarMenu displayName={displayName} initial={initial} onSignOut={handleSignOut} />
       </div>
     </nav>
   )
@@ -112,20 +102,6 @@ const styles = {
     letterSpacing: '0.05em',
     textTransform: 'uppercase',
   },
-  avatar: {
-    width: '32px',
-    height: '32px',
-    borderRadius: '50%',
-    backgroundColor: 'var(--ngsi-navy-light)',
-    border: '1.5px solid var(--ngsi-gold)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: 'var(--ngsi-gold)',
-    fontWeight: '700',
-    fontSize: '14px',
-    flexShrink: 0,
-  },
   displayName: {
     color: 'var(--ngsi-cream)',
     fontSize: '13px',
@@ -133,16 +109,5 @@ const styles = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-  },
-  signOutBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#8a8f99',
-    fontSize: '12px',
-    cursor: 'pointer',
-    padding: '4px 0',
-    lineHeight: 1,
-    textDecoration: 'underline',
-    textUnderlineOffset: '2px',
   },
 }
