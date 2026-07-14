@@ -12,24 +12,14 @@ import EmptyState from '../components/video/EmptyState.jsx'
 import { useWatchSession } from '../hooks/useWatchSession.js'
 import { useProgress } from '../hooks/useProgress.js'
 import { useWatchLater } from '../hooks/useWatchLater.js'
+import { useVideoLibrary } from '../hooks/useVideoLibrary.js'
+import { useDailyGoal } from '../hooks/useDailyGoal.js'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 import ComprehensionPrompt from '../components/player/ComprehensionPrompt.jsx'
 import NextVideoSuggestions from '../components/player/NextVideoSuggestions.jsx'
 
-async function fetchVideos() {
-  const token = await getAuthToken()
-  const res = await fetch('/api/videos', {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) throw new Error('Failed to load videos')
-  const data = await res.json()
-  return data.videos
-}
-
 export default function Watch() {
-  const [videos, setVideos] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const { videos, setVideos, loading, error } = useVideoLibrary()
   const [selected, setSelected] = useState(null)
   const playerRef = useRef(null)
   const [filters, setFilters] = useState({
@@ -44,18 +34,14 @@ export default function Watch() {
   const levelInitialized = useRef(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const deepLinkHandled = useRef(false)
+  const topicDeepLinkHandled = useRef(false)
 
   const { data: progress, loading: progressLoading } = useProgress()
   const { isAdded, add: addToWatchLater, remove: removeFromWatchLater } = useWatchLater()
+  const { hoursToday, dailyTargetHours } = useDailyGoal(progress)
   const rawLevelId = progress ? getLevelForHours(progress.current_hours).id : null
   const scholarLevelId = rawLevelId
   const nextLevelId = scholarLevelId ? getNextLevel(scholarLevelId)?.id ?? null : null
-
-  // Daily target = total program hours ÷ program duration in days
-  const dailyTargetHours = progress?.target_hours && progress?.start_date && progress?.target_date
-    ? progress.target_hours / Math.max(1, (new Date(progress.target_date) - new Date(progress.start_date)) / 86400000)
-    : null
-  const hoursToday = progress?.hours_today ?? 0
 
   // Default level filter to scholar's current level on first load
   useEffect(() => {
@@ -65,12 +51,19 @@ export default function Watch() {
     }
   }, [scholarLevelId])
 
+  // Deep link from Home ("#/watch?topic=...") — pre-select a topic filter
+  // once, then strip the param from the URL (mirrors the videoId deep link
+  // below).
   useEffect(() => {
-    fetchVideos()
-      .then(vs => setVideos(vs))
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
-  }, [])
+    if (topicDeepLinkHandled.current) return
+    const qTopic = searchParams.get('topic')
+    if (!qTopic) return
+    topicDeepLinkHandled.current = true
+    setFilters(f => ({ ...f, topic: [qTopic] }))
+    const next = new URLSearchParams(searchParams)
+    next.delete('topic')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const visibleVideos = useMemo(() => {
     const searchLower = filters.search.toLowerCase()

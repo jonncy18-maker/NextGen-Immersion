@@ -4,6 +4,7 @@ import ErrorBoundary from './components/layout/ErrorBoundary.jsx';
 import Navbar from './components/layout/Navbar.jsx';
 import Sidebar from './components/layout/Sidebar.jsx';
 import BottomNav from './components/layout/BottomNav.jsx';
+import Home from './pages/Home.jsx';
 import Watch from './pages/Watch.jsx';
 import Progress from './pages/Progress.jsx';
 import Library from './pages/Library.jsx';
@@ -75,7 +76,9 @@ export default function App() {
             path="/"
             element={
               <RequireAuth>
-                <Navigate to="/watch" replace />
+                <AuthLayout>
+                  <Home />
+                </AuthLayout>
               </RequireAuth>
             }
           />

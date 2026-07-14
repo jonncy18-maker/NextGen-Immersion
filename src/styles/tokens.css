@@ -7,6 +7,12 @@
   --ngsi-cream: #f5f0e8;
   --ngsi-cream-dark: #ede7d9;
 
+  /* Surface / muted text — used by card-style panels (e.g. Home.jsx dashboard
+     cards) that sit visually ABOVE the page background, and by secondary/
+     de-emphasized text, respectively. */
+  --ngsi-surface: #ffffff;
+  --ngsi-text-muted: #8a8f99;
+
   /* Status — connection / save state */
   --ngsi-status-saved: #1d9e75; /* online, nothing pending — green */
   --ngsi-status-buffering: #c9a84c; /* online, queued writes — amber */
@@ -16,4 +22,79 @@
   --ngsi-cat-oet: #378add; /* OET / career topics — blue */
   --ngsi-cat-life: #1d9e75; /* daily life topics — green */
   --ngsi-cat-compelling: #8a8f99; /* compelling interest — muted gray */
+}
+
+/* Dark theme overrides — set via <html data-theme="dark">, flipped by the
+   Navbar theme toggle (src/components/layout/ThemeToggle.jsx) and applied
+   pre-paint by the inline script in app/layout.jsx.
+
+   IMPORTANT — these tokens are NOT symmetric mirror-images of the light
+   values. Each one keeps whatever role it actually plays across the app
+   (traced via grep across src/), not the role its name suggests:
+
+   - --ngsi-navy / -light / -deep are used as a BACKGROUND (brand chrome) far
+     more than as text: Navbar.jsx and BottomNav.jsx set
+     `background: var(--ngsi-navy)` for the dark nav bar/bottom bar, and
+     several admin buttons/active-states (AdminVideos, FilterBar,
+     FilterDropdowns, GoalEditor, VideoLibraryEditor, VideoAnalysis,
+     ExternalHoursButton) use it as a solid background. Those bars/buttons
+     must stay a dark navy in BOTH themes, so this family stays dark here —
+     just a touch lighter than the light-mode value so it also stays legible
+     on the rare occasions it's used as text (e.g. Sidebar.jsx section links,
+     which sit on --ngsi-cream-dark).
+   - --ngsi-cream / -dark are used as the PAGE/PANEL background in most
+     places (global.css body, Admin* pages, Watch/Library, Home.jsx), but the
+     SAME --ngsi-cream token is also used as TEXT painted directly on the
+     (permanently dark) navy chrome (Home.jsx hero title/subtitle,
+     Placeholder.jsx and ErrorBoundary.jsx headers, Navbar.jsx link
+     hover/display-name). A prior mid-dark-gray attempt (#5b6478) made that
+     text-on-navy pairing fail WCAG AA (~1.93:1 against --ngsi-navy). Since
+     --ngsi-navy stays dark by design (see above), the only fix is to raise
+     --ngsi-cream's lightness back toward its original near-white tone —
+     this pair dominates because it's a hard legibility requirement, whereas
+     the background role tolerates a lighter tone fine (it pairs with
+     --ngsi-navy BODY TEXT in global.css, which only gets MORE readable as
+     the page background lightens). --ngsi-cream-dark is left as-is: it's
+     now darker than --ngsi-cream, which reads correctly as a "recessed"
+     inset panel beneath the (now lighter) page level — the intended
+     opposite of --ngsi-surface's "elevated" relationship below.
+   - --ngsi-surface is a new token (see light block) for the small set of
+     panels that are brighter than the page background in light mode
+     (Home.jsx dashboard cards, currently `#fff`). It keeps that "elevated,
+     lighter-than-page" relationship here too, which also happens to be
+     required for contrast: --ngsi-text-muted and --ngsi-navy are both used
+     as TEXT on top of --ngsi-surface in Home.jsx (goal/stat/topic cards), so
+     the previous mid-dark surface value (#70798d) couldn't work with either
+     — even white text only reached ~4.37:1 on it. Lightening it toward
+     near-white fixes both text pairs at once (and keeps it visually
+     distinct from --ngsi-cream via a lighter tone + the existing
+     --ngsi-cream-dark border).
+   - --ngsi-text-muted (new) covers the secondary/caption gray Home.jsx used
+     as a literal `#8a8f99`. Since it is ONLY ever painted on the (now
+     near-white) --ngsi-surface in this codebase, it flips from a light gray
+     (meant for dark cards) to a dark gray (meant for light cards) so the
+     goal-card label / stat labels / section-empty / topic-count text stays
+     legible. */
+:root[data-theme='dark'] {
+  /* Brand — navy / gold / cream */
+  --ngsi-navy: #2b3860; /* stays dark — Navbar/BottomNav/admin-button backgrounds */
+  --ngsi-navy-light: #3c4c80; /* secondary chrome surface, one step lighter */
+  --ngsi-navy-deep: #10162c; /* deepest chrome tone (Home.jsx hero gradient) */
+  --ngsi-gold: #d9bc6a; /* kept close to source — reads well on dark already */
+  --ngsi-cream: #bcc2d0; /* page background AND text-on-navy (hero/header text) — lightened from #5b6478 so cream-on-navy clears WCAG AA (~1.93:1 -> ~6.26:1) */
+  --ngsi-cream-dark: #6b7488; /* recessed/standalone panel bg (Sidebar, VideoCard, etc.) — unchanged; now reads as a darker "sunken" panel beneath the lighter page */
+
+  /* Surface / muted text */
+  --ngsi-surface: #e8ebf0; /* elevated card bg (Home.jsx) — lightened from #70798d so text-muted/navy painted on it clear WCAG AA */
+  --ngsi-text-muted: #4a5266; /* darkened from #b4b8c2 — text-muted is only ever painted on --ngsi-surface, which is now near-white, so it needs to be a dark gray, not a light one (text-muted-on-surface: ~2.2:1 -> ~6.54:1) */
+
+  /* Status — connection / save state (kept legible on dark, same hues) */
+  --ngsi-status-saved: #34c98e;
+  --ngsi-status-buffering: #d9bc6a;
+  --ngsi-status-offline: #e2685f;
+
+  /* Topic category tag colors — brightened slightly for contrast on dark */
+  --ngsi-cat-oet: #5aa6ea;
+  --ngsi-cat-life: #34c98e;
+  --ngsi-cat-compelling: #a3a8b3;
 }

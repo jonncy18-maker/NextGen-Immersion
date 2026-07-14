@@ -2,18 +2,20 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 
 const scholarTabs = [
+  { to: '/', icon: '🏠', label: 'Home', end: true },
   { to: '/watch', icon: '▶', label: 'Watch' },
   { to: '/progress', icon: '◎', label: 'Progress' },
   { to: '/library', icon: '🔖', label: 'Library' },
 ]
 
 const adminTabs = [
+  { to: '/', icon: '🏠', label: 'Home', end: true },
   { to: '/watch', icon: '▶', label: 'Watch' },
   { to: '/progress', icon: '◎', label: 'Progress' },
   { to: '/library', icon: '🔖', label: 'Library' },
-  { to: '/admin/progress', icon: '⊞', label: 'Dashboard' },
-  { to: '/admin/videos', icon: '▤', label: 'Videos' },
-  { to: '/admin/goals', icon: '◈', label: 'Goals' },
+  { to: '/admin/progress', icon: '📊', label: 'Dashboard' },
+  { to: '/admin/videos', icon: '🎬', label: 'Videos' },
+  { to: '/admin/goals', icon: '🎯', label: 'Goals' },
 ]
 
 export default function BottomNav() {
@@ -22,10 +24,11 @@ export default function BottomNav() {
 
   return (
     <nav className="ngsi-hide-desktop" style={styles.nav}>
-      {tabs.map(({ to, icon, label }) => (
+      {tabs.map(({ to, icon, label, end }) => (
         <NavLink
           key={to}
           to={to}
+          end={end}
           style={({ isActive }) => ({
             flex: 1,
             display: 'flex',

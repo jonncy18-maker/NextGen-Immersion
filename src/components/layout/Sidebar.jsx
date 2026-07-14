@@ -34,6 +34,7 @@ export default function Sidebar() {
     <aside className="ngsi-hide-mobile" style={styles.sidebar}>
       <div style={styles.section}>
         <span style={styles.sectionLabel}>Scholar</span>
+        <SidebarLink to="/" end icon="🏠">Home</SidebarLink>
         <SidebarLink to="/watch" icon="▶">Watch</SidebarLink>
         <SidebarLink to="/progress" icon="◎">Progress</SidebarLink>
         <SidebarLink to="/library" icon="🔖">Library</SidebarLink>
@@ -55,10 +56,11 @@ export default function Sidebar() {
   )
 }
 
-function SidebarLink({ to, icon, children, badge }) {
+function SidebarLink({ to, icon, children, badge, end }) {
   return (
     <NavLink
       to={to}
+      end={end}
       style={({ isActive }) => ({
         display: 'flex',
         alignItems: 'center',

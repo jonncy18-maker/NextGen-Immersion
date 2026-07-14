@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import ConnectionPill from './ConnectionPill.jsx'
+import ThemeToggle from './ThemeToggle.jsx'
 
 export default function Navbar() {
   const { user, role, signOut } = useAuth()
@@ -16,9 +17,13 @@ export default function Navbar() {
 
   return (
     <nav style={styles.nav}>
-      <span style={styles.wordmark}>NGS Immersion</span>
+      <div style={styles.brand}>
+        <img src="/icons/icon-512.png" alt="" style={styles.brandIcon} />
+        <span style={styles.wordmark}>NGS Immersion</span>
+      </div>
 
       <div style={styles.right}>
+        <ThemeToggle />
         <ConnectionPill />
 
         {role === 'admin' && <span style={styles.adminPill}>Admin</span>}
@@ -56,6 +61,18 @@ const styles = {
     padding: '0 20px',
     boxSizing: 'border-box',
     boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+  },
+  brand: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  brandIcon: {
+    width: '30px',
+    height: '30px',
+    borderRadius: '7px',
+    display: 'block',
+    flexShrink: 0,
   },
   wordmark: {
     fontFamily: 'Georgia, serif',
