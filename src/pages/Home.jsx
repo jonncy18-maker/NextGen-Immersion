@@ -6,7 +6,7 @@ import { useDailyGoal } from '../hooks/useDailyGoal.js'
 import { useStreak } from '../hooks/useStreak.js'
 import { useVideoLibrary } from '../hooks/useVideoLibrary.js'
 import VideoCard from '../components/video/VideoCard.jsx'
-import { getLevelForHours } from '../utils/levels.js'
+import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 import { TOPIC_CATEGORIES, ALL_TOPICS } from '../utils/topics.js'
 
 function getTimeOfDayGreeting(date = new Date()) {
@@ -32,9 +32,34 @@ export default function Home() {
 
   const recommended = useMemo(() => {
     const unwatched = videos.filter(v => !v.watched)
-    const atLevel = scholarLevelId ? unwatched.filter(v => v.level === scholarLevelId) : unwatched
-    const pool = atLevel.length > 0 ? atLevel : unwatched
-    return pool.slice(0, 12)
+    if (unwatched.length === 0) return []
+
+    // Infer topic affinity from what the scholar has actually watched — their
+    // revealed interests. The primary topic counts double vs. the secondary.
+    const affinity = {}
+    for (const v of videos) {
+      if (!v.watched) continue
+      if (v.topic_primary) affinity[v.topic_primary] = (affinity[v.topic_primary] ?? 0) + 2
+      if (v.topic_secondary) affinity[v.topic_secondary] = (affinity[v.topic_secondary] ?? 0) + 1
+    }
+
+    const nextLevelId = scholarLevelId ? getNextLevel(scholarLevelId)?.id ?? null : null
+    // Level tier: current level first, then the next level up, then the rest —
+    // keeps the row from ever going sparse (soft weighting) while staying
+    // level-aware and blending in next-level videos.
+    const levelTier = v => (v.level === scholarLevelId ? 0 : v.level === nextLevelId ? 1 : 2)
+    const topicScore = v => (affinity[v.topic_primary] ?? 0) + (affinity[v.topic_secondary] ?? 0)
+
+    return unwatched
+      .map((v, i) => ({ v, i, tier: levelTier(v), topic: topicScore(v) }))
+      .sort(
+        (a, b) =>
+          a.tier - b.tier || // current level, then next level, then the rest
+          b.topic - a.topic || // within a tier, favor the scholar's watched-topic affinity
+          a.i - b.i, // stable tiebreak: preserve library order (newest-first)
+      )
+      .slice(0, 12)
+      .map(x => x.v)
   }, [videos, scholarLevelId])
 
   const recentlyAdded = useMemo(() => {
