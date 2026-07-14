@@ -12,24 +12,14 @@ import EmptyState from '../components/video/EmptyState.jsx'
 import { useWatchSession } from '../hooks/useWatchSession.js'
 import { useProgress } from '../hooks/useProgress.js'
 import { useWatchLater } from '../hooks/useWatchLater.js'
+import { useVideoLibrary } from '../hooks/useVideoLibrary.js'
+import { useDailyGoal } from '../hooks/useDailyGoal.js'
 import { getLevelForHours, getNextLevel } from '../utils/levels.js'
 import ComprehensionPrompt from '../components/player/ComprehensionPrompt.jsx'
 import NextVideoSuggestions from '../components/player/NextVideoSuggestions.jsx'
 
-async function fetchVideos() {
-  const token = await getAuthToken()
-  const res = await fetch('/api/videos', {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) throw new Error('Failed to load videos')
-  const data = await res.json()
-  return data.videos
-}
-
 export default function Watch() {
-  const [videos, setVideos] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const { videos, setVideos, loading, error } = useVideoLibrary()
   const [selected, setSelected] = useState(null)
   const playerRef = useRef(null)
   const [filters, setFilters] = useState({
@@ -44,18 +34,14 @@ export default function Watch() {
   const levelInitialized = useRef(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const deepLinkHandled = useRef(false)
+  const topicDeepLinkHandled = useRef(false)
 
   const { data: progress, loading: progressLoading } = useProgress()
   const { isAdded, add: addToWatchLater, remove: removeFromWatchLater } = useWatchLater()
+  const { hoursToday, dailyTargetHours } = useDailyGoal(progress)
   const rawLevelId = progress ? getLevelForHours(progress.current_hours).id : null
   const scholarLevelId = rawLevelId
   const nextLevelId = scholarLevelId ? getNextLevel(scholarLevelId)?.id ?? null : null
-
-  // Daily target = total program hours ÷ program duration in days
-  const dailyTargetHours = progress?.target_hours && progress?.start_date && progress?.target_date
-    ? progress.target_hours / Math.max(1, (new Date(progress.target_date) - new Date(progress.start_date)) / 86400000)
-    : null
-  const hoursToday = progress?.hours_today ?? 0
 
   // Default level filter to scholar's current level on first load
   useEffect(() => {
@@ -65,12 +51,19 @@ export default function Watch() {
     }
   }, [scholarLevelId])
 
+  // Deep link from Home ("#/watch?topic=...") — pre-select a topic filter
+  // once, then strip the param from the URL (mirrors the videoId deep link
+  // below).
   useEffect(() => {
-    fetchVideos()
-      .then(vs => setVideos(vs))
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
-  }, [])
+    if (topicDeepLinkHandled.current) return
+    const qTopic = searchParams.get('topic')
+    if (!qTopic) return
+    topicDeepLinkHandled.current = true
+    setFilters(f => ({ ...f, topic: [qTopic] }))
+    const next = new URLSearchParams(searchParams)
+    next.delete('topic')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const visibleVideos = useMemo(() => {
     const searchLower = filters.search.toLowerCase()
@@ -215,7 +208,10 @@ export default function Watch() {
         </div>
       )}
 
-      <div style={styles.container}>
+      <div
+        className={selected ? 'ngsi-watch-split' : undefined}
+        style={styles.container}
+      >
         {selected && (
           <div ref={playerRef} style={styles.playerArea}>
             <IosPlaybackNotice />
@@ -271,7 +267,7 @@ export default function Watch() {
           </div>
         )}
 
-        <div style={styles.library}>
+        <div style={selected ? { ...styles.library, ...styles.libraryColumn } : styles.library}>
           {error ? (
             <p style={styles.hint}>{error}</p>
           ) : loading ? (
@@ -335,6 +331,10 @@ const styles = {
   playerArea: {
     marginBottom: 24,
     scrollMarginTop: 130, // navbar (56px) + sticky filter strip (~64px) + breathing room
+    // Left column when the two-column split is active (≥1024px, via
+    // .ngsi-watch-split). Ignored below 1024px where the parent is display:block.
+    flex: '1 1 auto',
+    minWidth: 0,
   },
   meta: {
     display: 'flex',
@@ -384,6 +384,16 @@ const styles = {
   },
   library: {
     marginTop: 8,
+  },
+  // Right column when a video is selected and the two-column split is active
+  // (≥1024px, via .ngsi-watch-split). flex-basis fixes the list to ~380px so
+  // VideoGrid's auto-fill columns collapse to a single vertical column of cards.
+  // Below 1024px the parent is display:block, so these flex props are ignored
+  // and the list renders full-width as the normal responsive grid.
+  libraryColumn: {
+    flex: '0 0 380px',
+    minWidth: 0,
+    marginTop: 0,
   },
 }
 

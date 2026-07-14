@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   const sql = getDb()
 
-  const [rows, videoRows, externalRows, libraryTotals, externalTotals, categoryTargets, todayRows] =
+  const [rows, videoRows, externalRows, libraryTotals, externalTotals, categoryTargets, todayRows, monthRows, watchedRows] =
     await Promise.all([
       sql`
         SELECT
@@ -66,9 +66,41 @@ export default async function handler(req, res) {
           AND (started_at AT TIME ZONE 'Asia/Manila')
               >= date_trunc('day', now() AT TIME ZONE 'Asia/Manila')
       `,
+      // Month-to-date hours (Manila timezone) — matches the video+external
+      // combined semantics of current_hours/hours_this_week (see user_total_hours).
+      sql`
+        SELECT ROUND(SUM(seconds)::numeric / 3600, 1) AS hours_this_month
+        FROM (
+          SELECT seconds_watched AS seconds, started_at AS session_ts
+          FROM watch_sessions
+          WHERE user_id = ${authUser.id}
+          UNION ALL
+          SELECT duration_seconds AS seconds, (session_date::timestamptz) AS session_ts
+          FROM external_sessions
+          WHERE user_id = ${authUser.id}
+        ) all_sessions
+        WHERE (session_ts AT TIME ZONE 'Asia/Manila')
+              >= date_trunc('month', now() AT TIME ZONE 'Asia/Manila')
+      `,
+      // Distinct videos watched (manual mark wins over auto-detected completion,
+      // same COALESCE semantics as api/videos.js).
+      sql`
+        SELECT COUNT(*) AS videos_watched
+        FROM (
+          SELECT v.id
+          FROM videos v
+          LEFT JOIN user_video_status uvs
+            ON uvs.video_id = v.id AND uvs.user_id = ${authUser.id}
+          LEFT JOIN video_marks vm
+            ON vm.video_id = v.id AND vm.user_id = ${authUser.id}
+          WHERE COALESCE(vm.watched, uvs.completed, false) = true
+        ) watched_videos
+      `,
     ])
 
   const hoursToday = Number(todayRows[0]?.hours_today ?? 0)
+  const hoursThisMonth = Number(monthRows[0]?.hours_this_month ?? 0)
+  const videosWatched = Number(watchedRows[0]?.videos_watched ?? 0)
   const videoHoursThisWeek = Number(videoRows[0]?.video_hours_this_week ?? 0)
   const externalHours = Number(externalRows[0]?.external_hours_this_week ?? 0)
 
@@ -106,6 +138,8 @@ export default async function handler(req, res) {
       target_chatgpt_hours: targetChatgptHours,
       target_mentor_hours: targetMentorHours,
       hours_today: hoursToday,
+      hours_this_month: hoursThisMonth,
+      videos_watched: videosWatched,
     })
   }
 
@@ -130,5 +164,7 @@ export default async function handler(req, res) {
     target_chatgpt_hours: targetChatgptHours,
     target_mentor_hours: targetMentorHours,
     hours_today: hoursToday,
+    hours_this_month: hoursThisMonth,
+    videos_watched: videosWatched,
   })
 }

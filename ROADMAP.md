@@ -882,6 +882,62 @@ Deferred: push notifications; public production listing (would trigger the
 
 ---
 
+## Phase 33 — Home Dashboard Redesign + Dark Mode
+
+**Loop goal:** "Build a new Home dashboard page matching ChatGPT-mocked-up
+designs (hero, Today's Goal ring, Recommended for You, Continue Your Journey
+stats, Explore by Topic, Recently Added), plus a light/dark theme system used
+app-wide, without touching the existing Watch/Progress/Library/Admin pages'
+layout or the fabricated crest logo the mockup invented."
+
+**Status: DONE** (Jul 2026 — via agentic loop, 3 build/audit iterations, final
+audit PASS). This was scoped down from the user's initial ChatGPT mockup,
+which implied a bigger IA change (Today's Immersion, Journey, Milestones,
+Notes nav items) — those are explicitly deferred, not built.
+
+Deliverables:
+- `src/pages/Home.jsx` (new) — the actual `/` route now, replacing the old
+  `<Navigate to="/watch">`. `/watch` itself is unchanged (still the
+  player + curated browse page) but now shares two extracted hooks with Home:
+  `src/hooks/useVideoLibrary.js` (video-list fetch, previously inline in
+  Watch.jsx) and `src/hooks/useDailyGoal.js` (today's-minutes/daily-target
+  calc, also previously inline in Watch.jsx).
+- `pages/api/streak.js` (new) — JWT-scoped current + longest watch-streak,
+  computed from `watch_sessions.started_at` via gaps-and-islands SQL in
+  Asia/Manila (no schema change needed — derived from existing timestamps).
+  `src/hooks/useStreak.js` calls it.
+- `pages/api/progress.js` — extended to also return month-to-date hours and
+  distinct videos-watched count (both `Number()`-coerced per the NUMERIC
+  rule).
+- `pages/api/videos.js` — added `created_at` to the select (needed for the
+  "Recently Added" row); purely additive, doesn't affect other consumers.
+- Sidebar/BottomNav — added "Home" as the first nav item; incidentally fixed
+  a pre-existing icon mismatch (BottomNav's admin icons now match Sidebar's:
+  🎬/📊/🎯).
+- Navbar — added the existing `public/icons/icon-512.png` (globe + "Talk"
+  bubble mark) at small size next to the text wordmark. **Deliberately does
+  not use the shield-and-crown crest ChatGPT invented in the mockup** — the
+  user caught this during design review and the real app icon was used
+  instead.
+- Dark mode built from scratch (there was no prior mechanism): `data-theme`
+  attribute + pre-paint inline script in `app/layout.jsx`, `ThemeToggle.jsx`
+  in the Navbar, full dark-mode token block in `src/styles/tokens.css` (see
+  ARCHITECTURE.md's Design System section for the token table and the
+  contrast tuning notes — two rounds of audit found and fixed real WCAG
+  contrast regressions in the dark palette before this shipped).
+
+Explicitly deferred: Today's Immersion / Journey / Milestones / Notes pages
+and nav items; restyling Progress/Browse/Admin*/Login; photographic hero
+art (no such asset exists — used a CSS gradient/token-based treatment
+instead).
+
+Known follow-up (pre-existing, not introduced by this phase, not fixed):
+`--ngsi-gold` vs `--ngsi-cream-dark` is ~2.54:1 in dark mode (Sidebar
+active-link border stripe, Placeholder card border) — below the 3:1 UI
+minimum. Worth a small follow-up pass.
+
+---
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.

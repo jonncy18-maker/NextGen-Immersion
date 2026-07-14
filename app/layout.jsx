@@ -20,9 +20,31 @@ export const viewport = {
   themeColor: '#162040',
 }
 
+// Sets data-theme on <html> before paint, so the very first frame already
+// matches the user's saved preference (or OS preference) instead of flashing
+// light and then re-rendering dark. Runs as a blocking inline script in
+// <head> — the idiomatic App Router pattern for this since RootLayout itself
+// renders on the server and has no access to localStorage/matchMedia.
+const themeInitScript = `
+(function () {
+  try {
+    var stored = window.localStorage.getItem('ngsi-theme');
+    var theme = stored === 'dark' || stored === 'light'
+      ? stored
+      : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+`
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>
         {children}
         <ServiceWorkerRegistration />

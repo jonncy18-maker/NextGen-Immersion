@@ -191,7 +191,8 @@ All secret-key operations. The browser calls these; these call the third-party A
 | `pages/api/youtube-import.js` | POST | Batch import playlist/channel + tag all (`maxDuration: 30`) | YOUTUBE_API_KEY + ANTHROPIC_API_KEY |
 | `pages/api/add-video.js` | POST | Admin: save one searched video with pre-computed tags (`ON CONFLICT DO NOTHING`) | NEON_DATABASE_URL |
 | `pages/api/flush-session.js` | POST | Write watch_session row (sendBeacon target) | NEON_DATABASE_URL |
-| `pages/api/progress.js` | GET | Scholar's own cumulative hours + pace | NEON_DATABASE_URL |
+| `pages/api/progress.js` | GET | Scholar's own cumulative hours + pace + month-to-date hours + videos-watched count (all NUMERIC columns coerced with `Number()`) | NEON_DATABASE_URL |
+| `pages/api/streak.js` | GET | Current + longest consecutive-day watch streak, computed from `watch_sessions.started_at` (distinct Asia/Manila calendar days, gaps-and-islands SQL), JWT-scoped | NEON_DATABASE_URL |
 | `pages/api/videos.js` | GET | Library list + per-video watched state (JWT-scoped) | NEON_DATABASE_URL |
 | `pages/api/mark-video.js` | POST | Manual watched/unwatched toggle | NEON_DATABASE_URL |
 | `pages/api/me.js` | GET | Current user role/profile (JWT `sub` → public.users) | NEON_DATABASE_URL |
@@ -311,7 +312,7 @@ advanced       → B2–C1
 Client-side `HashRouter` (React Router v6) running inside the Next.js shell (`app/page.jsx`, `ssr:false`). `next.config.js` rewrites non-API paths to `/` so deep links / hard refreshes serve the SPA shell, then HashRouter resolves the hash. Next owns `/api/*` (Pages Router functions) and `/api/auth/*` (App Router auth handler); those are excluded from the SPA rewrite.
 
 ```
-#/               → Login (unauth) or redirect to #/watch
+#/               → Home dashboard (goal ring, recommended, journey stats, topics)
 #/watch          → Watch page — player + curated browse
 #/progress       → Progress — hours counter + milestones
 #/browse         → Full browse + YouTube search
@@ -321,25 +322,35 @@ Client-side `HashRouter` (React Router v6) running inside the Next.js shell (`ap
 #/admin/goals    → Program goal + per-scholar start dates
 ```
 
+`/` previously redirected to `/watch`; as of the Jul 2026 Home redesign it renders `src/pages/Home.jsx` directly. `/watch` is unchanged — still the player + curated browse experience, and now sources its video list and daily-goal calculation from shared hooks (`useVideoLibrary`, `useDailyGoal`) also used by Home.
+
 ---
 
 ## Design System
 
-**Color tokens (--ngsi-* prefix):**
+**Color tokens (--ngsi-* prefix)** — each has a light (`:root`) and dark (`:root[data-theme="dark"]`) value in `src/styles/tokens.css`:
 ```css
---ngsi-navy:        #162040
---ngsi-navy-light:  #1e2d52
---ngsi-navy-deep:   #0e1628
---ngsi-gold:        #C9A84C
---ngsi-cream:       #F5F0E8
---ngsi-cream-dark:  #ede7d9
---ngsi-cat-oet:     #378ADD
---ngsi-cat-life:    #1D9E75
+--ngsi-navy:         #162040   /* dark mode: stays dark (#2b3860) — used as chrome background */
+--ngsi-navy-light:   #1e2d52   /* dark mode: #3c4c80 */
+--ngsi-navy-deep:    #0e1628   /* dark mode: #10162c */
+--ngsi-gold:         #C9A84C   /* dark mode: unchanged (#d9bc6a) — shared across navy-chrome text/border uses */
+--ngsi-cream:        #F5F0E8   /* dark mode: lightened-but-muted (#bcc2d0) — serves both as page bg and as text-on-navy */
+--ngsi-cream-dark:   #ede7d9   /* dark mode: #6b7488 */
+--ngsi-surface:      #ffffff   /* new — elevated card backgrounds; dark mode: #e8ebf0 */
+--ngsi-text-muted:   #8a8f99   /* new — secondary/caption text; dark mode: #4a5266 */
+--ngsi-cat-oet:      #378ADD
+--ngsi-cat-life:     #1D9E75
 ```
+
+**Dark mode:** `data-theme="light"|"dark"` attribute on `<html>`, set by a pre-paint inline script in `app/layout.jsx` (reads `localStorage['ngsi-theme']`, falls back to `prefers-color-scheme`) to avoid flash-of-wrong-theme. Toggled via `ThemeToggle.jsx` in the Navbar, persisted to `localStorage`. All components must reference `var(--ngsi-*)` tokens, never hardcoded hex, or the toggle won't work for them.
+
+**Contrast note:** `--ngsi-navy` and `--ngsi-cream` are dual-purpose tokens (both background and text color depending on context) — their dark-mode values were tuned to satisfy WCAG AA (≥4.5:1) for the text-on-navy pairing (Navbar display name, Home hero) while `--ngsi-navy` itself stays dark enough to still read as chrome. `--ngsi-gold`'s dark-mode value is unchanged from light mode because it's shared across several navy-chrome text/border uses that already clear ~4.5–6:1 there — do not use `--ngsi-gold` as a stroke/accent directly on `--ngsi-surface` or other light backgrounds in dark mode (only ~1.55:1); use `--ngsi-navy` instead for that role (see Home.jsx's goal-ring stroke). Known pre-existing gap (not introduced by the Home redesign, not yet fixed): `--ngsi-gold` on `--ngsi-cream-dark` is ~2.54:1 in dark mode (Sidebar active-link border, Placeholder card border) — worth a follow-up pass.
 
 **Typography:** Serif (Georgia) for numbers + italic accents. Sans for UI. Matches NGS Scholars site.
 
 **Responsive:** mobile-first base; 640px tablet; 1024px desktop sidebar; 1280px widescreen max-width.
+
+**Brand mark:** `public/icons/icon-512.png` (globe + "Talk" speech-bubble mark, navy background baked in) is the only brand image asset — used at small size (~30px) in `Navbar.jsx` next to the "NGS Immersion" text wordmark. There is no separate crest/shield logo.
 
 ---
 

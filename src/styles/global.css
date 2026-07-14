@@ -72,3 +72,49 @@ a {
   .ngsi-hide-mobile { display: none !important; }
   .ngsi-main-content { padding-bottom: 64px; }
 }
+
+/* Home dashboard (src/pages/Home.jsx) — the hero + "Today's Goal" pairing is
+   the one section that needs a real breakpoint (unlike the auto-fit grids
+   used elsewhere on the page, which are already responsive without media
+   queries). Single column on mobile/tablet; hero takes the wide column once
+   there's room for the goal ring beside it. */
+.ngsi-home-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .ngsi-home-hero-grid {
+    grid-template-columns: 2fr 1fr;
+    align-items: stretch;
+  }
+}
+
+/* Horizontal-scroll video rows ("Recommended for You", "Recently Added") —
+   Netflix-style scroller at every breakpoint; scrollbar hidden for a cleaner
+   look, scroll is still fully usable via touch/trackpad/keyboard. */
+.ngsi-home-scroll-row {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+/* Watch page (src/pages/Watch.jsx) — when a video is selected, the player and
+   the video list sit side by side on desktop (player left, list right). Below
+   1024px they stack vertically (player on top, list as the normal responsive
+   grid). Only applied to the container when a video is selected; with no
+   selection the list renders full-width as a plain grid. */
+.ngsi-watch-split {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .ngsi-watch-split {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+}
