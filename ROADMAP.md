@@ -4,6 +4,10 @@
 
 ---
 
+## Next Up
+
+Ship Immersion to the Play Store via the **Internal Testing** track (Phase 32) — Immersion is the pilot for the cross-repo NGS native rollout. The PWA foundation and the TWA package (`com.nextgenscholars.immersion`, both signing fingerprints in `assetlinks.json`) are done; the two open items are device/console-side: verify the session cookie persists inside the installed TWA on a real Android device (the #1 risk), then upload the `.aab` to Play Console Internal Testing with the scholar email allowlist.
+
 ## Build Order
 
 Features sequenced in dependency order. Each is a separate agentic loop goal run in Claude Code. Do not start a phase until the previous passes audit.
