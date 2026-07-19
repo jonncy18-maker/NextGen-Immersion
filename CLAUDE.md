@@ -6,6 +6,16 @@ Orchestrator: https://raw.githubusercontent.com/jonncy18-maker/Agentic-Loop/main
 At the start of every session, read the full protocol from the URL above before doing anything else.
 Every change that touches 3+ files, creates a new component, touches the data layer, or has user-visible behavior MUST go through the agentic loop. One-liners and typo fixes can run direct.
 
+## Personal context
+John maintains a dated personal-context doc (background, constraints, review
+priorities as the builder) in this Google Drive folder:
+https://drive.google.com/drive/folders/1cjNFhY6ZnN5xB4PSDhz7FA24KGl92NTy — titles are
+date-stamped (e.g. `Personal_Context_YYYY-MM-DD.md`). At session start, or whenever
+asked to review this repo "against what you know about me," use the Google Drive
+tools to find the **most recently dated** file in that folder (don't assume a fixed
+filename — a newer one may have been added) and weigh suggestions against it, not
+just generic best practice.
+
 ---
 
 ## What This Project Is
