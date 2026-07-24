@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback } from 'react'
-import { getAuthToken } from '../../lib/authToken.js'
-import { getTopicColor, TOPIC_CATEGORIES } from '../../utils/topics.js'
-import { LEVELS, getLevelForHours } from '../../utils/levels.js'
-import { useScholars } from '../../hooks/useScholars.js'
+import { useState, useRef, useCallback } from 'react';
+import { getAuthToken } from '../../lib/authToken.js';
+import { getTopicColor, TOPIC_CATEGORIES } from '../../utils/topics.js';
+import { LEVELS, getLevelForHours } from '../../utils/levels.js';
+import { useScholars } from '../../hooks/useScholars.js';
 
-const LEVEL_LABELS = Object.fromEntries(LEVELS.map((l) => [l.id, l.label]))
+const LEVEL_LABELS = Object.fromEntries(LEVELS.map((l) => [l.id, l.label]));
 const LEVEL_COLORS = {
   a1: '#5B8DB8',
   a2: '#4a9fc4',
@@ -12,7 +12,7 @@ const LEVEL_COLORS = {
   b2: '#C9A84C',
   c1: '#C0524A',
   c2: '#8B3A8B',
-}
+};
 
 // CEFR code injected into topic queries when a scholar is selected.
 const CEFR_PREFIX = {
@@ -22,7 +22,7 @@ const CEFR_PREFIX = {
   b2: 'B2',
   c1: 'C1',
   c2: 'C2',
-}
+};
 
 const LEVEL_QUERY_CHIPS = {
   a1: [
@@ -67,7 +67,7 @@ const LEVEL_QUERY_CHIPS = {
     'English debate discussion',
     'native speaker English',
   ],
-}
+};
 
 // YouTube-optimised keywords per topic tag — ESL/practice-content mode.
 const TOPIC_QUERY_KEYWORDS = {
@@ -81,7 +81,7 @@ const TOPIC_QUERY_KEYWORDS = {
   'Culture & Entertainment': 'culture entertainment',
   'Sports & Fitness': 'sports fitness',
   'News & Events': 'news current events',
-}
+};
 
 // Same topics, but phrased to surface content made FOR native audiences
 // (vlogs, storytime, podcasts) rather than "learn English" teaching channels.
@@ -98,7 +98,7 @@ const NATIVE_TOPIC_KEYWORDS = {
   'Culture & Entertainment': 'reaction video',
   'Sports & Fitness': 'workout vlog',
   'News & Events': 'news commentary',
-}
+};
 
 const NATIVE_CONTENT_TYPES = [
   { value: 'vlog', label: 'Vlog' },
@@ -106,59 +106,68 @@ const NATIVE_CONTENT_TYPES = [
   { value: 'podcast interview', label: 'Podcast / Interview' },
   { value: 'documentary', label: 'Documentary' },
   { value: 'explains', label: 'Explainer' },
-]
+];
 
 function buildTopicQuery(topic, level, mode = 'practice') {
   if (mode === 'native') {
-    const keywords = NATIVE_TOPIC_KEYWORDS[topic] || topic.toLowerCase()
-    return keywords
+    const keywords = NATIVE_TOPIC_KEYWORDS[topic] || topic.toLowerCase();
+    return keywords;
   }
-  const keywords = TOPIC_QUERY_KEYWORDS[topic] || topic.toLowerCase()
-  const prefix = level ? CEFR_PREFIX[level.id] + ' ' : ''
-  return `${prefix}English ${keywords} listening`
+  const keywords = TOPIC_QUERY_KEYWORDS[topic] || topic.toLowerCase();
+  const prefix = level ? CEFR_PREFIX[level.id] + ' ' : '';
+  return `${prefix}English ${keywords} listening`;
 }
 
 function useDebounce(fn, delay) {
-  const timer = useRef(null)
+  const timer = useRef(null);
   return useCallback(
     (...args) => {
-      clearTimeout(timer.current)
-      timer.current = setTimeout(() => fn(...args), delay)
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => fn(...args), delay);
     },
-    [fn, delay],
-  )
+    [fn, delay]
+  );
 }
 
 async function searchYouTube(q) {
-  const token = await getAuthToken()
+  const token = await getAuthToken();
   // relevanceLanguage=en biases YouTube's ranking toward English-language
   // content WITHOUT adding an "English" keyword to the query text itself —
   // that's the mechanism that keeps native-mode search language-constrained
   // without reintroducing the "learn English" bias the mode exists to avoid.
-  const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(q)}&maxResults=20&language=en`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (res.status === 429) throw new Error('quota')
-  if (!res.ok) throw new Error('unavailable')
-  return res.json()
+  const res = await fetch(
+    `/api/youtube-search?q=${encodeURIComponent(q)}&maxResults=20&language=en`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  if (res.status === 429) throw new Error('quota');
+  if (!res.ok) throw new Error('unavailable');
+  return res.json();
 }
 
 async function tagVideo(title, description) {
-  const token = await getAuthToken()
+  const token = await getAuthToken();
   const res = await fetch('/api/tag-video', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ title, description }),
-  })
-  if (!res.ok) throw new Error('tag failed')
-  return res.json()
+  });
+  if (!res.ok) throw new Error('tag failed');
+  return res.json();
 }
 
 async function addVideo(video, tags) {
-  const token = await getAuthToken()
+  const token = await getAuthToken();
   const res = await fetch('/api/add-video', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({
       youtubeId: video.youtubeId,
       title: video.title,
@@ -171,23 +180,23 @@ async function addVideo(video, tags) {
       topicPrimary: tags.topic_primary,
       topicSecondary: tags.topic_secondary,
     }),
-  })
-  if (!res.ok) throw new Error('save failed')
-  return res.json()
+  });
+  if (!res.ok) throw new Error('save failed');
+  return res.json();
 }
 
-function ScholarContext({ onChipClick, mode }) {
-  const { data: scholars } = useScholars()
-  const [selectedId, setSelectedId] = useState('')
+function ScholarContext({ scholars, selectedId, onSelect, onChipClick, mode }) {
+  if (!scholars || scholars.length === 0) return null;
 
-  if (!scholars || scholars.length === 0) return null
-
-  const scholar = scholars.find((s) => s.user_id === selectedId) || null
-  const level = scholar ? getLevelForHours(parseFloat(scholar.current_hours || 0)) : null
+  const scholar = scholars.find((s) => s.user_id === selectedId) || null;
+  const level = scholar
+    ? getLevelForHours(parseFloat(scholar.current_hours || 0))
+    : null;
   // ESL-phrased level chips ("A1 English for beginners") only make sense when
   // searching for practice content — native content doesn't self-describe by
   // CEFR level, so showing them in native mode would just reintroduce the bias.
-  const levelChips = mode === 'practice' && level ? LEVEL_QUERY_CHIPS[level.id] || [] : []
+  const levelChips =
+    mode === 'practice' && level ? LEVEL_QUERY_CHIPS[level.id] || [] : [];
 
   return (
     <div style={ctxStyles.wrap}>
@@ -195,17 +204,17 @@ function ScholarContext({ onChipClick, mode }) {
       <div style={ctxStyles.row}>
         <select
           value={selectedId}
-          onChange={(e) => setSelectedId(e.target.value)}
+          onChange={(e) => onSelect(e.target.value)}
           style={ctxStyles.select}
         >
           <option value="">Scholar context (optional)</option>
           {scholars.map((s) => {
-            const lv = getLevelForHours(parseFloat(s.current_hours || 0))
+            const lv = getLevelForHours(parseFloat(s.current_hours || 0));
             return (
               <option key={s.user_id} value={s.user_id}>
                 {s.scholar_name} — {lv.label} ({s.current_hours}h)
               </option>
-            )
+            );
           })}
         </select>
         {level && (
@@ -228,7 +237,11 @@ function ScholarContext({ onChipClick, mode }) {
           <p style={ctxStyles.sectionLabel}>Level queries</p>
           <div style={ctxStyles.chips}>
             {levelChips.map((chip) => (
-              <button key={chip} style={ctxStyles.chipBtn} onClick={() => onChipClick(chip)}>
+              <button
+                key={chip}
+                style={ctxStyles.chipBtn}
+                onClick={() => onChipClick(chip)}
+              >
                 {chip}
               </button>
             ))}
@@ -240,16 +253,24 @@ function ScholarContext({ onChipClick, mode }) {
           selected AND mode is practice (native mode never inserts a CEFR code) */}
       <p style={ctxStyles.sectionLabel}>
         Topics
-        {mode === 'practice' && level ? ` · combined with ${CEFR_PREFIX[level.id] || level.label}` : ' · click to search'}
+        {mode === 'practice' && level
+          ? ` · combined with ${CEFR_PREFIX[level.id] || level.label}`
+          : ' · click to search'}
       </p>
       {TOPIC_CATEGORIES.map((cat) => (
         <div key={cat.key} style={ctxStyles.topicGroup}>
-          <span style={{ ...ctxStyles.catLabel, color: cat.color }}>{cat.label}</span>
+          <span style={{ ...ctxStyles.catLabel, color: cat.color }}>
+            {cat.label}
+          </span>
           <div style={ctxStyles.chips}>
             {cat.topics.map((topic) => (
               <button
                 key={topic}
-                style={{ ...ctxStyles.topicChipBtn, borderColor: cat.color, color: cat.color }}
+                style={{
+                  ...ctxStyles.topicChipBtn,
+                  borderColor: cat.color,
+                  color: cat.color,
+                }}
                 onClick={() => onChipClick(buildTopicQuery(topic, level, mode))}
               >
                 {topic}
@@ -259,48 +280,48 @@ function ScholarContext({ onChipClick, mode }) {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 function ResultCard({ item, onAdd }) {
-  const [tagState, setTagState] = useState('idle') // idle | tagging | done | error
-  const [tags, setTags] = useState(null)
-  const [addState, setAddState] = useState('idle') // idle | adding | added | exists | error
-  const tagStarted = useRef(false)
+  const [tagState, setTagState] = useState('idle'); // idle | tagging | done | error
+  const [tags, setTags] = useState(null);
+  const [addState, setAddState] = useState('idle'); // idle | adding | added | exists | error
+  const tagStarted = useRef(false);
 
   // Kick off tagging once on mount
   const startTag = useCallback(async () => {
-    if (tagStarted.current) return
-    tagStarted.current = true
-    setTagState('tagging')
+    if (tagStarted.current) return;
+    tagStarted.current = true;
+    setTagState('tagging');
     try {
-      const result = await tagVideo(item.title, item.description || '')
-      setTags(result)
-      setTagState('done')
+      const result = await tagVideo(item.title, item.description || '');
+      setTags(result);
+      setTagState('done');
     } catch {
-      setTagState('error')
+      setTagState('error');
     }
-  }, [item.title, item.description])
+  }, [item.title, item.description]);
 
   // Use a ref callback to trigger tagging when the card mounts
   const cardRef = useCallback(
     (node) => {
-      if (node) startTag()
+      if (node) startTag();
     },
-    [startTag],
-  )
+    [startTag]
+  );
 
   const handleAdd = async () => {
-    if (!tags || addState !== 'idle') return
-    setAddState('adding')
+    if (!tags || addState !== 'idle') return;
+    setAddState('adding');
     try {
-      const result = await addVideo(item, tags)
-      setAddState(result.added ? 'added' : 'exists')
-      if (onAdd) onAdd(item.youtubeId, result.added)
+      const result = await addVideo(item, tags);
+      setAddState(result.added ? 'added' : 'exists');
+      if (onAdd) onAdd(item.youtubeId, result.added);
     } catch {
-      setAddState('error')
+      setAddState('error');
     }
-  }
+  };
 
   return (
     <div ref={cardRef} style={cardStyles.wrap}>
@@ -318,11 +339,16 @@ function ResultCard({ item, onAdd }) {
         <p style={cardStyles.channel}>
           {item.channelName}
           {fmtDuration(item.duration_seconds) && (
-            <span style={cardStyles.dur}> · {fmtDuration(item.duration_seconds)}</span>
+            <span style={cardStyles.dur}>
+              {' '}
+              · {fmtDuration(item.duration_seconds)}
+            </span>
           )}
         </p>
         <div style={cardStyles.chips}>
-          {tagState === 'tagging' && <span style={chipStyles.tagging}>Tagging…</span>}
+          {tagState === 'tagging' && (
+            <span style={chipStyles.tagging}>Tagging…</span>
+          )}
           {tagState === 'done' && tags && (
             <>
               <span
@@ -359,7 +385,9 @@ function ResultCard({ item, onAdd }) {
               )}
             </>
           )}
-          {tagState === 'error' && <span style={chipStyles.error}>Tag failed</span>}
+          {tagState === 'error' && (
+            <span style={chipStyles.error}>Tag failed</span>
+          )}
         </div>
       </div>
       <div style={cardStyles.action}>
@@ -383,208 +411,281 @@ function ResultCard({ item, onAdd }) {
         </button>
       </div>
     </div>
-  )
+  );
 }
 
 const DURATION_OPTIONS = [
-  { value: 'any',    label: 'Any length' },
+  { value: 'any', label: 'Any length' },
   { value: 'under5', label: '< 5 min' },
-  { value: '5to10',  label: '5–10 min' },
+  { value: '5to10', label: '5–10 min' },
   { value: '10to15', label: '10–15 min' },
   { value: '15to20', label: '15–20 min' },
   { value: '20to30', label: '20–30 min' },
   { value: 'over30', label: '> 30 min' },
-]
+];
 
 function matchesDuration(secs, filter) {
-  if (!filter || filter === 'any') return true
-  if (filter === 'under5')  return secs < 300
-  if (filter === '5to10')   return secs >= 300  && secs < 600
-  if (filter === '10to15')  return secs >= 600  && secs < 900
-  if (filter === '15to20')  return secs >= 900  && secs < 1200
-  if (filter === '20to30')  return secs >= 1200 && secs < 1800
-  if (filter === 'over30')  return secs >= 1800
-  return true
+  if (!filter || filter === 'any') return true;
+  if (filter === 'under5') return secs < 300;
+  if (filter === '5to10') return secs >= 300 && secs < 600;
+  if (filter === '10to15') return secs >= 600 && secs < 900;
+  if (filter === '15to20') return secs >= 900 && secs < 1200;
+  if (filter === '20to30') return secs >= 1200 && secs < 1800;
+  if (filter === 'over30') return secs >= 1800;
+  return true;
 }
 
 function fmtDuration(secs) {
-  if (!secs) return null
-  const h = Math.floor(secs / 3600)
-  const m = Math.floor((secs % 3600) / 60)
-  const s = secs % 60
-  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`
-  if (m > 0) return `${m}m`
-  return `${s}s`
+  if (!secs) return null;
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  if (m > 0) return `${m}m`;
+  return `${s}s`;
 }
 
 // All topics for the topic dropdown
-const ALL_TOPICS = TOPIC_CATEGORIES.flatMap(cat => cat.topics.map(t => ({ value: t, label: t, catLabel: cat.label })))
+const ALL_TOPICS = TOPIC_CATEGORIES.flatMap((cat) =>
+  cat.topics.map((t) => ({ value: t, label: t, catLabel: cat.label }))
+);
 
 // Build combined YouTube search query from free text + level + topic filters.
 // mode 'practice' = the original ESL-teaching-channel search (CEFR code +
 // "English" + "listening"). mode 'native' = native-audience content search
 // (no "English"/CEFR terms at all — Haiku tags level from what comes back).
-function buildCombinedQuery(text, level, topic, mode = 'practice', nativeContentType = 'vlog') {
+function buildCombinedQuery(
+  text,
+  level,
+  topic,
+  mode = 'practice',
+  nativeContentType = 'vlog'
+) {
   if (mode === 'native') {
-    const topicKeywords = topic ? (NATIVE_TOPIC_KEYWORDS[topic] || topic.toLowerCase()) : ''
-    const parts = []
-    if (topicKeywords) parts.push(topicKeywords)
-    if (text && text.trim()) parts.push(text.trim())
-    if (nativeContentType) parts.push(nativeContentType)
-    return parts.join(' ')
+    const topicKeywords = topic
+      ? NATIVE_TOPIC_KEYWORDS[topic] || topic.toLowerCase()
+      : '';
+    const parts = [];
+    if (topicKeywords) parts.push(topicKeywords);
+    if (text && text.trim()) parts.push(text.trim());
+    if (nativeContentType) parts.push(nativeContentType);
+    return parts.join(' ');
   }
-  const levelPrefix = level ? CEFR_PREFIX[level] : ''
-  const topicKeywords = topic ? (TOPIC_QUERY_KEYWORDS[topic] || topic.toLowerCase()) : ''
-  const parts = []
-  if (levelPrefix) parts.push(levelPrefix)
-  parts.push('English')
-  if (topicKeywords) parts.push(topicKeywords)
-  if (text && text.trim()) parts.push(text.trim())
-  if (!topicKeywords && !text?.trim()) parts.push('listening')
-  return parts.join(' ')
+  const levelPrefix = level ? CEFR_PREFIX[level] : '';
+  const topicKeywords = topic
+    ? TOPIC_QUERY_KEYWORDS[topic] || topic.toLowerCase()
+    : '';
+  const parts = [];
+  if (levelPrefix) parts.push(levelPrefix);
+  parts.push('English');
+  if (topicKeywords) parts.push(topicKeywords);
+  if (text && text.trim()) parts.push(text.trim());
+  if (!topicKeywords && !text?.trim()) parts.push('listening');
+  return parts.join(' ');
 }
 
 export default function AddVideoPanel() {
-  const [query, setQuery] = useState('')
-  const [filterLevel, setFilterLevel] = useState('')
-  const [filterTopic, setFilterTopic] = useState('')
-  const [duration, setDuration] = useState('any')
-  const [searchState, setSearchState] = useState('idle') // idle | loading | done | quota | unavailable
-  const [results, setResults] = useState([])
+  const { data: scholars } = useScholars();
+  // Scholar selection is lifted here (out of ScholarContext) so both the
+  // context chips and the "Suggest interests" button share one selection.
+  const [selectedScholarId, setSelectedScholarId] = useState('');
+  const [query, setQuery] = useState('');
+  const [filterLevel, setFilterLevel] = useState('');
+  const [filterTopic, setFilterTopic] = useState('');
+  const [duration, setDuration] = useState('any');
+  const [searchState, setSearchState] = useState('idle'); // idle | loading | done | quota | unavailable
+  const [results, setResults] = useState([]);
   // 'native' surfaces content made for native audiences (vlogs, storytime,
   // podcasts) instead of ESL-teaching channels — default, since that's the
   // library's known gap. 'practice' keeps the original CEFR-coded ESL search
   // for when structured practice/OET material is actually wanted.
-  const [contentMode, setContentMode] = useState('native')
-  const [nativeContentType, setNativeContentType] = useState('vlog')
-  const [topicSuggestions, setTopicSuggestions] = useState([])
-  const [suggestState, setSuggestState] = useState('idle') // idle | loading | done | error
+  const [contentMode, setContentMode] = useState('native');
+  const [nativeContentType, setNativeContentType] = useState('vlog');
+  const [topicSuggestions, setTopicSuggestions] = useState([]);
+  const [suggestState, setSuggestState] = useState('idle'); // idle | loading | done | error
+  const [interestSuggestions, setInterestSuggestions] = useState([]);
+  const [interestState, setInterestState] = useState('idle'); // idle | loading | done | error | empty
 
   const doSearch = useCallback(async (q) => {
     if (!q.trim()) {
-      setResults([])
-      setSearchState('idle')
-      return
+      setResults([]);
+      setSearchState('idle');
+      return;
     }
-    setSearchState('loading')
-    setResults([])
+    setSearchState('loading');
+    setResults([]);
     try {
-      const data = await searchYouTube(q.trim())
-      setResults((data.items || []).filter((item) => !item.in_library))
-      setSearchState('done')
+      const data = await searchYouTube(q.trim());
+      setResults((data.items || []).filter((item) => !item.in_library));
+      setSearchState('done');
     } catch (err) {
-      setSearchState(err.message === 'quota' ? 'quota' : 'unavailable')
+      setSearchState(err.message === 'quota' ? 'quota' : 'unavailable');
     }
-  }, [])
+  }, []);
 
-  const debouncedSearch = useDebounce(doSearch, 500)
+  const debouncedSearch = useDebounce(doSearch, 500);
 
   // Re-fire search whenever level or topic filter changes (if there's something to search)
-  function triggerSearch(text, level, topic, mode = contentMode, nativeType = nativeContentType) {
+  function triggerSearch(
+    text,
+    level,
+    topic,
+    mode = contentMode,
+    nativeType = nativeContentType
+  ) {
     if (!text.trim() && !level && !topic) {
-      setResults([])
-      setSearchState('idle')
-      return
+      setResults([]);
+      setSearchState('idle');
+      return;
     }
-    const combined = buildCombinedQuery(text, level, topic, mode, nativeType)
-    debouncedSearch(combined)
+    const combined = buildCombinedQuery(text, level, topic, mode, nativeType);
+    debouncedSearch(combined);
   }
 
   const handleChange = (e) => {
-    const val = e.target.value
-    setQuery(val)
-    triggerSearch(val, filterLevel, filterTopic)
-  }
+    const val = e.target.value;
+    setQuery(val);
+    triggerSearch(val, filterLevel, filterTopic);
+  };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
-      const combined = buildCombinedQuery(query, filterLevel, filterTopic, contentMode, nativeContentType)
-      if (combined.trim()) doSearch(combined)
+      const combined = buildCombinedQuery(
+        query,
+        filterLevel,
+        filterTopic,
+        contentMode,
+        nativeContentType
+      );
+      if (combined.trim()) doSearch(combined);
     }
-  }
+  };
 
   const handleLevelChange = (e) => {
-    const val = e.target.value
-    setFilterLevel(val)
-    triggerSearch(query, val, filterTopic)
-  }
+    const val = e.target.value;
+    setFilterLevel(val);
+    triggerSearch(query, val, filterTopic);
+  };
 
   const handleTopicChange = (e) => {
-    const val = e.target.value
-    setFilterTopic(val)
-    triggerSearch(query, filterLevel, val)
-  }
+    const val = e.target.value;
+    setFilterTopic(val);
+    triggerSearch(query, filterLevel, val);
+  };
 
   const handleModeChange = (mode) => {
-    setContentMode(mode)
-    triggerSearch(query, filterLevel, filterTopic, mode, nativeContentType)
-  }
+    setContentMode(mode);
+    triggerSearch(query, filterLevel, filterTopic, mode, nativeContentType);
+  };
 
   const handleNativeTypeChange = (e) => {
-    const val = e.target.value
-    setNativeContentType(val)
-    triggerSearch(query, filterLevel, filterTopic, contentMode, val)
-  }
+    const val = e.target.value;
+    setNativeContentType(val);
+    triggerSearch(query, filterLevel, filterTopic, contentMode, val);
+  };
 
   // Scholar context chip click: override free-text query directly
   const handleChipClick = useCallback(
     (chip) => {
-      setQuery(chip)
-      doSearch(chip)
+      setQuery(chip);
+      doSearch(chip);
     },
-    [doSearch],
-  )
+    [doSearch]
+  );
 
   const handleSuggestTopics = useCallback(async () => {
-    setSuggestState('loading')
+    setSuggestState('loading');
     try {
-      const token = await getAuthToken()
+      const token = await getAuthToken();
       const res = await fetch('/api/suggest-topics', {
         headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) throw new Error('failed')
-      const data = await res.json()
-      setTopicSuggestions(data.suggestions || [])
-      setSuggestState('done')
+      });
+      if (!res.ok) throw new Error('failed');
+      const data = await res.json();
+      setTopicSuggestions(data.suggestions || []);
+      setSuggestState('done');
     } catch {
-      setSuggestState('error')
+      setSuggestState('error');
     }
-  }, [])
+  }, []);
+
+  const handleSuggestInterests = useCallback(async () => {
+    if (!selectedScholarId) return;
+    setInterestState('loading');
+    setInterestSuggestions([]);
+    try {
+      const token = await getAuthToken();
+      const res = await fetch(
+        `/api/suggest-interests?userId=${encodeURIComponent(selectedScholarId)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!res.ok) throw new Error('failed');
+      const data = await res.json();
+      const list = data.suggestions || [];
+      setInterestSuggestions(list);
+      setInterestState(list.length > 0 ? 'done' : 'empty');
+    } catch {
+      setInterestState('error');
+    }
+  }, [selectedScholarId]);
+
+  // Reset interest suggestions when the selected scholar changes — stale
+  // suggestions for a different scholar would be misleading.
+  const handleSelectScholar = useCallback((id) => {
+    setSelectedScholarId(id);
+    setInterestSuggestions([]);
+    setInterestState('idle');
+  }, []);
 
   const handleSuggestionClick = useCallback(
     (suggestion) => {
-      setQuery(suggestion.query)
-      setFilterTopic(suggestion.topic)
-      doSearch(suggestion.query)
+      setQuery(suggestion.query);
+      setFilterTopic(suggestion.topic || '');
+      doSearch(suggestion.query);
     },
-    [doSearch],
-  )
+    [doSearch]
+  );
+
+  const selectedScholarName =
+    (scholars || []).find((s) => s.user_id === selectedScholarId)
+      ?.scholar_name || '';
 
   const activeFilters = [
     // Level has no effect in native mode (dropped from the query entirely) —
     // don't show a pill implying it's still filtering anything.
-    contentMode === 'practice' && filterLevel ? `Level: ${filterLevel.toUpperCase()}` : null,
+    contentMode === 'practice' && filterLevel
+      ? `Level: ${filterLevel.toUpperCase()}`
+      : null,
     filterTopic ? `Topic: ${filterTopic}` : null,
-  ].filter(Boolean)
+  ].filter(Boolean);
 
   function clearFilters() {
-    setFilterLevel('')
-    setFilterTopic('')
-    setQuery('')
-    setResults([])
-    setSearchState('idle')
+    setFilterLevel('');
+    setFilterTopic('');
+    setQuery('');
+    setResults([]);
+    setSearchState('idle');
   }
 
   return (
     <div style={panelStyles.wrap}>
       {/* ── Content mode toggle ── */}
       <div style={panelStyles.modeRow}>
-        <div style={panelStyles.modeToggle} role="tablist" aria-label="Search mode">
+        <div
+          style={panelStyles.modeToggle}
+          role="tablist"
+          aria-label="Search mode"
+        >
           <button
             type="button"
             role="tab"
             aria-selected={contentMode === 'native'}
-            style={{ ...panelStyles.modeBtn, ...(contentMode === 'native' ? panelStyles.modeBtnActive : {}) }}
+            style={{
+              ...panelStyles.modeBtn,
+              ...(contentMode === 'native' ? panelStyles.modeBtnActive : {}),
+            }}
             onClick={() => handleModeChange('native')}
           >
             Native content
@@ -593,7 +694,10 @@ export default function AddVideoPanel() {
             type="button"
             role="tab"
             aria-selected={contentMode === 'practice'}
-            style={{ ...panelStyles.modeBtn, ...(contentMode === 'practice' ? panelStyles.modeBtnActive : {}) }}
+            style={{
+              ...panelStyles.modeBtn,
+              ...(contentMode === 'practice' ? panelStyles.modeBtnActive : {}),
+            }}
             onClick={() => handleModeChange('practice')}
           >
             ESL / practice content
@@ -606,19 +710,63 @@ export default function AddVideoPanel() {
         </p>
       </div>
 
-      {/* ── Topic variety suggestions ── */}
+      {/* ── Suggestion actions ── */}
       <div style={panelStyles.suggestRow}>
+        {/* Suggest fresh topics — fills library gaps, scholar-agnostic */}
         <button
           type="button"
           style={panelStyles.suggestBtn}
           onClick={handleSuggestTopics}
           disabled={suggestState === 'loading'}
         >
-          {suggestState === 'loading' ? 'Finding gaps…' : '✨ Suggest fresh topics'}
+          {suggestState === 'loading'
+            ? 'Finding gaps…'
+            : '✨ Suggest fresh topics'}
+        </button>
+        {/* Suggest interests — reads the selected scholar's watch history */}
+        <button
+          type="button"
+          style={{
+            ...panelStyles.suggestBtn,
+            ...(!selectedScholarId || interestState === 'loading'
+              ? panelStyles.suggestBtnDisabled
+              : {}),
+          }}
+          onClick={handleSuggestInterests}
+          disabled={!selectedScholarId || interestState === 'loading'}
+          title={
+            selectedScholarId
+              ? "Suggest searches based on this scholar's watch history"
+              : 'Pick a scholar below to tailor suggestions to their interests'
+          }
+        >
+          {interestState === 'loading'
+            ? 'Reading history…'
+            : `💡 Suggest interests${selectedScholarName ? ` · ${selectedScholarName}` : ''}`}
         </button>
         {suggestState === 'error' && (
-          <span style={panelStyles.hint}>Couldn't load suggestions — try again.</span>
+          <span style={panelStyles.hint}>
+            Couldn't load suggestions — try again.
+          </span>
         )}
+        {interestState === 'error' && (
+          <span style={panelStyles.hint}>
+            Couldn't read interests — try again.
+          </span>
+        )}
+        {interestState === 'empty' && (
+          <span style={panelStyles.hint}>
+            Not enough watch history yet for{' '}
+            {selectedScholarName || 'this scholar'}.
+          </span>
+        )}
+        {!selectedScholarId &&
+          suggestState !== 'error' &&
+          interestState !== 'error' && (
+            <span style={panelStyles.hint}>
+              Pick a scholar below for interest-based ideas.
+            </span>
+          )}
       </div>
       {topicSuggestions.length > 0 && (
         <div style={ctxStyles.chips}>
@@ -634,15 +782,45 @@ export default function AddVideoPanel() {
           ))}
         </div>
       )}
+      {interestSuggestions.length > 0 && (
+        <>
+          <p style={ctxStyles.sectionLabel}>
+            Based on {selectedScholarName || 'scholar'}&apos;s watch history
+          </p>
+          <div style={ctxStyles.chips}>
+            {interestSuggestions.map((s, i) => (
+              <button
+                key={`${s.query}-${i}`}
+                style={{
+                  ...ctxStyles.chipBtn,
+                  borderColor: 'var(--ngsi-gold)',
+                }}
+                onClick={() => handleSuggestionClick(s)}
+                title={s.reason || 'Matches this scholar’s revealed interests'}
+              >
+                {s.label ? `${s.label}: ` : ''}&quot;{s.query}&quot;
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
-      <ScholarContext onChipClick={handleChipClick} mode={contentMode} />
+      <ScholarContext
+        scholars={scholars}
+        selectedId={selectedScholarId}
+        onSelect={handleSelectScholar}
+        onChipClick={handleChipClick}
+        mode={contentMode}
+      />
 
       {/* ── Filter bar ── */}
       <div style={panelStyles.filterBar}>
         {/* Level dropdown — practice mode only; native content doesn't self-label by CEFR */}
         {contentMode === 'practice' && (
           <div style={panelStyles.filterGroup}>
-            <label style={panelStyles.filterLabel} htmlFor="avp-level">Level</label>
+            <label style={panelStyles.filterLabel} htmlFor="avp-level">
+              Level
+            </label>
             <select
               id="avp-level"
               value={filterLevel}
@@ -651,8 +829,10 @@ export default function AddVideoPanel() {
               aria-label="Filter by CEFR level"
             >
               <option value="">Any Level</option>
-              {LEVELS.map(l => (
-                <option key={l.id} value={l.id}>{l.label}</option>
+              {LEVELS.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.label}
+                </option>
               ))}
             </select>
           </div>
@@ -661,7 +841,9 @@ export default function AddVideoPanel() {
         {/* Content type dropdown — native mode only */}
         {contentMode === 'native' && (
           <div style={panelStyles.filterGroup}>
-            <label style={panelStyles.filterLabel} htmlFor="avp-native-type">Content type</label>
+            <label style={panelStyles.filterLabel} htmlFor="avp-native-type">
+              Content type
+            </label>
             <select
               id="avp-native-type"
               value={nativeContentType}
@@ -669,8 +851,10 @@ export default function AddVideoPanel() {
               style={panelStyles.filterSelect}
               aria-label="Filter by native content type"
             >
-              {NATIVE_CONTENT_TYPES.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
+              {NATIVE_CONTENT_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
               ))}
             </select>
           </div>
@@ -678,7 +862,9 @@ export default function AddVideoPanel() {
 
         {/* Topic dropdown */}
         <div style={panelStyles.filterGroup}>
-          <label style={panelStyles.filterLabel} htmlFor="avp-topic">Topic</label>
+          <label style={panelStyles.filterLabel} htmlFor="avp-topic">
+            Topic
+          </label>
           <select
             id="avp-topic"
             value={filterTopic}
@@ -687,10 +873,12 @@ export default function AddVideoPanel() {
             aria-label="Filter by topic"
           >
             <option value="">Any Topic</option>
-            {TOPIC_CATEGORIES.map(cat => (
+            {TOPIC_CATEGORIES.map((cat) => (
               <optgroup key={cat.key} label={cat.label}>
-                {cat.topics.map(t => (
-                  <option key={t} value={t}>{t}</option>
+                {cat.topics.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
                 ))}
               </optgroup>
             ))}
@@ -699,7 +887,9 @@ export default function AddVideoPanel() {
 
         {/* Duration dropdown */}
         <div style={panelStyles.filterGroup}>
-          <label style={panelStyles.filterLabel} htmlFor="avp-duration">Duration</label>
+          <label style={panelStyles.filterLabel} htmlFor="avp-duration">
+            Duration
+          </label>
           <select
             id="avp-duration"
             value={duration}
@@ -708,7 +898,9 @@ export default function AddVideoPanel() {
             aria-label="Filter results by duration"
           >
             {DURATION_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
         </div>
@@ -724,8 +916,10 @@ export default function AddVideoPanel() {
       {/* Active filter pills */}
       {activeFilters.length > 0 && (
         <div style={panelStyles.activePills}>
-          {activeFilters.map(f => (
-            <span key={f} style={panelStyles.activePill}>{f}</span>
+          {activeFilters.map((f) => (
+            <span key={f} style={panelStyles.activePill}>
+              {f}
+            </span>
           ))}
         </div>
       )}
@@ -745,33 +939,43 @@ export default function AddVideoPanel() {
 
       {searchState === 'loading' && <p style={panelStyles.hint}>Searching…</p>}
       {searchState === 'quota' && (
-        <p style={panelStyles.error}>YouTube quota exceeded — try again tomorrow.</p>
+        <p style={panelStyles.error}>
+          YouTube quota exceeded — try again tomorrow.
+        </p>
       )}
       {searchState === 'unavailable' && (
-        <p style={panelStyles.error}>YouTube search unavailable. Check connection and try again.</p>
+        <p style={panelStyles.error}>
+          YouTube search unavailable. Check connection and try again.
+        </p>
       )}
       {searchState === 'done' && results.length === 0 && (
         <p style={panelStyles.hint}>
-          No new results — music videos and videos already in the library are excluded automatically.
+          No new results — music videos and videos already in the library are
+          excluded automatically.
         </p>
       )}
 
-      {results.length > 0 && (() => {
-        const filtered = results.filter((item) => matchesDuration(item.duration_seconds || 0, duration))
-        return (
-          <div style={panelStyles.results}>
-            {filtered.length === 0 ? (
-              <p style={panelStyles.hint}>No results match the selected duration.</p>
-            ) : (
-              filtered.map((item) => (
-                <ResultCard key={item.youtubeId} item={item} />
-              ))
-            )}
-          </div>
-        )
-      })()}
+      {results.length > 0 &&
+        (() => {
+          const filtered = results.filter((item) =>
+            matchesDuration(item.duration_seconds || 0, duration)
+          );
+          return (
+            <div style={panelStyles.results}>
+              {filtered.length === 0 ? (
+                <p style={panelStyles.hint}>
+                  No results match the selected duration.
+                </p>
+              ) : (
+                filtered.map((item) => (
+                  <ResultCard key={item.youtubeId} item={item} />
+                ))
+              )}
+            </div>
+          );
+        })()}
     </div>
-  )
+  );
 }
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
@@ -837,7 +1041,7 @@ const ctxStyles = {
     fontFamily: 'inherit',
     lineHeight: 1.4,
   },
-}
+};
 
 const panelStyles = {
   wrap: { display: 'flex', flexDirection: 'column', gap: 12 },
@@ -876,6 +1080,7 @@ const panelStyles = {
     display: 'flex',
     alignItems: 'center',
     gap: 10,
+    flexWrap: 'wrap',
   },
   suggestBtn: {
     padding: '7px 14px',
@@ -888,6 +1093,10 @@ const panelStyles = {
     cursor: 'pointer',
     fontFamily: 'inherit',
     alignSelf: 'flex-start',
+  },
+  suggestBtnDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
   },
   filterBar: {
     display: 'flex',
@@ -963,7 +1172,7 @@ const panelStyles = {
   results: { display: 'flex', flexDirection: 'column', gap: 8 },
   hint: { fontSize: 13, color: '#8a8f99', margin: 0 },
   error: { fontSize: 13, color: '#c0524a', margin: 0 },
-}
+};
 
 const cardStyles = {
   wrap: {
@@ -999,7 +1208,7 @@ const cardStyles = {
   dur: { color: '#aaa', fontWeight: 400 },
   chips: { display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' },
   action: { flexShrink: 0 },
-}
+};
 
 const chipStyles = {
   base: {
@@ -1029,7 +1238,7 @@ const chipStyles = {
     color: '#c0524a',
     lineHeight: '18px',
   },
-}
+};
 
 const btnStyles = {
   base: {
@@ -1064,4 +1273,4 @@ const btnStyles = {
     cursor: 'default',
   },
   disabled: { opacity: 0.45, cursor: 'not-allowed' },
-}
+};

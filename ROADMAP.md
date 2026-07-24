@@ -942,6 +942,38 @@ minimum. Worth a small follow-up pass.
 
 ---
 
+## Suggest Interests — watch-history-driven search ideas (Jul 2026)
+
+Goal: alongside the existing **Suggest fresh topics** button in the Video
+Library's Discover panel (which fills library GAPS, scholar-agnostic), add a
+**Suggest interests** button that reads a *specific scholar's* actual watch
+history and proposes native-content search queries for more of what they
+already gravitate toward.
+
+Deliverables:
+- `pages/api/suggest-interests.js` (new) — admin-only, service-role
+  (`getAdminDb`). Takes `?userId=`, aggregates the scholar's `watch_sessions`
+  joined to `videos` by **time watched** (revealed preference, not click
+  count; videos under `MIN_WATCH_SECONDS` (120s) are ignored), builds a
+  profile (top topics — primary full-weight, secondary half; favorite
+  channels; representative high-engagement titles; dominant CEFR level), and
+  asks Haiku (`claude-haiku-4-5`) to phrase 4–6 concrete native-content search
+  queries — no "English"/CEFR terms, same native-content rules as
+  suggest-topics. Each carries a canonical topic tag + a short reason.
+  Falls back to `"<top topic> vlog"` queries if the AI call fails, and returns
+  `reason: 'not_enough_history'` with no suggestions when the scholar has
+  fewer than 3 meaningfully-watched videos.
+- `src/components/admin/AddVideoPanel.jsx` — scholar selection was **lifted**
+  out of the internal `ScholarContext` component up to the panel (now a
+  controlled `selectedScholarId`) so the picker and the new button share one
+  selection; `useScholars()` moved to the panel. Added the **Suggest
+  interests** button (disabled until a scholar is picked, labelled with the
+  scholar's name) + gold-bordered suggestion chips under a "Based on
+  <name>'s watch history" heading; clicking a chip runs the search and applies
+  its topic filter, reusing the existing `handleSuggestionClick`.
+
+No schema change — derives entirely from existing `watch_sessions` + `videos`.
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
