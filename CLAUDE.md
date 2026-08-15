@@ -1,10 +1,13 @@
 # NGS Immersion — Claude Code Instructions
 
 ## Agentic Loop
+Profile: https://raw.githubusercontent.com/jonncy18-maker/Agentic-Loop/main/CODER_PROFILE.md
 Protocol: https://raw.githubusercontent.com/jonncy18-maker/Agentic-Loop/main/AGENTIC_LOOP.md
 Orchestrator: https://raw.githubusercontent.com/jonncy18-maker/Agentic-Loop/main/orchestrator.js
-At the start of every session, read the full protocol from the URL above before doing anything else.
-Every change that touches 3+ files, creates a new component, touches the data layer, or has user-visible behavior MUST go through the agentic loop. One-liners and typo fixes can run direct.
+At the start of every session, read the full profile and protocol from the URLs above before doing anything else.
+
+The **profile applies to every task, with no threshold** — it governs how code is written and how it gets verified.
+The **loop applies above the threshold** — it governs whether the right thing was built. Every change that touches 3+ files, creates a new component, touches the data layer, or has user-visible behavior MUST go through the agentic loop. One-liners and typo fixes can run direct — but the profile still applies to them.
 
 ## Personal context
 John maintains a dated personal-context doc (background, constraints, review
