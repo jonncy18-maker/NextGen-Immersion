@@ -974,6 +974,83 @@ Deliverables:
 
 No schema change — derives entirely from existing `watch_sessions` + `videos`.
 
+## MCP Server — Claude + ChatGPT admin connector (Sep 2026)
+
+Goal: expose the whole admin dashboard — scholar roster/goals, video library
+management (search/add/import/tag/delete), mentor-prep AI reports (digest,
+topic trends, video analysis, interest suggestions), and the handful of
+per-scholar actions with no admin-console equivalent (marking a video
+watched, watch-later, next-video suggestions, comprehension ratings, level
+celebrations, progress coaching) — as an MCP server, so it can be driven
+from Claude (claude.ai's OAuth connector, or a bare bearer header in Claude
+Code/Desktop config) and ChatGPT (its "Access token / API key" custom-
+connector mode) instead of only the browser UI. Followed the pattern already
+proven on the sibling Personal Dashboard project's app-wide MCP server
+(shared JSON-RPC 2.0 transport + OAuth 2.1 wrapper), adapted for this app's
+real per-scholar Neon Auth accounts.
+
+Deliverables:
+- `lib/mcp-server.js` (new) — generic MCP transport: bearer-gated JSON-RPC
+  2.0 (`initialize`/`tools/list`/`tools/call`), plus the OAuth 2.1
+  `/authorize` (password-style page, typing the same bearer secret),
+  `/token`, and dynamic-client-registration `/register` handlers claude.ai's
+  connector flow requires. No app-specific logic — copied from Personal
+  Dashboard's own `lib/mcp-server.js` verbatim (it was already fully
+  generic).
+- `lib/mcp-oauth.js` (new) — the OAuth code-exchange logic backing the
+  handlers above, using a new `mcp_auth_codes` table (short-lived,
+  single-use, applied live via Neon MCP and added to `neon/schema.sql`).
+- `lib/mcp-tools.js` (new) — the tool catalog: 39 tools, each a thin
+  same-origin-fetch wrapper around one existing `pages/api/*` route (no
+  tool touches Neon/Anthropic/YouTube directly — same rule as the SPA).
+  3 real routes were deliberately NOT wrapped: `flush-session.js`
+  (real-time playback telemetry, not an admin action), and
+  `daily-calendar.js`/`videos.js` (scholar-self-JWT-scoped duplicates of
+  `scholar-calendar.js`/`scholar-videos.js`, which are strictly more
+  capable — no result cap — and already cover any scholar).
+- `lib/api/_auth.js` — `verifySession` extended to also accept the MCP
+  server's own shared secret (`IMMERSION_MCP_TOKEN`) in place of a Neon Auth
+  JWT: a bare `Bearer <secret>` resolves to a real admin user row (so every
+  admin-gated route — whether via `verifyAdmin` or a manual inline
+  `role !== 'admin'` check — just works unmodified), and
+  `Bearer <secret>:<userId>` impersonates that scholar for the routes with
+  no admin/cross-scholar variant at all. This impersonation form is
+  constructed server-side inside `lib/mcp-tools.js` for the internal fetch
+  back into `pages/api/*` and is never accepted from an external MCP
+  client — the external bearer gate (`lib/mcp-server.js`) only ever matches
+  the bare secret. Zero changes needed to any of the 36 route files
+  themselves.
+- `app/api/mcp/route.js` + `authorize`/`token`/`register` sub-routes, and
+  `app/.well-known/oauth-protected-resource` /
+  `oauth-authorization-server` (root + `/api/mcp`-scoped) metadata routes.
+  The endpoint deliberately lives at the literal path `/api/mcp` (not
+  nested under a nested slug the way Personal Dashboard's is) so it already
+  satisfies ChatGPT's custom-connector requirement that the URL end in
+  `/mcp` — one endpoint serves both Claude and ChatGPT, no second
+  ChatGPT-shaped route needed.
+- `neon/schema.sql` — added `mcp_auth_codes` table (documented, applied
+  live via Neon MCP).
+- New env var: `IMMERSION_MCP_TOKEN` (server-only, no `NEXT_PUBLIC_`
+  prefix) — grants full admin access if leaked; set in Vercel for
+  Production and Preview per this project's usual gotcha.
+
+Status: **DONE** (Sep 2026). `next build` PASS (all routes registered:
+`/api/mcp`, `/api/mcp/{authorize,token,register}`,
+`/.well-known/oauth-{protected-resource,authorization-server}` root +
+`/api/mcp`-scoped). Smoke-tested against a live `next start`: unauthenticated
+call correctly 401s with a `WWW-Authenticate` header pointing at the right
+resource-metadata URL; `initialize` returns instructions; `tools/list`
+returns all 39 tools; `tools/call` dispatches to the real route (verified via
+a deliberate DB-connection failure surfacing as the tool's error text,
+proving the request reached `pages/api/*`); the admin-resolution query
+(`SELECT ... WHERE role = 'admin'`) was run read-only against the live
+`silent-cherry-49841538` project and correctly resolves to John's real admin
+row. Setup: Claude Code / Claude Desktop MCP config or ChatGPT's Developer
+Mode connector, pointed at `https://<deployment>/api/mcp` with
+`IMMERSION_MCP_TOKEN`'s value as the bearer token (ChatGPT: "Access token /
+API key" auth mode); claude.ai's "Add custom connector" instead drives the
+OAuth flow above.
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.

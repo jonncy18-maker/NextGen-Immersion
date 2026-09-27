@@ -436,6 +436,29 @@ CREATE TABLE IF NOT EXISTS video_resume_positions (
   PRIMARY KEY (user_id, video_id)
 );
 
+-- ─── MCP OAuth codes ──────────────────────────────────────────────────────────
+-- Applied via Neon MCP. Backs the MCP server's OAuth 2.1 handshake
+-- (lib/mcp-oauth.js) for claude.ai's "Add custom connector" flow, which
+-- requires OAuth + dynamic client registration to reach a remote MCP server
+-- at all — Claude Code's own MCP config and ChatGPT's "Access token / API
+-- key" connector mode skip this table entirely and send the
+-- IMMERSION_MCP_TOKEN bearer header directly. `server` is always
+-- 'IMMERSION_MCP_TOKEN' today (this app has one MCP server), kept as a
+-- column rather than hardcoded so a second server never needs a migration.
+-- Codes are short-lived and single-use (deleted on redemption).
+
+CREATE TABLE IF NOT EXISTS mcp_auth_codes (
+  code                  text PRIMARY KEY,
+  server                text NOT NULL,
+  code_challenge        text,
+  code_challenge_method text NOT NULL DEFAULT 'S256',
+  redirect_uri          text NOT NULL,
+  expires_at            timestamptz NOT NULL,
+  created_at            timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS mcp_auth_codes_expires_idx ON mcp_auth_codes (expires_at);
+
 -- ─── Data Isolation Note ──────────────────────────────────────────────────────
 -- Neon Auth does NOT expose auth.uid() the way Supabase does. Do NOT rely on
 -- database RLS using auth.uid(). Enforce isolation in the Vercel API layer:
