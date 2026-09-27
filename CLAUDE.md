@@ -70,6 +70,7 @@ Formatting:   Prettier
 | YouTube Data API key | NONE | Server only | Quota abuse risk |
 | `NEON_AUTH_COOKIE_SECRET` | NONE | Server only | Signs the session cookie (32+ chars) |
 | `NEON_AUTH_BASE_URL` | NONE | Server only | Neon Auth server URL (handler + JWKS) |
+| `IMMERSION_MCP_TOKEN` | NONE | Server only | Bearer secret for the MCP server — grants full admin access if leaked |
 
 **Rule:** Anything that touches Anthropic, the Neon database directly, or the YouTube Data API goes through a Next.js function in `pages/api/`. The browser calls your own `/api/*` endpoints, never the third-party APIs directly. Auth requests go to the same-origin proxy at `/api/auth/*`. The only secret-bearing code runs server-side. No client-exposed secrets remain (the old `VITE_NEON_AUTH_URL` / publishable key are no longer needed — the client talks to the same-origin auth proxy).
 
@@ -82,8 +83,16 @@ ngs-immersion/
 ├── app/                          # Next.js App Router
 │   ├── layout.jsx                # Root layout — imports global CSS, <html>/<body>
 │   ├── page.jsx                  # 'use client' — renders the SPA via next/dynamic (ssr:false)
+│   ├── .well-known/
+│   │   ├── oauth-protected-resource/(route.js|api/mcp/route.js)      # RFC 9728 metadata for the MCP OAuth handshake
+│   │   └── oauth-authorization-server/(route.js|api/mcp/route.js)    # RFC 8414 metadata for the MCP OAuth handshake
 │   └── api/
-│       └── auth/[...path]/route.js  # Neon same-origin auth proxy: export {GET,POST}=auth.handler()
+│       ├── auth/[...path]/route.js  # Neon same-origin auth proxy: export {GET,POST}=auth.handler()
+│       └── mcp/                     # MCP server (Claude + ChatGPT) — see lib/mcp-tools.js
+│           ├── route.js             # POST — JSON-RPC 2.0 (initialize/tools list/call), bearer-gated
+│           ├── authorize/route.js   # OAuth /authorize (claude.ai connector only)
+│           ├── token/route.js       # OAuth /token
+│           └── register/route.js    # OAuth dynamic client registration
 ├── pages/                        # Next.js Pages Router — API functions only (classic req,res)
 │   └── api/                      # SECRET KEYS LIVE HERE
 │       ├── tag-channel.js        # Classifies channel level via Haiku — primary tagging path
@@ -100,10 +109,13 @@ ngs-immersion/
 ├── lib/                          # Server-side modules (NOT routes — outside pages/api)
 │   ├── auth/
 │   │   └── server.js             # createNeonAuth({baseUrl, cookies:{secret}}) — the auth handler
-│   └── api/
-│       ├── _db.js                # Shared Neon connection helper (getDb/getAdminDb)
-│       ├── _auth.js              # verifySession/verifyAdmin — JWKS-verifies the Neon JWT
-│       └── _tag.js               # Haiku prompt + CEFR/topic taxonomy (shared by tag endpoints)
+│   ├── api/
+│   │   ├── _db.js                # Shared Neon connection helper (getDb/getAdminDb)
+│   │   ├── _auth.js              # verifySession/verifyAdmin — JWKS-verifies the Neon JWT (+ MCP token, see below)
+│   │   └── _tag.js               # Haiku prompt + CEFR/topic taxonomy (shared by tag endpoints)
+│   ├── mcp-server.js             # Generic MCP transport (JSON-RPC 2.0 + OAuth wrapper) — no app-specific logic
+│   ├── mcp-oauth.js              # OAuth 2.1 handshake backing mcp-server.js (mcp_auth_codes table)
+│   └── mcp-tools.js              # MCP tool catalog — every tool wraps one pages/api/* route
 ├── next.config.js                # reactStrictMode + rewrite non-API paths to / (SPA shell)
 ├── src/                          # The React SPA (unchanged by the migration)
 │   ├── App.jsx                   # Root — HashRouter, routes, AuthContext
@@ -178,6 +190,9 @@ YOUTUBE_API_KEY=                # YouTube Data API v3 key. Server only.
 NEON_AUTH_BASE_URL=             # Neon Auth server URL — same-origin handler + JWKS verification
 NEON_AUTH_COOKIE_SECRET=        # 32+ char secret signing the first-party session cookie
                                 # (openssl rand -base64 32). Server only.
+IMMERSION_MCP_TOKEN=            # Bearer secret gating /api/mcp (Claude + ChatGPT connector).
+                                # Grants full admin access — generate with
+                                # `openssl rand -hex 32`. Server only.
 
 # ─── CLIENT-SIDE ───
 # None required. The client talks to the same-origin /api/auth/* proxy, so the
@@ -192,6 +207,8 @@ In Vercel: set all of the above as env vars (no prefix) and ensure they are enab
 ## Key Rules for Claude Code
 
 **API key security:** NEVER put a secret key behind `NEXT_PUBLIC_` (or the old `VITE_`). AI tagging, direct Neon writes, and YouTube Data API calls run ONLY in `pages/api/*` functions. The browser calls `/api/*`, never third-party APIs directly.
+
+**MCP server (`app/api/mcp`, `lib/mcp-*.js`):** Exposes the admin dashboard — and the handful of per-scholar actions with no admin equivalent — to Claude (claude.ai's OAuth connector, or a bare bearer header in Claude Code/Desktop config) and ChatGPT (its "Access token / API key" custom-connector mode, which is why the endpoint deliberately lives at the literal path `/api/mcp` rather than a nested one). Every tool in `lib/mcp-tools.js` is a thin same-origin-fetch wrapper around an existing `pages/api/*` route — no tool talks to Neon, Anthropic, or the YouTube Data API directly, same rule as the browser SPA. Because this app has real per-scholar Neon Auth accounts but the MCP connector is a single always-on integration (not a scholar logging in), `lib/api/_auth.js`'s `verifySession`/`verifyAdmin` also accept the MCP server's own shared secret (`IMMERSION_MCP_TOKEN`) in place of a JWT: a bare `Bearer <secret>` resolves to a real admin user row (every admin-gated route just works), and `Bearer <secret>:<userId>` impersonates that scholar (for routes with no admin/cross-scholar variant — mark-video, watch-later, next-video, etc.). This impersonation format is constructed server-side inside `lib/mcp-tools.js` for the internal fetch back into `pages/api/*`; it is never accepted from an external MCP client, whose own bearer header (checked by `lib/mcp-server.js`) must always be the bare secret. Do not weaken this by accepting the `:userId` suffix anywhere the JWT path also runs client-exposed — it exists solely for this server-to-server hop. New tool = new `pages/api/*` route first, then a `CATALOG` entry in `lib/mcp-tools.js` — never a second, looser way to reach the database.
 
 **Auth (same-origin model — Phase 14):** Neon Auth runs through Neon's official same-origin handler. `lib/auth/server.js` calls `createNeonAuth({ baseUrl: NEON_AUTH_BASE_URL, cookies: { secret: NEON_AUTH_COOKIE_SECRET, sameSite: 'lax' } })`; `app/api/auth/[...path]/route.js` exposes it as `export const { GET, POST } = auth.handler()`. The browser client (`src/lib/auth.js`) is the **no-arg** `createAuthClient()` from `@neondatabase/auth/next`, which talks to the same-origin `/api/auth/*` proxy — so the session cookie is **first-party** and survives refresh. Do NOT revert to the browser-direct-to-Neon (`VITE_NEON_AUTH_URL`) client or a hand-rolled proxy — both reintroduce the third-party-cookie logout (see ROADMAP history, PRs #22–#24, #29–#30). For `/api/*` authorization, `getAuthToken()` (`src/lib/authToken.js`) fetches a real JWT from `GET /api/auth/token`; `lib/api/_auth.js` JWKS-verifies it (unchanged). Guard against redirect races: any code that gates on auth must treat "session present, user not yet resolved" as still-loading (see `AuthContext` `roleLoading` init + `Login` effect-based navigation).
 
