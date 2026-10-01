@@ -2,7 +2,6 @@ import { getAdminDb } from '../../lib/api/_db.js';
 import { verifyAdmin } from '../../lib/api/_auth.js';
 import { completeText } from '../../lib/api/_ai.js';
 
-
 // Admin-only. On-demand analysis of everything a scholar watched (finished OR
 // unfinished) within an admin-selected date range. Aggregates the watch_sessions
 // in that window per video and asks Haiku to surface concrete topics/questions
@@ -121,7 +120,11 @@ Based ONLY on what they actually watched, write a short briefing the coordinator
 Be warm, specific, and practical. Do not invent videos or facts not in the list above.`;
 
   try {
-    const text = await completeText({ task: 'scholar-video-analysis', prompt, maxTokens: 900 });
+    const text = await completeText({
+      task: 'scholar-video-analysis',
+      prompt,
+      maxTokens: 900,
+    });
     if (!text)
       return res.status(500).json({ error: 'AI returned empty response' });
 

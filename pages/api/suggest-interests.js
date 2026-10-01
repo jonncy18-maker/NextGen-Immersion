@@ -157,7 +157,11 @@ Respond with ONLY this JSON, no other text:
   }));
 
   try {
-    const text = await completeText({ task: 'suggest-interests', prompt, maxTokens: 512 });
+    const text = await completeText({
+      task: 'suggest-interests',
+      prompt,
+      maxTokens: 512,
+    });
     const match = text.match(/\{[\s\S]*\}/);
     const parsed = match ? JSON.parse(match[0]) : null;
     const list = parsed?.suggestions;
