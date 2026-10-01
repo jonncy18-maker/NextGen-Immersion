@@ -202,7 +202,7 @@ All secret-key operations. The browser calls these; these call the third-party A
 | `lib/api/_db.js` | — | Shared Neon connection helper (`getDb`/`getAdminDb`) | NEON_DATABASE_URL |
 | `lib/api/_auth.js` | — | `verifySession`/`verifyAdmin` — JWKS-verify the Neon JWT | NEON_AUTH_BASE_URL |
 | `lib/api/_tag.js` | — | Shared Haiku prompt + CEFR/topic taxonomy | ANTHROPIC_API_KEY |
-| `lib/api/_ai.js` | — | Task → provider registry for the six text-only Haiku jobs (next-video, suggest-topics, suggest-interests, scholar-digest, scholar-topic-trends, scholar-video-analysis). Haiku unless `OPENAI_API_KEY` is set, then GPT-6 Luna; falls back to Haiku on any failure | ANTHROPIC_API_KEY, OPENAI_API_KEY (optional) |
+| `lib/api/_ai.js` | — | Task → provider registry for ten jobs: next-video, suggest-topics, suggest-interests, scholar-digest, scholar-topic-trends, scholar-video-analysis and the four tagging calls (tag-channel-level, tag-video, tag-video-topics, tag-oet). Haiku unless `OPENAI_API_KEY` is set, then GPT-6 Luna; falls back to Haiku on any failure | ANTHROPIC_API_KEY, OPENAI_API_KEY (optional) |
 
 **Auth enforcement:** Each scholar-facing endpoint verifies the Neon Auth JWT (Bearer, JWKS-verified in `lib/api/_auth.js`) and scopes queries to that user's `user_id` (the JWT `sub`). The browser cannot request another scholar's data — the server ignores any client-supplied user_id and uses the JWT identity. `pages/api/scholars.js` checks `role = 'admin'` before using the service-role connection.
 
@@ -263,10 +263,10 @@ document.addEventListener('visibilitychange', () => {
 
 ## AI Tagging
 
-Two-tier tagging via `claude-haiku-4-5` (server-side — key never exposed). All results cached forever; never re-fetched.
+Two-tier tagging via GPT-6 Luna when `OPENAI_API_KEY` is set, `claude-haiku-4-5` otherwise and on any Luna failure (server-side — keys never exposed, see `lib/api/_ai.js`). All results cached forever; never re-fetched.
 
 **Channel classification — primary path (`api/tag-channel.js`):**
-When a channel is added or imported, Haiku classifies it once using the channel name, description, and a sample of video titles. The level is stored on the `channels` row. All videos imported from that channel inherit the channel's **level** with `level_source: 'channel'`. This is the fast path for bulk library growth — one Haiku call sets the level for every video from that channel.
+When a channel is added or imported, the model classifies it once using the channel name, description, and a sample of video titles. The level is stored on the `channels` row. All videos imported from that channel inherit the channel's **level** with `level_source: 'channel'`. This is the fast path for bulk library growth — one Haiku call sets the level for every video from that channel.
 
 **Topics are still per-video, even for channel imports.** Channel classification covers *level* only. Topic varies video-to-video within one channel (a general channel spans Daily Life, News, Culture…), so each imported video still gets a lightweight Haiku topic pass for `topic_primary` / `topic_secondary`. Channel import = one level call + one cheap topic call per video.
 

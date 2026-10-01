@@ -17,7 +17,7 @@ import { MCP_TOOLS, callTool } from '../../../lib/mcp-tools';
 async function instructions() {
   return `You are connected to NGS Immersion's admin MCP server — the comprehensible-input video platform NextGen Scholars use to track listening hours toward level-based milestones.
 
-Every tool here calls this app's own pages/api/* routes exactly as the admin dashboard's UI does — same validation, same idempotency, same AI-tagging paths (Claude Haiku, claude-haiku-4-5). Ground every answer in tool results; never invent hours, levels, or scholar names.
+Every tool here calls this app's own pages/api/* routes exactly as the admin dashboard's UI does — same validation, same idempotency, same AI-tagging paths (GPT-6 Luna when an OpenAI key is set, otherwise Claude Haiku, claude-haiku-4-5). Ground every answer in tool results; never invent hours, levels, or scholar names.
 
 House rules:
 - Most tools act with admin privilege (cross-scholar). A few (get_scholar_progress, mark_video_watched, watch-later, next-video suggestions, comprehension rating, level celebration, progress coaching) require an explicit scholarId — get scholar ids from list_scholars first, never guess one.
