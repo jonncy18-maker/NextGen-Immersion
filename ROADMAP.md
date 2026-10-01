@@ -1062,6 +1062,16 @@ John asked to align every AI task across the four apps on a model and start movi
 - **Your steps after merge:** add `OPENAI_API_KEY` in Vercel scoped to Preview only, redeploy the preview, click through Suggest Interests / Suggest Topics, generate a digest and a topic-trends note for one scholar, and watch the logs for `Luna failed`. Scholar activity summaries and video titles go to OpenAI instead of Anthropic for flipped tasks.
 - Audit was a single-agent self-check, not the loop's separate audit agent. UI unchanged.
 
+## Luna tagging agreement check — wave 2 gate (Oct 2026)
+
+Wave 2 would move the cached level/topic tagging (`_tag.js`) to Luna. It stays on Haiku until this check passes. The original plan gated on agreement with admin-overridden levels, but Neon holds only 6 of those (1 A1, 2 A2, 2 B1, 1 B2; none currently available) out of 545 English videos, which can't carry a decision. The gate is therefore: on about 100 existing AI-tagged videos Luna must land **within one CEFR level of the stored Haiku label on at least 90%, exactly equal on at least 70%**, and **match at least 5 of the 6 admin overrides**. That measures consistency with the current labels, not truth. Existing tags never change either way (results are cached forever; tagging only runs on import), so a drift would only touch future imports.
+
+- **Temporary tooling (delete after reading the result):** `pages/api/luna-tag-eval.js` — admin-only and read-only (SELECTs only), runs the exact production level/topic prompt and parser through Luna with no Haiku fallback, so a Luna error counts against the result — and `public/luna-eval.html`, a one-page viewer that signs in via the existing session cookie, runs the batches and shows PASS/FAIL against the gate plus every disagreement.
+- **Small refactor in `lib/api/_tag.js`:** `buildLevelTopicPrompt` and `parseLevelTopic` are now exported and `classifyVideo` uses them, so the check cannot drift from production. Output is unchanged (checked old vs new `classifyVideo` against the same scripted replies, including malformed and empty ones). `_ai.js` exports `callLuna` for the same reason.
+- **Verified:** the refactor parity script; the endpoint against stubbed DB, auth and Luna (admin-only, key required, SELECT-only, production prompt, Luna failure surfaces as an error row); the viewer page in headless Chromium against a built `next start` with the API mocked (served as a static file despite the SPA rewrite; PASS, FAIL-on-exact and FAIL-on-overrides all render correctly); `next build`. **Not verified:** a real run — it needs `OPENAI_API_KEY` on the Preview, which this sandbox does not have.
+- **To run it:** with `OPENAI_API_KEY` set on the Preview and the preview redeployed, sign in to the preview as admin, open `/luna-eval.html` on the same site, press **Run the check**. It takes roughly a minute. Send the verdict line (or a screenshot) back.
+- **Then:** pass → wire `_tag.js`'s level/topic call through `_ai.js` and delete the two temporary files; fail → leave tagging on Haiku, delete the files, and note the disagreement pattern here.
+
 ## Roadmap Notes (Future — Not In Scope Now)
 
 **Per-scholar interest config:** topic tags hardcoded for Claire. Build admin module for per-scholar interest tags driving AI search + surfacing.
