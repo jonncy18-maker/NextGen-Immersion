@@ -1,8 +1,7 @@
 import { getAdminDb } from '../../lib/api/_db.js'
 import { verifyAdmin } from '../../lib/api/_auth.js'
-import Anthropic from '@anthropic-ai/sdk'
+import { completeText } from '../../lib/api/_ai.js'
 
-const MODEL = 'claude-haiku-4-5'
 
 async function getTopicCounts(sql, userId, language) {
   return sql`
@@ -75,13 +74,7 @@ ${lines.join('\n')}
 Write a 3–4 sentence note that: (1) identifies which topics this scholar clearly gravitates toward, (2) flags any topics they avoid, and (3) calls out specific topics where the unwatched inventory is running low and more content should be added. Be factual and actionable for a coordinator.`
 
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }],
-    })
-    const text = message.content[0]?.text?.trim() || ''
+    const text = await completeText({ task: 'scholar-topic-trends', prompt, maxTokens: 300 })
     if (!text) return res.status(500).json({ error: 'AI returned empty response' })
 
     await sql`

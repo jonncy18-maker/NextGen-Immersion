@@ -1,8 +1,7 @@
 import { getAdminDb } from '../../lib/api/_db.js'
 import { verifyAdmin } from '../../lib/api/_auth.js'
-import Anthropic from '@anthropic-ai/sdk'
+import { completeText } from '../../lib/api/_ai.js'
 
-const MODEL = 'claude-haiku-4-5'
 
 const LEVEL_NAMES = {
   a1: 'A1', a2: 'A2', b1: 'B1', b2: 'B2', c1: 'C1', c2: 'C2',
@@ -101,13 +100,7 @@ ${topTopics.length > 0 ? `Favourite topics: ${topTopics.join(', ')}` : ''}
 Write a 3–4 sentence admin digest that summarises this scholar's engagement pattern, pace, and any observations worth noting. Be factual and actionable for a coordinator.`
 
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }],
-    })
-    const text = message.content[0]?.text?.trim() || ''
+    const text = await completeText({ task: 'scholar-digest', prompt, maxTokens: 300 })
     if (!text) return res.status(500).json({ error: 'AI returned empty response' })
 
     await sql`

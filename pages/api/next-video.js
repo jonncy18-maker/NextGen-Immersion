@@ -1,8 +1,7 @@
 import { getDb } from '../../lib/api/_db.js'
 import { verifySession } from '../../lib/api/_auth.js'
-import Anthropic from '@anthropic-ai/sdk'
+import { completeText } from '../../lib/api/_ai.js'
 
-const MODEL = 'claude-haiku-4-5'
 
 // Batch import + Haiku calls may take a while
 export const config = { maxDuration: 20 }
@@ -108,14 +107,7 @@ Respond with ONLY this JSON, no other text:
 {"suggested_ids": ["<uuid>", "<uuid>", "<uuid>"]}`
 
     try {
-      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      const message = await client.messages.create({
-        model: MODEL,
-        max_tokens: 128,
-        messages: [{ role: 'user', content: prompt }],
-      })
-
-      const text = message.content[0]?.text?.trim() || ''
+      const text = await completeText({ task: 'next-video', prompt, maxTokens: 128 })
       const parsed = extractJson(text)
       const validIds = new Set(candidates.map(c => c.id))
 

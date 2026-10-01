@@ -202,6 +202,7 @@ All secret-key operations. The browser calls these; these call the third-party A
 | `lib/api/_db.js` | — | Shared Neon connection helper (`getDb`/`getAdminDb`) | NEON_DATABASE_URL |
 | `lib/api/_auth.js` | — | `verifySession`/`verifyAdmin` — JWKS-verify the Neon JWT | NEON_AUTH_BASE_URL |
 | `lib/api/_tag.js` | — | Shared Haiku prompt + CEFR/topic taxonomy | ANTHROPIC_API_KEY |
+| `lib/api/_ai.js` | — | Task → provider registry for the six text-only Haiku jobs (next-video, suggest-topics, suggest-interests, scholar-digest, scholar-topic-trends, scholar-video-analysis). Haiku unless `OPENAI_API_KEY` is set, then GPT-6 Luna; falls back to Haiku on any failure | ANTHROPIC_API_KEY, OPENAI_API_KEY (optional) |
 
 **Auth enforcement:** Each scholar-facing endpoint verifies the Neon Auth JWT (Bearer, JWKS-verified in `lib/api/_auth.js`) and scopes queries to that user's `user_id` (the JWT `sub`). The browser cannot request another scholar's data — the server ignores any client-supplied user_id and uses the JWT identity. `pages/api/scholars.js` checks `role = 'admin'` before using the service-role connection.
 

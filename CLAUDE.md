@@ -66,6 +66,7 @@ Formatting:   Prettier
 | Key | Prefix | Lives | Why |
 |---|---|---|---|
 | Anthropic API key | NONE | Server only | Would be harvestable if exposed |
+| OpenAI API key (optional) | NONE | Server only | Same exposure risk; used only by `lib/api/_ai.js` for the Luna opt-in tasks |
 | Neon connection string | NONE | Server only | Full DB write access |
 | YouTube Data API key | NONE | Server only | Quota abuse risk |
 | `NEON_AUTH_COOKIE_SECRET` | NONE | Server only | Signs the session cookie (32+ chars) |
@@ -112,7 +113,8 @@ ngs-immersion/
 │   ├── api/
 │   │   ├── _db.js                # Shared Neon connection helper (getDb/getAdminDb)
 │   │   ├── _auth.js              # verifySession/verifyAdmin — JWKS-verifies the Neon JWT (+ MCP token, see below)
-│   │   └── _tag.js               # Haiku prompt + CEFR/topic taxonomy (shared by tag endpoints)
+│   │   ├── _tag.js               # Haiku prompt + CEFR/topic taxonomy (shared by tag endpoints)
+│   │   └── _ai.js                # Task → provider registry for the six text-only Haiku jobs; Luna opt-in via env
 │   ├── mcp-server.js             # Generic MCP transport (JSON-RPC 2.0 + OAuth wrapper) — no app-specific logic
 │   ├── mcp-oauth.js              # OAuth 2.1 handshake backing mcp-server.js (mcp_auth_codes table)
 │   └── mcp-tools.js              # MCP tool catalog — every tool wraps one pages/api/* route
@@ -184,6 +186,8 @@ ngs-immersion/
 ```bash
 # ─── SERVER-SIDE ONLY (no public prefix — never exposed to the browser) ───
 ANTHROPIC_API_KEY=              # Anthropic key — Haiku tagging. Server only.
+OPENAI_API_KEY=                 # OPTIONAL — GPT-6 Luna for the six text-only tasks in lib/api/_ai.js; unset = all Haiku (scope to Preview first). Server only.
+AI_FORCE_ANTHROPIC=             # OPTIONAL — 1 sends every task back to Haiku at once
 NEON_DATABASE_URL=              # Neon connection string (pooled). Server only.
 NEON_DATABASE_URL_ADMIN=        # Neon service-role connection for admin cross-scholar reads
 YOUTUBE_API_KEY=                # YouTube Data API v3 key. Server only.
@@ -223,6 +227,8 @@ In Vercel: set all of the above as env vars (no prefix) and ensure they are enab
 **Completion semantics:** `completed = true` only when a SINGLE session reaches ≥95% of the video. It is NOT cumulative — watching 50% twice does not complete a video. Hours from every session always count toward cumulative input regardless of completion.
 
 **AI tagging model:** ALWAYS use `claude-haiku-4-5` for all tagging. Two endpoints: `api/tag-channel.js` classifies a channel's **level** once when it is added — all videos from that channel inherit `level_source: 'channel'` (primary path, fast). `api/tag-video.js` is the fallback for individual channelless imports (level + topics). **Topics are always per-video:** even channel imports get a lightweight per-video Haiku topic call (topic varies within a channel; level does not). Use CEFR mappings only in the prompt (super_beginner=A1–A2, beginner=A2–B1, intermediate=B1–B2, advanced=B2–C1) — no qualitative descriptions. Keep the prompt + taxonomy in one shared server module imported by both endpoints (no drift). Results cached in Neon forever; admin overrides with `level_source: 'admin'`. Re-classifying a channel re-stamps its `level_source: 'channel'` videos but preserves `admin` overrides.
+
+**Luna opt-in (Oct 2026) — six text-only tasks only, tagging excluded.** `lib/api/_ai.js` routes `next-video`, `suggest-topics`, `suggest-interests`, `scholar-digest`, `scholar-topic-trends` and `scholar-video-analysis` to GPT-6 Luna (`gpt-6-luna`) whenever `OPENAI_API_KEY` is set (so the key's Vercel scope is the switch — Preview first); with no key, with `AI_FORCE_ANTHROPIC=1`, and on any Luna failure they run on `claude-haiku-4-5` exactly as before. The tagging rule above is unchanged: `_tag.js`, `tag-channel.js` and `tag-video.js` stay on Haiku because results are cached forever — they move only after Luna's level tags agree with the admin-overridden ones. Progress coaching and level celebration (scholar-facing copy) stay on Haiku until a sample is read for the scholar's reading level. The OpenAI key and every call to OpenAI stay server-side (`pages/api/*` via `lib/api/_ai.js`).
 
 **Goal clock:** Each scholar's goal clock starts on an admin-set `start_date` in the `scholar_goals` table — NOT on account creation and NOT on first session. A scholar with no start_date set has status PENDING and no pace calculation runs. All "today"/"this week" math is computed in **Asia/Manila** (program timezone). `expected_hours` is capped at `target_hours`; past the target date a scholar is ON_TRACK only if the full target was met. `target_hours` is the entry threshold of the target level (Intermediate = 300h).
 
