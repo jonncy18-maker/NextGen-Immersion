@@ -1,8 +1,7 @@
 import { getAdminDb } from '../../lib/api/_db.js';
 import { verifyAdmin } from '../../lib/api/_auth.js';
-import Anthropic from '@anthropic-ai/sdk';
+import { completeText } from '../../lib/api/_ai.js';
 
-const MODEL = 'claude-haiku-4-5';
 
 // Admin-only. On-demand analysis of everything a scholar watched (finished OR
 // unfinished) within an admin-selected date range. Aggregates the watch_sessions
@@ -122,13 +121,7 @@ Based ONLY on what they actually watched, write a short briefing the coordinator
 Be warm, specific, and practical. Do not invent videos or facts not in the list above.`;
 
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 900,
-      messages: [{ role: 'user', content: prompt }],
-    });
-    const text = message.content[0]?.text?.trim() || '';
+    const text = await completeText({ task: 'scholar-video-analysis', prompt, maxTokens: 900 });
     if (!text)
       return res.status(500).json({ error: 'AI returned empty response' });
 
