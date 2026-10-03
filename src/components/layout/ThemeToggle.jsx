@@ -9,7 +9,7 @@ function getInitialTheme() {
 
 // Flips the root <html data-theme> attribute (set up before hydration by the
 // blocking inline script in app/layout.jsx) and persists the choice. See
-// CLAUDE.md "Theme system" — every --ngsi-* token has a dark override in
+// ARCHITECTURE.md "Design System" — every --ngsi-* token has a dark override in
 // src/styles/tokens.css, so this is the only place that needs to touch the
 // attribute at runtime.
 export default function ThemeToggle() {

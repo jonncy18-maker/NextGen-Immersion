@@ -487,7 +487,7 @@ Deliverables:
 
 **Design note — soft delete:** The existing roadmap note says "keep-forever (never delete)" to protect watch history and cumulative hours. Manual admin deletion uses the same `is_available=false` path as the stale checker — videos disappear from the scholar library and stop counting toward inventory, but `watch_sessions` rows are untouched and cumulative hours are unaffected. If a hard-delete is ever needed (duplicate imports), that's a future DBA operation outside the UI.
 
-**Design note — level_source:** Setting `level_source='admin'` on a bulk level-change marks those videos as admin-overridden, which means a future channel re-classification won't overwrite them (per the existing re-classification rule in CLAUDE.md).
+**Design note — level_source:** Setting `level_source='admin'` on a bulk level-change marks those videos as admin-overridden, which means a future channel re-classification won't overwrite them (per the existing re-classification rule in AGENTS.md → "AI tagging model").
 
 Status: **DONE** (Jun 2026 — via agentic loop, 1 iteration, audit PASS). Added tabbed layout to Admin Videos page and full library management:
 - `pages/api/delete-video.js` (new): admin-only POST; soft-deletes (sets `is_available=false, unavailable_since=now()`) one or many videos; preserves watch history and cumulative hours. Returns `{ deleted: N }`.
