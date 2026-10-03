@@ -48,6 +48,112 @@ Admins (John) manage the video library, set program goals and per-scholar start 
 
 ---
 
+## Project Structure
+
+Annotated tree (moved from the agent instructions). A snapshot, not exhaustive — `pages/api/` and `src/` have grown since; `ls` for the current list.
+
+```
+ngs-immersion/
+├── app/                          # Next.js App Router
+│   ├── layout.jsx                # Root layout — imports global CSS, <html>/<body>
+│   ├── page.jsx                  # 'use client' — renders the SPA via next/dynamic (ssr:false)
+│   ├── .well-known/
+│   │   ├── oauth-protected-resource/(route.js|api/mcp/route.js)      # RFC 9728 metadata for the MCP OAuth handshake
+│   │   └── oauth-authorization-server/(route.js|api/mcp/route.js)    # RFC 8414 metadata for the MCP OAuth handshake
+│   └── api/
+│       ├── auth/[...path]/route.js  # Neon same-origin auth proxy: export {GET,POST}=auth.handler()
+│       └── mcp/                     # MCP server (Claude + ChatGPT) — see lib/mcp-tools.js
+│           ├── route.js             # POST — JSON-RPC 2.0 (initialize/tools list/call), bearer-gated
+│           ├── authorize/route.js   # OAuth /authorize (claude.ai connector only)
+│           ├── token/route.js       # OAuth /token
+│           └── register/route.js    # OAuth dynamic client registration
+├── pages/                        # Next.js Pages Router — API functions only (classic req,res)
+│   └── api/                      # SECRET KEYS LIVE HERE
+│       ├── tag-channel.js        # Classifies channel level via Haiku — primary tagging path
+│       ├── tag-video.js          # Haiku per-video tagging — fallback for channelless imports
+│       ├── youtube-search.js     # YouTube Data API + music-category filter — never exposes key
+│       ├── youtube-import.js     # Batch playlist/channel import + tag (maxDuration 30)
+│       ├── add-video.js          # Admin: save one searched video with pre-computed tags
+│       ├── flush-session.js      # Writes watch_sessions to Neon (sendBeacon target)
+│       ├── progress.js           # Reads cumulative hours from Neon
+│       ├── videos.js             # Library list + per-video watched state (JWT-scoped)
+│       ├── mark-video.js         # Manual watched/unwatched toggle
+│       ├── me.js                 # Current user role lookup (JWT → public.users)
+│       └── scholars.js           # Admin: all-scholar progress (service role)
+├── lib/                          # Server-side modules (NOT routes — outside pages/api)
+│   ├── auth/
+│   │   └── server.js             # createNeonAuth({baseUrl, cookies:{secret}}) — the auth handler
+│   ├── api/
+│   │   ├── _db.js                # Shared Neon connection helper (getDb/getAdminDb)
+│   │   ├── _auth.js              # verifySession/verifyAdmin — JWKS-verifies the Neon JWT (+ MCP token, see below)
+│   │   ├── _tag.js               # Haiku prompt + CEFR/topic taxonomy (shared by tag endpoints)
+│   │   └── _ai.js                # Task → provider registry for the six text-only Haiku jobs; Luna opt-in via env
+│   ├── mcp-server.js             # Generic MCP transport (JSON-RPC 2.0 + OAuth wrapper) — no app-specific logic
+│   ├── mcp-oauth.js              # OAuth 2.1 handshake backing mcp-server.js (mcp_auth_codes table)
+│   └── mcp-tools.js              # MCP tool catalog — every tool wraps one pages/api/* route
+├── next.config.js                # reactStrictMode + rewrite non-API paths to / (SPA shell)
+├── src/                          # The React SPA (unchanged by the migration)
+│   ├── App.jsx                   # Root — HashRouter, routes, AuthContext
+│   ├── pages/
+│   │   ├── Watch.jsx             # Main watch page — player + browse
+│   │   ├── Progress.jsx          # Hours counter + milestones (scholar view)
+│   │   ├── Browse.jsx            # Full video browse + search
+│   │   ├── Admin.jsx             # Admin shell — scholar management
+│   │   ├── AdminProgress.jsx     # Admin progress — scholar cards
+│   │   ├── AdminVideos.jsx       # Admin video library + AI-assisted add
+│   │   └── Login.jsx             # Auth page
+│   ├── components/
+│   │   ├── player/
+│   │   │   ├── VideoPlayer.jsx   # YouTube IFrame API wrapper
+│   │   │   └── WatchTimer.jsx    # Play-state timer — only ticks when playing
+│   │   ├── progress/
+│   │   │   ├── HoursCounter.jsx  # Big hours display + level badge
+│   │   │   ├── MilestoneBar.jsx  # Progress bar to next level
+│   │   │   └── WeekStats.jsx     # This week / target / last session
+│   │   ├── video/
+│   │   │   ├── VideoCard.jsx     # Video card — thumbnail, level, topic, watched
+│   │   │   ├── VideoGrid.jsx     # Responsive grid wrapper
+│   │   │   └── FilterBar.jsx     # Topic + level + watched/unwatched filters
+│   │   ├── admin/
+│   │   │   ├── ScholarCard.jsx   # Scholar progress card — AT RISK / ON TRACK
+│   │   │   ├── AddVideoPanel.jsx # AI-assisted search + URL import
+│   │   │   └── GoalEditor.jsx    # Program-wide goal + per-scholar start date
+│   │   └── layout/
+│   │       ├── Navbar.jsx        # Top nav — NGS badge + wordmark + avatar
+│   │       ├── Sidebar.jsx       # Desktop sidebar (hidden on mobile)
+│   │       └── BottomNav.jsx     # Mobile bottom nav (hidden on desktop)
+│   ├── context/
+│   │   └── AuthContext.jsx       # Auth state + useAuth hook
+│   ├── hooks/
+│   │   ├── useWatchSession.js    # YouTube IFrame state + interval timer
+│   │   └── useProgress.js        # Calls /api/progress for cumulative hours
+│   ├── lib/
+│   │   ├── auth.js               # createAuthClient() (no-arg) from @neondatabase/auth/next → same-origin /api/auth/*
+│   │   ├── authToken.js          # getAuthToken() — GET /api/auth/token for the JWT sent to /api/*
+│   │   └── apiClient.js          # Fetch wrapper for own /api/* endpoints
+│   ├── utils/
+│   │   ├── levels.js             # DS-style hour thresholds
+│   │   ├── timeFormat.js         # Seconds → hours display formatting
+│   │   ├── offlineBuffer.js      # localStorage queue for poor connections
+│   │   └── pace.js               # AT RISK / ON TRACK pace calculations
+│   └── styles/
+│       ├── tokens.css            # --ngsi-* CSS variables
+│       └── global.css            # Base styles
+├── neon/
+│   └── schema.sql                # Full database schema — run once on new project
+├── public/
+├── AGENTS.md                     # Shared agent instructions (CLAUDE.md imports it + Claude-only notes)
+├── ARCHITECTURE.md               # System design — source of truth
+├── ROADMAP.md                    # Feature build order + session log
+├── .env.example                  # Required environment variables
+├── .gitignore                    # ignores node_modules, .next, next-env.d.ts, .env
+├── vercel.json                   # Vercel config (minimal — Next handles routing)
+├── prettier.config.js
+└── package.json                  # next build/dev/start (no Vite; index.html/main.jsx removed)
+```
+
+---
+
 ## Database Schema
 
 ### users
@@ -286,6 +392,10 @@ advanced       → B2–C1
 **Edge cases:** Some channels span multiple levels; this is uncommon and not engineered around. Students skip videos that feel too hard — expected CI behavior. Admin can override any tag with `level_source: 'admin'`.
 
 **Re-classification propagates:** If an admin re-classifies a channel later, the new level re-stamps existing videos from that channel that are still `level_source: 'channel'`. Videos an admin has manually overridden (`level_source: 'admin'`) are preserved and not touched.
+
+**Luna:**
+
+**Luna (Oct 2026) — ten tasks in `lib/api/_ai.js`.** `next-video`, `suggest-topics`, `suggest-interests`, `scholar-digest`, `scholar-topic-trends`, `scholar-video-analysis` and the four tagging tasks (`tag-channel-level`, `tag-video`, `tag-video-topics`, `tag-oet`) run on GPT-6 Luna (`gpt-6-luna`) whenever `OPENAI_API_KEY` is set (so the key's Vercel scope is the switch — Preview first). With no key, with `AI_FORCE_ANTHROPIC=1`, and on any Luna failure they run on `claude-haiku-4-5` exactly as before. Progress coaching and level celebration (scholar-facing copy) stay on Haiku until a sample is read for the scholar's reading level. **Tagging has no ground truth:** a check against the stored Haiku labels (2026-10-01, 102 videos) found Luna within one CEFR level 93% of the time and exactly equal 54%; the 6 admin overrides in Neon are June development test videos, not real judgments, so neither model was ever scored for accuracy. Existing tags are untouched (cached forever); only new imports use Luna. The OpenAI key and every call to OpenAI stay server-side (`pages/api/*` via `lib/api/_ai.js`).
 
 ---
 

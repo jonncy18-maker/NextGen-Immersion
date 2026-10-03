@@ -4,7 +4,7 @@ Internal comprehensible-input (CI) platform for the **NextGen Scholars** program
 
 Internal scholarship tool — not a public product.
 
-> **Authoritative docs:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) (system design — source of truth) · [`CLAUDE.md`](./CLAUDE.md) (build rules + conventions) · [`ROADMAP.md`](./ROADMAP.md) (phases + session log).
+> **Authoritative docs:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) (system design — source of truth) · [`AGENTS.md`](./AGENTS.md) (build rules + conventions, shared by all coding agents; `CLAUDE.md` imports it) · [`ROADMAP.md`](./ROADMAP.md) (phases + session log).
 >
 > **Reusable recipe:** [`docs/nextjs-neon-vercel-auth-starter.md`](./docs/nextjs-neon-vercel-auth-starter.md) — copy-pasteable first-party auth setup for any new Next.js + Neon + Vercel project (handler, client, JWT verify, race guards, Vercel/Neon checklist, gotchas).
 

@@ -3,7 +3,7 @@ import { verifySession } from '../../lib/api/_auth.js'
 
 // Current + longest consecutive-day streak for a scholar, computed from
 // watch_sessions.started_at. A "day" is a calendar day in Asia/Manila (the
-// project's program timezone — see CLAUDE.md "Goal clock"). Uses a
+// project's program timezone — see AGENTS.md "Goal clock"). Uses a
 // gaps-and-islands approach: number the distinct days in order, subtract the
 // row number (in days) from each day — days in the same consecutive run land
 // on the same "island" value. The longest island is the longest streak; the
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
 
   const row = rows[0] || {}
   // Both columns are plain integer aggregates (COUNT/MAX of ints), but coerce
-  // defensively per CLAUDE.md's Neon NUMERIC rule since they arrive through a
+  // defensively per AGENTS.md's Neon NUMERIC rule since they arrive through a
   // CTE with COALESCE/subqueries.
   return res.status(200).json({
     current_streak: Number(row.current_streak ?? 0),

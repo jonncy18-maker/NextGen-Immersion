@@ -41,7 +41,7 @@ export default async function handler(req, res) {
 
   // One row per video watched in the window, with total time and whether ANY
   // session in the window completed it. Manila-day boundaries match the rest of
-  // the app's date math (see CLAUDE.md goal-clock rule).
+  // the app's date math (see AGENTS.md goal-clock rule).
   const rows = await sql`
     SELECT
       v.title,

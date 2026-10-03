@@ -133,7 +133,7 @@ trusts the app. Serve this at **`https://<app-domain>/.well-known/assetlinks.jso
    a tester", then install from the Play listing that appears.
 6. Complete the **Data safety** form and content rating even for internal
    testing (Play requires a minimal version). Declare the auth/session data the
-   app collects honestly — see the auth/data notes in `CLAUDE.md`.
+   app collects honestly — see the auth/data notes in `AGENTS.md`.
 
 ---
 
