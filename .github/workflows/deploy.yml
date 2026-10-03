@@ -1,0 +1,42 @@
+# GitHub Pages now serves only a frozen redirect stub (gh-pages-redirect/) —
+# the app itself is deployed via Vercel's own git integration as a Next.js
+# app. This replaces the old Vite `npm run build` → dist/ workflow, which
+# would fail post-migration (no index.html/vite.config.js to build). Old
+# bookmarks and #/-style deep links land here and get forwarded to the new
+# Vercel domain — see gh-pages-redirect/index.html.
+name: Deploy GitHub Pages redirect stub
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'gh-pages-redirect/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: gh-pages-redirect
+
+      - uses: actions/deploy-pages@v4
+        id: deployment
