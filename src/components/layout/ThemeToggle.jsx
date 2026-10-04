@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'ngsi-theme'
+const STORAGE_KEY = 'ngsi-theme';
 
 function getInitialTheme() {
-  if (typeof document === 'undefined') return 'light'
-  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
+  if (typeof document === 'undefined') return 'light';
+  return document.documentElement.getAttribute('data-theme') === 'dark'
+    ? 'dark'
+    : 'light';
 }
 
 // Flips the root <html data-theme> attribute (set up before hydration by the
@@ -13,29 +15,33 @@ function getInitialTheme() {
 // src/styles/tokens.css, so this is the only place that needs to touch the
 // attribute at runtime.
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState(getInitialTheme)
+  const [theme, setTheme] = useState(getInitialTheme);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
+    document.documentElement.setAttribute('data-theme', theme);
     try {
-      window.localStorage.setItem(STORAGE_KEY, theme)
+      window.localStorage.setItem(STORAGE_KEY, theme);
     } catch {
       // localStorage unavailable (private browsing, etc.) — theme still
       // applies for this session via the DOM attribute.
     }
-  }, [theme])
+  }, [theme]);
 
   return (
     <button
       type="button"
-      onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
-      aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-      title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+      onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+      aria-label={
+        theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
+      }
+      title={
+        theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
+      }
       style={styles.btn}
     >
       {theme === 'dark' ? '☀️' : '🌙'}
     </button>
-  )
+  );
 }
 
 const styles = {
@@ -54,4 +60,4 @@ const styles = {
     flexShrink: 0,
     lineHeight: 1,
   },
-}
+};

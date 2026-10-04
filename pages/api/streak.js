@@ -1,5 +1,5 @@
-import { getDb } from '../../lib/api/_db.js'
-import { verifySession } from '../../lib/api/_auth.js'
+import { getDb } from '../../lib/api/_db.js';
+import { verifySession } from '../../lib/api/_auth.js';
 
 // Current + longest consecutive-day streak for a scholar, computed from
 // watch_sessions.started_at. A "day" is a calendar day in Asia/Manila (the
@@ -11,13 +11,13 @@ import { verifySession } from '../../lib/api/_auth.js'
 // most recent watch day is further in the past than yesterday).
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const authUser = await verifySession(req.headers.authorization)
-  if (!authUser) return res.status(401).json({ error: 'Unauthorized' })
+  const authUser = await verifySession(req.headers.authorization);
+  if (!authUser) return res.status(401).json({ error: 'Unauthorized' });
 
-  const sql = getDb()
+  const sql = getDb();
 
   const rows = await sql`
     WITH days AS (
@@ -49,14 +49,14 @@ export default async function handler(req, res) {
         ORDER BY s.end_day DESC
         LIMIT 1
       ), 0) AS current_streak
-  `
+  `;
 
-  const row = rows[0] || {}
+  const row = rows[0] || {};
   // Both columns are plain integer aggregates (COUNT/MAX of ints), but coerce
   // defensively per AGENTS.md's Neon NUMERIC rule since they arrive through a
   // CTE with COALESCE/subqueries.
   return res.status(200).json({
     current_streak: Number(row.current_streak ?? 0),
     longest_streak: Number(row.longest_streak ?? 0),
-  })
+  });
 }
